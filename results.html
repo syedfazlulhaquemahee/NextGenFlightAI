@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Results • NextGen Flights</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="brand-link" href="/">
+        <div class="logo">✈︎</div>
+        <div>
+          <div class="brand-title">NextGen Flights</div>
+          <div class="brand-sub">Results</div>
+        </div>
+      </a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="results-head">
+      <div>
+        <h1>{{ query.origin }} → {{ query.destination }}</h1>
+        <div class="muted small">
+          {% if query.raw_text %}
+            AI request: “{{ query.raw_text }}”
+          {% else %}
+            Standard search • {{ query.cabin }} • {{ query.passengers }} passenger(s)
+          {% endif %}
+          {% if query.nonstop %} • Nonstop only {% endif %}
+          • Sort: {{ query.sort }}
+        </div>
+      </div>
+      <a class="btn" href="/">New Search</a>
+    </section>
+
+    {% if error %}
+      <section class="empty">
+        <div class="empty-card">
+          <h2>Nothing to show</h2>
+          <p class="muted">{{ error }}</p>
+          <a class="btn primary" href="/">Try again</a>
+        </div>
+      </section>
+    {% else %}
+      <section class="list">
+        <h2 class="section-title">Top matches</h2>
+
+        <div class="cards">
+          {% for f in flights[:3] %}
+            <div class="flight-card best">
+              <div class="flight-main">
+                <div class="flight-airline">{{ f.airline }}</div>
+                <div class="flight-route">{{ f.route }}</div>
+                <div class="flight-meta muted">
+                  {{ f.depart }} → {{ f.arrive }} • {{ minutes_to_hm(f.duration_min) }} •
+                  {% if f.stops == 0 %} Nonstop {% else %} {{ f.stops }} stop(s) {% endif %}
+                </div>
+              </div>
+              <div class="flight-side">
+                <div class="price">${{ f.price }}</div>
+                <a class="btn primary" href="{{ f.booking_url }}" target="_blank" rel="noopener">
+                  Continue to Booking
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        {% if flights|length > 3 %}
+          <h2 class="section-title">More options</h2>
+          <div class="cards">
+            {% for f in flights[3:] %}
+              <div class="flight-card">
+                <div class="flight-main">
+                  <div class="flight-airline">{{ f.airline }}</div>
+                  <div class="flight-route">{{ f.route }}</div>
+                  <div class="flight-meta muted">
+                    {{ f.depart }} → {{ f.arrive }} • {{ minutes_to_hm(f.duration_min) }} •
+                    {% if f.stops == 0 %} Nonstop {% else %} {{ f.stops }} stop(s) {% endif %}
+                  </div>
+                </div>
+                <div class="flight-side">
+                  <div class="price">${{ f.price }}</div>
+                  <a class="btn" href="{{ f.booking_url }}" target="_blank" rel="noopener">
+                    Booking link
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <footer class="footer">
+      <span class="muted">Prototype UI • Replace mock data with Amadeus + Gemini next.</span>
+    </footer>
+  </main>
+</body>
+</html>
