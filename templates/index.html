@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NextGen Flights</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">✈︎</div>
+      <div>
+        <div class="brand-title">NextGen Flights</div>
+        <div class="brand-sub">Minimal flight search with AI commands</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Book flights with less noise.</h1>
+      <p>
+        Use a simple form, or just type what you want. We show the best matches first.
+      </p>
+    </section>
+
+    <section class="grid">
+      <!-- Standard Search -->
+      <div class="card">
+        <h2>Standard Search</h2>
+        <p class="muted">Quick, familiar, clean.</p>
+
+        <form class="form" method="POST" action="/search">
+          <input type="hidden" name="mode" value="standard" />
+
+          <div class="row">
+            <div class="field">
+              <label>Origin</label>
+              <input name="origin" placeholder="JFK" maxlength="3" />
+            </div>
+            <div class="field">
+              <label>Destination</label>
+              <input name="destination" placeholder="LAX" maxlength="3" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Depart</label>
+              <input name="depart_date" type="date" />
+            </div>
+            <div class="field">
+              <label>Return</label>
+              <input name="return_date" type="date" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Passengers</label>
+              <input name="passengers" type="number" min="1" value="1" />
+            </div>
+            <div class="field">
+              <label>Cabin</label>
+              <select name="cabin">
+                <option value="ECONOMY">Economy</option>
+                <option value="PREMIUM_ECONOMY">Premium Economy</option>
+                <option value="BUSINESS">Business</option>
+                <option value="FIRST">First</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row row-tight">
+            <label class="check">
+              <input type="checkbox" name="nonstop" />
+              Nonstop only
+            </label>
+
+            <div class="field inline">
+              <label>Sort</label>
+              <select name="sort">
+                <option value="recommended">Recommended</option>
+                <option value="cheapest">Cheapest</option>
+                <option value="fastest">Fastest</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn primary" type="submit">Search Flights</button>
+        </form>
+      </div>
+
+      <!-- AI Search -->
+      <div class="card">
+        <h2>AI Command Search</h2>
+        <p class="muted">Type it like you’re talking to a smart assistant.</p>
+
+        <form class="form" method="POST" action="/search">
+          <input type="hidden" name="mode" value="ai" />
+
+          <div class="field">
+            <label>Your request</label>
+            <textarea name="ai_text" rows="6" placeholder="Example: Find me the cheapest round-trip flight from JFK to DEL from May 18 to Aug 22. Nonstop only."></textarea>
+          </div>
+
+          <div class="chips">
+            <span class="chip">“earliest flight today”</span>
+            <span class="chip">“under $800”</span>
+            <span class="chip">“no overnight layovers”</span>
+          </div>
+
+          <button class="btn primary" type="submit">Search with AI</button>
+          <p class="hint">
+            Later: Gemini will parse your text into structured fields automatically.
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span class="muted">No login. No tracking. Just search.</span>
+    </footer>
+  </main>
+</body>
+</html>
