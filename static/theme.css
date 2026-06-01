@@ -834,29 +834,14 @@ html[data-theme="light"] body.home-page .wrap{
 html[data-theme="light"] body.home-page .home-search-stack{
   position: relative;
   z-index: 1;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-/* Soft spotlight wash behind the AI search stack (light only) */
 html[data-theme="light"] body.home-page .home-search-stack::before{
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -64px;
-  transform: translateX(-50%);
-  width: min(1080px, 116%);
-  height: min(580px, 96vw);
-  pointer-events: none;
-  z-index: 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse 72% 60% at 50% 40%,
-    rgba(129, 140, 248, 0.42) 0%,
-    rgba(124, 58, 237, 0.16) 34%,
-    rgba(139, 92, 246, 0.16) 54%,
-    rgba(255, 255, 255, 0) 72%
-  );
-  filter: blur(14px);
-  opacity: 0.96;
+  content: none !important;
+  display: none !important;
 }
 
 html[data-theme="light"] body.home-page .home-search-stack .ai-wrap,
@@ -1166,14 +1151,8 @@ html[data-theme="light"] body.home-page .manual-search-v2 .ms2-cta:hover{
 
 @media (prefers-reduced-motion: no-preference){
   html[data-theme="light"] body.home-page .ai-card:focus-within{
-    border-color: #64748b !important;
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.88) inset,
-      0 2px 4px rgba(15, 23, 42, 0.05),
-      0 12px 24px rgba(15, 23, 42, 0.08),
-      0 32px 64px rgba(15, 23, 42, 0.14),
-      0 0 0 1px rgba(99, 102, 241, 0.14),
-      0 18px 44px rgba(99, 102, 241, 0.06) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
   }
 }
 
