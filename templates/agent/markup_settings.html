@@ -1,0 +1,227 @@
+{% extends "agent/layout.html" %}
+{% block title %}Markup Config{% endblock %}
+{% block heading %}Markup configuration{% endblock %}
+{% block subheading %}Define tiered pricing rules and a fallback flat markup applied to every new booking.{% endblock %}
+
+{% block content %}
+
+<!-- ── How it works ──────────────────────────────────────────────────── -->
+<div class="markup-explainer panel">
+  <div class="markup-explainer-inner">
+    <div class="markup-explainer-example">
+      <h2>How markup works</h2>
+      <ol class="markup-steps">
+        <li>Customer pays: <strong>base fare + markup</strong></li>
+        <li>Platform collects the full amount from the customer</li>
+        <li>Platform pays the airline via Duffel (base fare only)</li>
+        <li>Of the markup: <strong>platform profit + agency earnings</strong> split per tier rule</li>
+        <li>Tiers are matched by base fare range — highest matching min wins</li>
+        <li>Fallback applies when no tier matches the base fare</li>
+      </ol>
+    </div>
+    <div class="markup-explainer-calc" id="markupCalc">
+      <h3>Live preview</h3>
+      <label style="font-size:0.8rem;margin-bottom:0.5rem;display:block">
+        Test base fare ($)
+        <input type="number" id="previewFare" value="500" min="0" step="1"
+               style="margin-left:0.5rem;width:100px;padding:0.25rem 0.5rem;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)">
+      </label>
+      <table class="detail-list-table" id="previewTable">
+        <tr><td>Base fare</td><td id="calcBase">$500.00</td></tr>
+        <tr><td>Markup</td><td id="calcMarkup">—</td></tr>
+        <tr><td>Customer pays</td><td id="calcTotal">—</td></tr>
+        <tr class="calc-divider"><td colspan="2"></td></tr>
+        <tr><td>Platform profit</td><td id="calcPlatform">—</td></tr>
+        <tr><td>Agency earns</td><td id="calcAgency">—</td></tr>
+        <tr><td class="td-muted" style="font-size:0.75rem">Applied rule</td><td id="calcRule" class="td-muted" style="font-size:0.75rem">—</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Markup tiers ───────────────────────────────────────────────────── -->
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Markup tiers</h2>
+      <p>Rules are matched by base fare. The tier with the highest matching minimum wins.</p>
+    </div>
+  </div>
+
+  {% if tiers %}
+  <div class="table-scroll">
+    <table class="agent-table">
+      <thead>
+        <tr>
+          <th>Base fare range</th>
+          <th>Markup type</th>
+          <th class="td-num">Markup value</th>
+          <th class="td-num">Agency split</th>
+          <th class="td-num">Platform split</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tier in tiers %}
+        <tr>
+          <td>
+            ${{ '%.0f' | format(tier.min_fare_usd) }}
+            {% if tier.max_fare_usd %}
+              – ${{ '%.0f' | format(tier.max_fare_usd) }}
+            {% else %}
+              +
+            {% endif %}
+          </td>
+          <td>{{ 'Percentage' if tier.markup_type == 'pct' else 'Flat (USD)' }}</td>
+          <td class="td-num">
+            {% if tier.markup_type == 'pct' %}{{ '%.1f' | format(tier.markup_value) }}%
+            {% else %}${{ '%.2f' | format(tier.markup_value) }}{% endif %}
+          </td>
+          <td class="td-num td-good">{{ '%.1f' | format(tier.agency_split_pct) }}%</td>
+          <td class="td-num">{{ '%.1f' | format(100 - tier.agency_split_pct) }}%</td>
+          <td>
+            <form method="post" action="{{ url_for('agent.delete_markup_tier', tier_id=tier.id) }}" style="display:inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+              <button type="submit" class="button btn-sm button-ghost" style="color:var(--color-error)"
+                      onclick="return confirm('Remove this tier?')">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="info-banner" style="margin:1rem">No tiers defined — fallback markup applies to all bookings.</div>
+  {% endif %}
+
+  <!-- Add tier form -->
+  <div style="padding:1.25rem 1.5rem 0;border-top:1px solid var(--border);margin-top:0.5rem">
+    <h3 style="font-size:0.875rem;font-weight:600;margin:0 0 1rem">Add a tier</h3>
+    <form method="post" action="{{ url_for('agent.add_markup_tier') }}" class="agent-admin-form" autocomplete="off">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="agent-admin-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <label>
+          <span>Min fare (USD)</span>
+          <input type="number" name="min_fare_usd" min="0" step="1" value="0" required>
+        </label>
+        <label>
+          <span>Max fare (USD, blank = no limit)</span>
+          <input type="number" name="max_fare_usd" min="1" step="1" placeholder="No upper limit">
+        </label>
+        <label>
+          <span>Markup type</span>
+          <select name="markup_type" id="tierMarkupType">
+            <option value="flat">Flat (USD)</option>
+            <option value="pct">Percentage (%)</option>
+          </select>
+        </label>
+        <label>
+          <span>Markup value</span>
+          <input type="number" name="markup_value" min="0" step="0.01" required>
+        </label>
+        <label>
+          <span>Agency split (%)</span>
+          <input type="number" name="agency_split_pct" min="0" max="100" step="0.1" value="50" required>
+        </label>
+      </div>
+      <div class="agent-admin-actions">
+        <p class="helper-text admin-hint">Example: min=$0, max=$300, flat=$20, agency split=40% means fares under $300 carry a $20 markup, $8 to platform, $12 to agency.</p>
+        <button type="submit" class="button button-primary btn-sm">Add tier →</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ── Fallback markup ─────────────────────────────────────────────────── -->
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Fallback markup</h2>
+      {% if cfg.updated_at %}
+      <p>Last updated {{ cfg.updated_at[:10] }}</p>
+      {% endif %}
+    </div>
+  </div>
+  <p class="helper-text admin-hint" style="padding:0 1.5rem">Applied when no tier matches the booking's base fare.</p>
+  <form method="post" action="{{ url_for('agent.markup_settings') }}" class="agent-admin-form" autocomplete="off">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="agent-admin-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <label>
+        <span>Flat markup per booking (USD)</span>
+        <input type="number" name="markup_flat_usd" step="0.01" min="0"
+               value="{{ '%.2f' | format(cfg.markup_flat_usd or 50) }}"
+               id="fallbackMarkup" required>
+      </label>
+      <label>
+        <span>Agency split (% of markup)</span>
+        <input type="number" name="agency_split_pct" step="0.1" min="0" max="100"
+               value="{{ '%.1f' | format(cfg.agency_split_pct or 50) }}"
+               id="fallbackSplit" required>
+      </label>
+    </div>
+    <div class="agent-admin-actions">
+      <button type="submit" class="button button-primary">Save fallback →</button>
+    </div>
+  </form>
+</section>
+
+<script>
+(function () {
+  var tiers = {{ tiers | tojson }};
+  var fallbackFlat = {{ cfg.markup_flat_usd or 50 }};
+  var fallbackSplit = {{ cfg.agency_split_pct or 50 }};
+  var previewInput = document.getElementById('previewFare');
+  var fallbackMarkupInput = document.getElementById('fallbackMarkup');
+  var fallbackSplitInput = document.getElementById('fallbackSplit');
+
+  function fmt(n) {
+    return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function findTier(fare) {
+    var best = null;
+    for (var i = 0; i < tiers.length; i++) {
+      var t = tiers[i];
+      if (fare >= t.min_fare_usd && (t.max_fare_usd === null || fare < t.max_fare_usd)) {
+        if (!best || t.min_fare_usd > best.min_fare_usd) best = t;
+      }
+    }
+    return best;
+  }
+
+  function update() {
+    var fare = parseFloat(previewInput.value) || 0;
+    var tier = findTier(fare);
+    var markup, agencySplit, ruleLabel;
+
+    if (tier) {
+      var v = tier.markup_value;
+      markup = tier.markup_type === 'pct' ? fare * v / 100 : v;
+      agencySplit = tier.agency_split_pct;
+      var maxLabel = tier.max_fare_usd ? '$' + tier.max_fare_usd : '∞';
+      ruleLabel = 'Tier: $' + tier.min_fare_usd + '–' + maxLabel + ' (' + (tier.markup_type === 'pct' ? v + '%' : '$' + v) + ')';
+    } else {
+      markup = parseFloat(fallbackMarkupInput.value) || fallbackFlat;
+      agencySplit = parseFloat(fallbackSplitInput.value) || fallbackSplit;
+      ruleLabel = 'Fallback';
+    }
+
+    var agency = markup * agencySplit / 100;
+    var platform = markup - agency;
+    document.getElementById('calcBase').textContent     = fmt(fare);
+    document.getElementById('calcMarkup').textContent   = fmt(markup);
+    document.getElementById('calcTotal').textContent    = fmt(fare + markup);
+    document.getElementById('calcPlatform').textContent = fmt(platform);
+    document.getElementById('calcAgency').textContent   = fmt(agency);
+    document.getElementById('calcRule').textContent     = ruleLabel;
+  }
+
+  previewInput.addEventListener('input', update);
+  fallbackMarkupInput.addEventListener('input', update);
+  fallbackSplitInput.addEventListener('input', update);
+  update();
+})();
+</script>
+
+{% endblock %}

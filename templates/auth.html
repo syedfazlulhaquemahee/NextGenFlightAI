@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Account Access • Skairova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="auth-page">
+
+  <!-- Top bar -->
+  {% include "partials/platform_header.html" %}
+
+  <div class="auth-layout">
+
+    <!-- ══ Left: Brand panel ══ -->
+    <aside class="auth-brand" aria-hidden="true">
+      <div class="auth-brand-glow"></div>
+
+      <a class="auth-brand-logo" href="{{ url_for('index') }}">
+        <div class="auth-brand-logo-name">Skairova</div>
+      </a>
+
+      <!-- Flight path illustration -->
+      <div class="auth-brand-visual">
+        <svg viewBox="0 0 480 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Globe arc suggestion -->
+          <ellipse cx="240" cy="160" rx="220" ry="30" stroke="rgba(120,150,255,.12)" stroke-width="1" stroke-dasharray="4 6"/>
+          <!-- Flight arc path -->
+          <path class="flight-path" d="M 48 140 Q 140 20 300 60 Q 380 80 420 50"
+                stroke="rgba(120,150,255,.55)" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="6 4"/>
+          <!-- Departure dot -->
+          <circle cx="48" cy="140" r="5" fill="rgba(120,150,255,.8)"/>
+          <circle cx="48" cy="140" r="10" fill="none" stroke="rgba(120,150,255,.25)" stroke-width="1.5"/>
+          <!-- Arrival dot -->
+          <circle cx="420" cy="50" r="5" fill="rgba(139,67,245,.9)"/>
+          <circle cx="420" cy="50" r="10" fill="none" stroke="rgba(139,67,245,.3)" stroke-width="1.5"/>
+          <!-- City labels -->
+          <text x="22" y="160" fill="rgba(200,210,240,.45)" font-size="10" font-family="Plus Jakarta Sans,sans-serif" font-weight="600">NYC</text>
+          <text x="406" y="42" fill="rgba(200,210,240,.45)" font-size="10" font-family="Plus Jakarta Sans,sans-serif" font-weight="600">LHR</text>
+          <!-- Plane icon along path -->
+          <g class="flight-plane" transform="translate(295,52) rotate(-20)">
+            <path d="M0-8L5 4H2L0 2L-2 4H-5Z" fill="rgba(120,150,255,.9)"/>
+            <path d="M-8 2L8 2" stroke="rgba(120,150,255,.5)" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M-5 5L5 5" stroke="rgba(120,150,255,.35)" stroke-width="1" stroke-linecap="round"/>
+          </g>
+          <!-- Waypoints -->
+          <circle cx="130" cy="66" r="3" fill="rgba(255,255,255,.2)"/>
+          <circle cx="200" cy="38" r="3" fill="rgba(255,255,255,.2)"/>
+          <circle cx="360" cy="64" r="3" fill="rgba(255,255,255,.2)"/>
+          <!-- Faint grid lines -->
+          <line x1="0" y1="80"  x2="480" y2="80"  stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="0" y1="120" x2="480" y2="120" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="120" y1="0" x2="120" y2="180" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="240" y1="0" x2="240" y2="180" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="360" y1="0" x2="360" y2="180" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <h2 class="auth-brand-tag">The smartest<br>way to <span>fly.</span></h2>
+
+      <div class="auth-brand-features">
+        <div class="auth-brand-feature">
+          <div class="auth-brand-feature-icon">🤖</div>
+          <span>Ask in plain English — AI finds the best flights</span>
+        </div>
+        <div class="auth-brand-feature">
+          <div class="auth-brand-feature-icon">💸</div>
+          <span>Real-time prices, no hidden fees, ever</span>
+        </div>
+        <div class="auth-brand-feature">
+          <div class="auth-brand-feature-icon">📋</div>
+          <span>All your bookings in one place</span>
+        </div>
+      </div>
+
+      <!-- Decorative dots -->
+      <svg class="auth-brand-dots" width="160" height="160" viewBox="0 0 160 160">
+        {% for r in range(0, 8) %}{% for c in range(0, 8) %}
+        <circle cx="{{ c * 22 + 4 }}" cy="{{ r * 22 + 4 }}" r="1.5" fill="rgba(120,150,255,.6)"/>
+        {% endfor %}{% endfor %}
+      </svg>
+    </aside>
+
+    <!-- ══ Right: Form panel ══ -->
+    <main class="auth-form-panel">
+      <div class="auth-card">
+
+        <!-- Mode header (title + hint) -->
+        <div class="auth-mode-header">
+          <h1 class="auth-mode-title" id="authModeTitle">Welcome back</h1>
+          <p class="auth-mode-hint" id="authModeHint">
+            <span id="authModeHintPrefix">Don't have an account?</span>
+            <button type="button" class="auth-mode-hint-btn" id="authModeHintLink" data-auth-mode-link="signup">Create account</button>
+          </p>
+        </div>
+
+        <!-- Alerts -->
+        {% if account_notice %}
+        <div class="auth-alert is-success" role="status">
+          <span>✓</span>{{ account_notice }}
+        </div>
+        {% endif %}
+        {% if account_error %}
+        <div class="auth-alert is-danger" role="alert">
+          <span>⚠</span>{{ account_error }}
+        </div>
+        {% endif %}
+
+        <!-- Tabs (visible only for login/signup) -->
+        <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Account mode"
+             data-initial-auth-mode="{{ auth_mode or 'login' }}">
+          <button type="button" class="auth-tab" role="tab" data-auth-mode="login"
+                  aria-selected="false" aria-controls="formLogin">Sign in</button>
+          <button type="button" class="auth-tab" role="tab" data-auth-mode="signup"
+                  aria-selected="false" aria-controls="formSignup">Create account</button>
+        </div>
+
+        <!-- ── SIGN IN FORM ── -->
+        <form id="formLogin" method="post"
+              action="{{ url_for('manage_booking_account_login') }}"
+              class="auth-form{% if auth_mode == 'login' or not auth_mode %} is-active{% endif %}" data-auth-form="login"
+              novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <input type="hidden" name="booking_reference" value="{{ booking_reference or '' }}" />
+
+          <div class="fl-group" id="loginEmailGroup">
+            <input id="loginEmail" type="email" name="account_email" maxlength="120"
+                   autocomplete="email" placeholder=" "
+                   value="{{ reset_email or '' }}" required />
+            <label for="loginEmail">Email address</label>
+          </div>
+
+          <div>
+            <div class="auth-label-row" style="margin-bottom:6px">
+              <label for="loginPassword" style="font-size:12px;font-weight:600;color:var(--auth-muted)">Password</label>
+              <button type="button" class="auth-inline-link" data-show-reset-request>Forgot password?</button>
+            </div>
+            <div class="pw-wrap">
+              <div class="fl-group" style="flex:1">
+                <input id="loginPassword" type="password" name="account_password"
+                       minlength="8" autocomplete="current-password" placeholder=" " required />
+                <label for="loginPassword">Password</label>
+              </div>
+              <button class="pw-toggle" type="button"
+                      data-pw-toggle="loginPassword" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye-open" viewBox="0 0 24 24"><path d="M12 5c5.3 0 9.3 3.5 11 7-1.7 3.5-5.7 7-11 7S2.7 15.5 1 12c1.7-3.5 5.7-7 11-7Zm0 2c-4 0-7.2 2.4-8.9 5 1.7 2.6 4.9 5 8.9 5s7.2-2.4 8.9-5c-1.7-2.6-4.9-5-8.9-5Zm0 2.2A2.8 2.8 0 1 1 9.2 12 2.8 2.8 0 0 1 12 9.2Z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24"><path d="m3.3 2 18.7 18.7-1.4 1.4-3.2-3.2A13.8 13.8 0 0 1 12 20c-5.3 0-9.3-3.5-11-7a12.7 12.7 0 0 1 5.1-4.9L1.9 3.4 3.3 2Zm4.4 7.2A4.8 4.8 0 0 0 7.2 12 4.8 4.8 0 0 0 12 16.8c1 0 1.9-.3 2.6-.8l-1.5-1.5a2.8 2.8 0 0 1-3.6-3.6L7.7 9.2Zm4.3-4.2c5.3 0 9.3 3.5 11 7a12.8 12.8 0 0 1-4.2 4.6l-1.5-1.5a10.4 10.4 0 0 0 3.6-3.1c-1.7-2.6-4.9-5-8.9-5-.9 0-1.8.1-2.6.4L7.8 5.8A13.4 13.4 0 0 1 12 5Z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="auth-submit" type="submit">
+            <div class="auth-submit-spinner"></div>
+            <span class="auth-submit-label">Sign in</span>
+          </button>
+
+          <div class="auth-divider"><span>or continue with</span></div>
+
+          <div class="auth-social-row">
+            <a class="auth-social-btn" href="{{ url_for('oauth_google_start') }}"
+               data-social-link="google" data-form="formLogin">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </a>
+            <a class="auth-social-btn" href="{{ url_for('oauth_apple_start') }}"
+               data-social-link="apple" data-form="formLogin">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.18.74 2.94.8 1.12-.23 2.19-.91 3.39-.84 1.43.09 2.51.68 3.22 1.74-2.95 1.79-2.25 5.72.41 6.81-.48 1.14-1.14 2.27-1.96 3.35zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+              Continue with Apple
+            </a>
+          </div>
+        </form>
+
+        <!-- ── SIGN UP FORM ── -->
+        <form id="formSignup" method="post"
+              action="{{ url_for('manage_booking_account_signup') }}"
+              class="auth-form{% if auth_mode == 'signup' %} is-active{% endif %}" data-auth-form="signup"
+              novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <input type="hidden" name="booking_reference" value="{{ booking_reference or '' }}" />
+
+          <div class="auth-form-row">
+            <div class="fl-group">
+              <input id="signupFirst" type="text" name="first_name" maxlength="80"
+                     autocomplete="given-name" placeholder=" " required />
+              <label for="signupFirst">First name</label>
+            </div>
+            <div class="fl-group">
+              <input id="signupLast" type="text" name="last_name" maxlength="80"
+                     autocomplete="family-name" placeholder=" " required />
+              <label for="signupLast">Last name</label>
+            </div>
+          </div>
+
+          <div class="fl-group" id="signupEmailGroup">
+            <input id="signupEmail" type="email" name="account_email" maxlength="120"
+                   autocomplete="email" placeholder=" " required />
+            <label for="signupEmail">Email address</label>
+          </div>
+
+          <div>
+            <div class="pw-wrap">
+              <div class="fl-group" style="flex:1">
+                <input id="signupPassword" type="password" name="account_password"
+                       minlength="8" autocomplete="new-password" placeholder=" " required />
+                <label for="signupPassword">Password</label>
+              </div>
+              <button class="pw-toggle" type="button"
+                      data-pw-toggle="signupPassword" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye-open" viewBox="0 0 24 24"><path d="M12 5c5.3 0 9.3 3.5 11 7-1.7 3.5-5.7 7-11 7S2.7 15.5 1 12c1.7-3.5 5.7-7 11-7Zm0 2c-4 0-7.2 2.4-8.9 5 1.7 2.6 4.9 5 8.9 5s7.2-2.4 8.9-5c-1.7-2.6-4.9-5-8.9-5Zm0 2.2A2.8 2.8 0 1 1 9.2 12 2.8 2.8 0 0 1 12 9.2Z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24"><path d="m3.3 2 18.7 18.7-1.4 1.4-3.2-3.2A13.8 13.8 0 0 1 12 20c-5.3 0-9.3-3.5-11-7a12.7 12.7 0 0 1 5.1-4.9L1.9 3.4 3.3 2Zm4.4 7.2A4.8 4.8 0 0 0 7.2 12 4.8 4.8 0 0 0 12 16.8c1 0 1.9-.3 2.6-.8l-1.5-1.5a2.8 2.8 0 0 1-3.6-3.6L7.7 9.2Zm4.3-4.2c5.3 0 9.3 3.5 11 7a12.8 12.8 0 0 1-4.2 4.6l-1.5-1.5a10.4 10.4 0 0 0 3.6-3.1c-1.7-2.6-4.9-5-8.9-5-.9 0-1.8.1-2.6.4L7.8 5.8A13.4 13.4 0 0 1 12 5Z"/></svg>
+              </button>
+            </div>
+            <!-- Strength meter -->
+            <div class="pw-strength" id="pwStrength" aria-live="polite">
+              <div class="pw-strength-bars">
+                <div class="pw-strength-bar" id="pwBar0"></div>
+                <div class="pw-strength-bar" id="pwBar1"></div>
+                <div class="pw-strength-bar" id="pwBar2"></div>
+                <div class="pw-strength-bar" id="pwBar3"></div>
+              </div>
+              <span class="pw-strength-label" id="pwStrengthLabel"></span>
+            </div>
+          </div>
+
+          <div style="position:relative">
+            <div class="pw-wrap">
+              <div class="fl-group" style="flex:1">
+                <input id="signupPasswordConfirm" type="password" name="account_password_confirm"
+                       minlength="8" autocomplete="new-password" placeholder=" " required />
+                <label for="signupPasswordConfirm">Confirm password</label>
+              </div>
+              <button class="pw-toggle" type="button"
+                      data-pw-toggle="signupPasswordConfirm" aria-label="Show confirm password" aria-pressed="false">
+                <svg class="icon-eye-open" viewBox="0 0 24 24"><path d="M12 5c5.3 0 9.3 3.5 11 7-1.7 3.5-5.7 7-11 7S2.7 15.5 1 12c1.7-3.5 5.7-7 11-7Zm0 2c-4 0-7.2 2.4-8.9 5 1.7 2.6 4.9 5 8.9 5s7.2-2.4 8.9-5c-1.7-2.6-4.9-5-8.9-5Zm0 2.2A2.8 2.8 0 1 1 9.2 12 2.8 2.8 0 0 1 12 9.2Z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24"><path d="m3.3 2 18.7 18.7-1.4 1.4-3.2-3.2A13.8 13.8 0 0 1 12 20c-5.3 0-9.3-3.5-11-7a12.7 12.7 0 0 1 5.1-4.9L1.9 3.4 3.3 2Zm4.4 7.2A4.8 4.8 0 0 0 7.2 12 4.8 4.8 0 0 0 12 16.8c1 0 1.9-.3 2.6-.8l-1.5-1.5a2.8 2.8 0 0 1-3.6-3.6L7.7 9.2Zm4.3-4.2c5.3 0 9.3 3.5 11 7a12.8 12.8 0 0 1-4.2 4.6l-1.5-1.5a10.4 10.4 0 0 0 3.6-3.1c-1.7-2.6-4.9-5-8.9-5-.9 0-1.8.1-2.6.4L7.8 5.8A13.4 13.4 0 0 1 12 5Z"/></svg>
+              </button>
+            </div>
+            <div class="fl-group-hint" id="pwMatchHint"></div>
+          </div>
+
+          <label class="auth-terms">
+            <input type="checkbox" name="accept_terms" required />
+            <span>I agree to the <a href="{{ url_for('terms_and_conditions') }}" target="_blank" rel="noopener">terms &amp; conditions</a></span>
+          </label>
+
+          <button class="auth-submit" type="submit">
+            <div class="auth-submit-spinner"></div>
+            <span class="auth-submit-label">Create account</span>
+          </button>
+
+          <div class="auth-divider"><span>or register with</span></div>
+
+          <div class="auth-social-row">
+            <a class="auth-social-btn" href="{{ url_for('oauth_google_start') }}"
+               data-social-link="google" data-form="formSignup">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </a>
+            <a class="auth-social-btn" href="{{ url_for('oauth_apple_start') }}"
+               data-social-link="apple" data-form="formSignup">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.18.74 2.94.8 1.12-.23 2.19-.91 3.39-.84 1.43.09 2.51.68 3.22 1.74-2.95 1.79-2.25 5.72.41 6.81-.48 1.14-1.14 2.27-1.96 3.35zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+              Continue with Apple
+            </a>
+          </div>
+        </form>
+
+        <!-- ── RESET REQUEST FORM ── -->
+        <form id="formResetRequest" method="post"
+              action="{{ url_for('manage_booking_account_reset_request') }}"
+              class="auth-form{% if auth_mode == 'reset_request' %} is-active{% endif %}" data-auth-form="reset_request"
+              novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <input type="hidden" name="booking_reference" value="{{ booking_reference or '' }}" />
+
+          <!-- Step indicator -->
+          <div class="reset-steps" id="resetStepsRequest">
+            <div class="reset-step is-active">
+              <div class="reset-step-dot">1</div>
+              <span class="reset-step-label">Email</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step">
+              <div class="reset-step-dot">2</div>
+              <span class="reset-step-label">Verify</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step">
+              <div class="reset-step-dot">3</div>
+              <span class="reset-step-label">New password</span>
+            </div>
+          </div>
+
+          <div class="fl-group">
+            <input id="resetRequestEmail" type="email" name="account_email" maxlength="120"
+                   autocomplete="email" placeholder=" "
+                   value="{{ reset_email or '' }}" required />
+            <label for="resetRequestEmail">Email address</label>
+          </div>
+          <div class="fl-group-hint">We'll send a 6-digit code to this address.</div>
+
+          <button class="auth-submit" type="submit">
+            <div class="auth-submit-spinner"></div>
+            <span class="auth-submit-label">Send verification code</span>
+          </button>
+
+          <div class="auth-sub-links">
+            <button type="button" class="auth-inline-link" data-show-reset-verify>I already have a code</button>
+            <button type="button" class="auth-inline-link" data-cancel-reset>Back to sign in</button>
+          </div>
+        </form>
+
+        <!-- ── RESET VERIFY FORM ── -->
+        <form id="formResetVerify" method="post"
+              action="{{ url_for('manage_booking_account_reset_verify') }}"
+              class="auth-form{% if auth_mode == 'reset_verify' %} is-active{% endif %}" data-auth-form="reset_verify"
+              novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <input type="hidden" name="booking_reference" value="{{ booking_reference or '' }}" />
+
+          <!-- Step indicator -->
+          <div class="reset-steps">
+            <div class="reset-step is-done">
+              <div class="reset-step-dot">✓</div>
+              <span class="reset-step-label">Email</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step is-active">
+              <div class="reset-step-dot">2</div>
+              <span class="reset-step-label">Verify</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step">
+              <div class="reset-step-dot">3</div>
+              <span class="reset-step-label">New password</span>
+            </div>
+          </div>
+
+          <div class="fl-group">
+            <input id="resetVerifyEmail" type="email" name="account_email" maxlength="120"
+                   autocomplete="email" placeholder=" "
+                   value="{{ reset_email or '' }}" required />
+            <label for="resetVerifyEmail">Email address</label>
+          </div>
+
+          <!-- OTP boxes -->
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--auth-muted);margin-bottom:10px">6-digit verification code</div>
+            <div class="otp-row" id="otpRow" role="group" aria-label="Verification code">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" autocomplete="one-time-code" aria-label="Digit 1">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 2">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 3">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 4">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 5">
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" aria-label="Digit 6">
+            </div>
+            <!-- Hidden input that collects the full code -->
+            <input type="hidden" name="verification_code" id="verificationCodeHidden" />
+          </div>
+
+          <button class="auth-submit" type="submit" id="verifySubmitBtn">
+            <div class="auth-submit-spinner"></div>
+            <span class="auth-submit-label">Verify code</span>
+          </button>
+
+          <div class="auth-sub-links">
+            <button type="button" class="auth-inline-link" data-show-reset-request>Resend code</button>
+            <button type="button" class="auth-inline-link" data-cancel-reset>Back to sign in</button>
+          </div>
+        </form>
+
+        <!-- ── RESET NEW PASSWORD FORM ── -->
+        <form id="formResetComplete" method="post"
+              action="{{ url_for('manage_booking_account_reset_password') }}"
+              class="auth-form{% if auth_mode == 'reset_complete' %} is-active{% endif %}" data-auth-form="reset_complete"
+              novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <input type="hidden" name="booking_reference" value="{{ booking_reference or '' }}" />
+          <input type="hidden" name="reset_token" value="{{ reset_token or '' }}" />
+
+          <!-- Step indicator -->
+          <div class="reset-steps">
+            <div class="reset-step is-done">
+              <div class="reset-step-dot">✓</div>
+              <span class="reset-step-label">Email</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step is-done">
+              <div class="reset-step-dot">✓</div>
+              <span class="reset-step-label">Verify</span>
+              <div class="reset-step-line"></div>
+            </div>
+            <div class="reset-step is-active">
+              <div class="reset-step-dot">3</div>
+              <span class="reset-step-label">New password</span>
+            </div>
+          </div>
+
+          <div class="fl-group">
+            <input type="email" name="account_email" maxlength="120"
+                   autocomplete="email" placeholder=" "
+                   value="{{ reset_email or '' }}" required />
+            <label>Email address</label>
+          </div>
+
+          <div>
+            <div class="pw-wrap">
+              <div class="fl-group" style="flex:1">
+                <input id="resetNewPassword" type="password" name="new_password"
+                       minlength="8" autocomplete="new-password" placeholder=" " required />
+                <label for="resetNewPassword">New password</label>
+              </div>
+              <button class="pw-toggle" type="button"
+                      data-pw-toggle="resetNewPassword" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye-open" viewBox="0 0 24 24"><path d="M12 5c5.3 0 9.3 3.5 11 7-1.7 3.5-5.7 7-11 7S2.7 15.5 1 12c1.7-3.5 5.7-7 11-7Zm0 2c-4 0-7.2 2.4-8.9 5 1.7 2.6 4.9 5 8.9 5s7.2-2.4 8.9-5c-1.7-2.6-4.9-5-8.9-5Zm0 2.2A2.8 2.8 0 1 1 9.2 12 2.8 2.8 0 0 1 12 9.2Z"/></svg>
+                <svg class="icon-eye-off" viewBox="0 0 24 24"><path d="m3.3 2 18.7 18.7-1.4 1.4-3.2-3.2A13.8 13.8 0 0 1 12 20c-5.3 0-9.3-3.5-11-7a12.7 12.7 0 0 1 5.1-4.9L1.9 3.4 3.3 2Zm4.4 7.2A4.8 4.8 0 0 0 7.2 12 4.8 4.8 0 0 0 12 16.8c1 0 1.9-.3 2.6-.8l-1.5-1.5a2.8 2.8 0 0 1-3.6-3.6L7.7 9.2Zm4.3-4.2c5.3 0 9.3 3.5 11 7a12.8 12.8 0 0 1-4.2 4.6l-1.5-1.5a10.4 10.4 0 0 0 3.6-3.1c-1.7-2.6-4.9-5-8.9-5-.9 0-1.8.1-2.6.4L7.8 5.8A13.4 13.4 0 0 1 12 5Z"/></svg>
+              </button>
+            </div>
+            <div class="pw-strength">
+              <div class="pw-strength-bars">
+                <div class="pw-strength-bar" id="pwBar0r"></div>
+                <div class="pw-strength-bar" id="pwBar1r"></div>
+                <div class="pw-strength-bar" id="pwBar2r"></div>
+                <div class="pw-strength-bar" id="pwBar3r"></div>
+              </div>
+              <span class="pw-strength-label" id="pwStrengthLabelR"></span>
+            </div>
+          </div>
+
+          <div class="pw-wrap">
+            <div class="fl-group" style="flex:1">
+              <input id="resetConfirmPassword" type="password" name="confirm_new_password"
+                     minlength="8" autocomplete="new-password" placeholder=" " required />
+              <label for="resetConfirmPassword">Confirm new password</label>
+            </div>
+            <button class="pw-toggle" type="button"
+                    data-pw-toggle="resetConfirmPassword" aria-label="Show confirm password" aria-pressed="false">
+              <svg class="icon-eye-open" viewBox="0 0 24 24"><path d="M12 5c5.3 0 9.3 3.5 11 7-1.7 3.5-5.7 7-11 7S2.7 15.5 1 12c1.7-3.5 5.7-7 11-7Zm0 2c-4 0-7.2 2.4-8.9 5 1.7 2.6 4.9 5 8.9 5s7.2-2.4 8.9-5c-1.7-2.6-4.9-5-8.9-5Zm0 2.2A2.8 2.8 0 1 1 9.2 12 2.8 2.8 0 0 1 12 9.2Z"/></svg>
+              <svg class="icon-eye-off" viewBox="0 0 24 24"><path d="m3.3 2 18.7 18.7-1.4 1.4-3.2-3.2A13.8 13.8 0 0 1 12 20c-5.3 0-9.3-3.5-11-7a12.7 12.7 0 0 1 5.1-4.9L1.9 3.4 3.3 2Zm4.4 7.2A4.8 4.8 0 0 0 7.2 12 4.8 4.8 0 0 0 12 16.8c1 0 1.9-.3 2.6-.8l-1.5-1.5a2.8 2.8 0 0 1-3.6-3.6L7.7 9.2Zm4.3-4.2c5.3 0 9.3 3.5 11 7a12.8 12.8 0 0 1-4.2 4.6l-1.5-1.5a10.4 10.4 0 0 0 3.6-3.1c-1.7-2.6-4.9-5-8.9-5-.9 0-1.8.1-2.6.4L7.8 5.8A13.4 13.4 0 0 1 12 5Z"/></svg>
+            </button>
+          </div>
+          <div class="fl-group-hint" id="pwMatchHintReset"></div>
+
+          <button class="auth-submit" type="submit">
+            <div class="auth-submit-spinner"></div>
+            <span class="auth-submit-label">Set new password</span>
+          </button>
+
+          <div class="auth-sub-links">
+            <button type="button" class="auth-inline-link" data-show-reset-request>Request new code</button>
+            <button type="button" class="auth-inline-link" data-cancel-reset>Back to sign in</button>
+          </div>
+        </form>
+
+      </div><!-- /.auth-card -->
+    </main>
+  </div><!-- /.auth-layout -->
+
+<script>
+(function () {
+  /* Append booking_reference to OAuth links when one is present */
+  var _bookingRef = {{ (booking_reference or '') | tojson }};
+  if (_bookingRef) {
+    document.querySelectorAll('[data-social-link]').forEach(function (el) {
+      var href = el.getAttribute('href');
+      if (href) {
+        var sep = href.indexOf('?') >= 0 ? '&' : '?';
+        el.setAttribute('href', href + sep + 'booking_reference=' + encodeURIComponent(_bookingRef));
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  const signedOut = {{ "true" if signed_out else "false" }};
+  if (signedOut) {
+    try {
+      window.history.replaceState({ signedOut: true }, '', window.location.href);
+    } catch (error) {}
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+    window.addEventListener('popstate', function () {
+      window.history.go(1);
+    });
+  }
+
+  /* ── Mode state ── */
+  const RESET_MODES = new Set(['reset_request', 'reset_verify', 'reset_complete']);
+
+  const tabs       = document.getElementById('authTabs');
+  const allForms   = document.querySelectorAll('.auth-form');
+  const titleEl    = document.getElementById('authModeTitle');
+  const hintPrefix = document.getElementById('authModeHintPrefix');
+  const hintLink   = document.getElementById('authModeHintLink');
+
+  const TITLES = {
+    login:          'Welcome back',
+    signup:         'Create account',
+    reset_request:  'Reset password',
+    reset_verify:   'Check your email',
+    reset_complete: 'Set new password',
+  };
+
+  const HINTS = {
+    login:          ["Don't have an account?", 'Create account', 'signup'],
+    signup:         ['Already have an account?', 'Sign in', 'login'],
+    reset_request:  ['Remembered it?', 'Sign in', 'login'],
+    reset_verify:   ['Wrong email?', 'Start over', 'reset_request'],
+    reset_complete: ['Remembered it?', 'Sign in', 'login'],
+  };
+
+  let currentMode = null;
+
+  function setMode(mode, skipAnimation) {
+    if (mode === currentMode) return;
+
+    /* Tab visibility: hide during reset flows */
+    if (tabs) tabs.style.display = RESET_MODES.has(mode) ? 'none' : '';
+
+    /* Animate out current form */
+    if (currentMode) {
+      const prev = document.querySelector(`[data-auth-form="${currentMode}"]`);
+      if (prev && !skipAnimation) {
+        prev.classList.add('is-exiting');
+        setTimeout(() => { prev.classList.remove('is-active', 'is-exiting'); }, 200);
+      } else if (prev) {
+        prev.classList.remove('is-active');
+      }
+    }
+
+    currentMode = mode;
+
+    /* Update tabs */
+    document.querySelectorAll('.auth-tab').forEach(btn => {
+      const active = btn.dataset.authMode === mode;
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    /* Show new form */
+    function activateForm() {
+      const next = document.querySelector(`[data-auth-form="${mode}"]`);
+      if (next) {
+        next.querySelectorAll('input').forEach(i => { if (i.type !== 'hidden') i.disabled = false; });
+        next.classList.add('is-active');
+      }
+      /* Disable inputs in hidden forms */
+      allForms.forEach(f => {
+        if (f.dataset.authForm !== mode) {
+          f.querySelectorAll('input').forEach(i => { if (i.type !== 'hidden') i.disabled = true; });
+        }
+      });
+    }
+    if (skipAnimation) {
+      activateForm();
+    } else {
+      setTimeout(activateForm, 210);
+    }
+
+    /* Update title and hint */
+    if (titleEl) titleEl.textContent = TITLES[mode] || '';
+    const [prefix, label, target] = HINTS[mode] || ['', '', 'login'];
+    if (hintPrefix) hintPrefix.textContent = prefix;
+    if (hintLink)  { hintLink.textContent = label; hintLink.dataset.authModeLink = target; }
+  }
+
+  /* ── Init ── */
+  const initMode = tabs?.dataset.initialAuthMode || 'login';
+  setMode(initMode, true);
+
+  /* ── Tab clicks ── */
+  document.querySelectorAll('.auth-tab').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.authMode));
+  });
+
+  hintLink?.addEventListener('click', () => setMode(hintLink.dataset.authModeLink));
+
+  /* ── Reset flow navigation ── */
+  function syncResetEmail(value) {
+    const email = String(value || '').trim();
+    ['resetRequestEmail', 'resetVerifyEmail'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.value.trim()) el.value = email;
+    });
+  }
+
+  document.querySelectorAll('[data-show-reset-request]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const loginEmail = document.getElementById('loginEmail');
+      syncResetEmail(loginEmail?.value || '');
+      setMode('reset_request');
+    });
+  });
+
+  document.querySelectorAll('[data-show-reset-verify]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rrEmail = document.getElementById('resetRequestEmail');
+      syncResetEmail(rrEmail?.value || '');
+      setMode('reset_verify');
+      setTimeout(() => document.querySelector('.otp-box')?.focus(), 280);
+    });
+  });
+
+  document.querySelectorAll('[data-cancel-reset]').forEach(btn => {
+    btn.addEventListener('click', () => setMode('login'));
+  });
+
+  /* ── OTP boxes ── */
+  const otpBoxes  = Array.from(document.querySelectorAll('.otp-box'));
+  const otpHidden = document.getElementById('verificationCodeHidden');
+
+  function extractDemoCodeFromAlerts() {
+    const alerts = Array.from(document.querySelectorAll('.auth-alert'));
+    for (const alert of alerts) {
+      const text = String(alert.textContent || '');
+      const match = text.match(/demo code:\s*(\d{6})/i);
+      if (match) return match[1];
+    }
+    return '';
+  }
+
+  function applyOtpCode(code) {
+    const clean = String(code || '').replace(/\D/g, '').slice(0, 6);
+    if (!clean || !otpBoxes.length) return;
+    otpBoxes.forEach((box, idx) => {
+      box.value = clean[idx] || '';
+    });
+    syncOtp();
+  }
+
+  function syncOtp() {
+    if (otpHidden) otpHidden.value = otpBoxes.map(b => b.value).join('');
+    otpBoxes.forEach(b => b.classList.toggle('is-filled', b.value.length > 0));
+  }
+
+  otpBoxes.forEach((box, idx) => {
+    box.addEventListener('input', e => {
+      /* Accept digits only */
+      box.value = box.value.replace(/\D/g, '').slice(-1);
+      syncOtp();
+      if (box.value && idx < otpBoxes.length - 1) otpBoxes[idx + 1].focus();
+    });
+
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && idx > 0) {
+        otpBoxes[idx - 1].focus();
+        otpBoxes[idx - 1].value = '';
+        syncOtp();
+      }
+      if (e.key === 'ArrowLeft'  && idx > 0) { e.preventDefault(); otpBoxes[idx - 1].focus(); }
+      if (e.key === 'ArrowRight' && idx < otpBoxes.length - 1) { e.preventDefault(); otpBoxes[idx + 1].focus(); }
+    });
+
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+      text.split('').forEach((ch, i) => { if (otpBoxes[i]) otpBoxes[i].value = ch; });
+      syncOtp();
+      const next = otpBoxes[Math.min(text.length, otpBoxes.length - 1)];
+      next?.focus();
+    });
+  });
+
+  const demoCode = extractDemoCodeFromAlerts();
+  if (demoCode) {
+    applyOtpCode(demoCode);
+  }
+
+  /* ── Password strength ── */
+  function calcStrength(pw) {
+    let score = 0;
+    if (pw.length >= 8)  score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    return Math.min(4, Math.floor(score * 4 / 5));
+  }
+
+  const STRENGTH_LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+  const STRENGTH_COLORS = ['', 'lit-0', 'lit-1', 'lit-2', 'lit-3'];
+
+  function renderStrength(pw, barPrefix, labelId) {
+    const score = pw.length ? calcStrength(pw) : 0;
+    for (let i = 0; i < 4; i++) {
+      const bar = document.getElementById(`${barPrefix}${i}`);
+      if (!bar) continue;
+      bar.className = 'pw-strength-bar';
+      if (pw.length && i < score) bar.classList.add(STRENGTH_COLORS[score]);
+    }
+    const lbl = document.getElementById(labelId);
+    if (lbl) lbl.textContent = pw.length ? STRENGTH_LABELS[score] : '';
+  }
+
+  const signupPw = document.getElementById('signupPassword');
+  if (signupPw) {
+    signupPw.addEventListener('input', () => renderStrength(signupPw.value, 'pwBar', 'pwStrengthLabel'));
+  }
+
+  const resetPw = document.getElementById('resetNewPassword');
+  if (resetPw) {
+    resetPw.addEventListener('input', () => renderStrength(resetPw.value, 'pwBar', 'pwStrengthLabelR'));
+  }
+
+  /* ── Password match ── */
+  function watchMatch(pwId, confirmId, hintId) {
+    const pw  = document.getElementById(pwId);
+    const cfm = document.getElementById(confirmId);
+    const hint = document.getElementById(hintId);
+    if (!pw || !cfm || !hint) return;
+    function check() {
+      if (!cfm.value) { hint.textContent = ''; hint.className = 'fl-group-hint'; return; }
+      const match = pw.value === cfm.value;
+      hint.textContent = match ? '✓ Passwords match' : '✗ Passwords do not match';
+      hint.className = 'fl-group-hint ' + (match ? 'is-ok' : 'is-error');
+    }
+    pw.addEventListener('input', check);
+    cfm.addEventListener('input', check);
+  }
+
+  watchMatch('signupPassword', 'signupPasswordConfirm', 'pwMatchHint');
+  watchMatch('resetNewPassword', 'resetConfirmPassword', 'pwMatchHintReset');
+
+  /* ── Password visibility toggles ── */
+  document.querySelectorAll('[data-pw-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.pwToggle);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    });
+  });
+
+  /* ── Submit loading state + shake on server error ── */
+  document.querySelectorAll('.auth-form').forEach(form => {
+    form.addEventListener('submit', function () {
+      const btn = this.querySelector('.auth-submit');
+      if (btn) btn.classList.add('is-loading');
+    });
+  });
+
+  /* If page loaded with an error alert, shake the active form */
+  if (document.querySelector('.auth-alert.is-danger')) {
+    setTimeout(() => {
+      const active = document.querySelector('.auth-form.is-active');
+      if (active) {
+        active.classList.add('shake');
+        active.addEventListener('animationend', () => active.classList.remove('shake'), { once: true });
+      }
+    }, 100);
+  }
+
+  /* ── Live email validation hint ── */
+  function attachEmailHint(inputId) {
+    const input = document.getElementById(inputId);
+    const group = input?.closest('.fl-group');
+    if (!input || !group) return;
+    input.addEventListener('blur', () => {
+      if (!input.value) return;
+      const ok = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.value);
+      group.classList.toggle('is-valid', ok);
+      group.classList.toggle('is-error', !ok);
+    });
+    input.addEventListener('focus', () => {
+      group.classList.remove('is-valid', 'is-error');
+    });
+  }
+
+  attachEmailHint('loginEmail');
+  attachEmailHint('signupEmail');
+  attachEmailHint('resetRequestEmail');
+  attachEmailHint('resetVerifyEmail');
+
+})();
+</script>
+
+  {% include "partials/theme_scripts.html" %}
+</body>
+</html>

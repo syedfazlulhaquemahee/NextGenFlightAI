@@ -1,0 +1,149 @@
+<details class="traveler-accordion" {% if traveler.expanded %}open{% endif %} id="traveler-{{ traveler.index }}">
+  <summary>
+    <span class="traveler-summary-title">
+      <span class="traveler-summary-icon checkout-field-icon checkout-field-icon--user" aria-hidden="true"></span>
+      <span>
+        <strong>{{ traveler.label }}</strong>
+        <small>{{ traveler.type_label }}</small>
+      </span>
+    </span>
+  </summary>
+
+  <div class="traveler-fields">
+    <div class="booking-form-grid premium-grid traveler-form-grid">
+      <div class="field field--traveler-title">
+        <label for="traveler_{{ traveler.index }}_title">Title</label>
+        <select id="traveler_{{ traveler.index }}_title" name="traveler_{{ traveler.index }}_title" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_title') else '' }}" required>
+          <option value="">Select</option>
+          <option value="mr" {% if traveler.title == 'mr' %}selected{% endif %}>Mr</option>
+          <option value="mrs" {% if traveler.title == 'mrs' %}selected{% endif %}>Mrs</option>
+          <option value="ms" {% if traveler.title == 'ms' %}selected{% endif %}>Ms</option>
+          <option value="miss" {% if traveler.title == 'miss' %}selected{% endif %}>Miss</option>
+          <option value="mx" {% if traveler.title == 'mx' %}selected{% endif %}>Mx</option>
+        </select>
+        {% if errors.get('traveler_' ~ traveler.index ~ '_title') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_title') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-given">
+        <label for="traveler_{{ traveler.index }}_given_name">Given name</label>
+        <input id="traveler_{{ traveler.index }}_given_name" name="traveler_{{ traveler.index }}_given_name" type="text" value="{{ traveler.given_name }}" placeholder="Enter given name" autocomplete="given-name" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_given_name') else '' }}" required />
+        {% if errors.get('traveler_' ~ traveler.index ~ '_given_name') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_given_name') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-family">
+        <label for="traveler_{{ traveler.index }}_family_name">Family name</label>
+        <input id="traveler_{{ traveler.index }}_family_name" name="traveler_{{ traveler.index }}_family_name" type="text" value="{{ traveler.family_name }}" placeholder="Enter family name" autocomplete="family-name" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_family_name') else '' }}" required />
+        {% if errors.get('traveler_' ~ traveler.index ~ '_family_name') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_family_name') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-dob checkout-dob-field">
+        <label for="traveler_{{ traveler.index }}_born_on">Date of birth</label>
+        <div class="checkout-input-icon-wrap checkout-input-icon-wrap--dob">
+          <input
+            id="traveler_{{ traveler.index }}_born_on"
+            name="traveler_{{ traveler.index }}_born_on"
+            type="text"
+            value="{{ traveler.born_on }}"
+            class="checkout-dob-input {{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_born_on') else '' }}"
+            required
+            autocomplete="bday"
+            data-checkout-dob
+          />
+          <span class="checkout-field-icon checkout-field-icon--calendar checkout-input-icon" aria-hidden="true"></span>
+        </div>
+        {% if errors.get('traveler_' ~ traveler.index ~ '_born_on') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_born_on') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-gender">
+        <label for="traveler_{{ traveler.index }}_gender">Gender</label>
+        <select id="traveler_{{ traveler.index }}_gender" name="traveler_{{ traveler.index }}_gender" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_gender') else '' }}" required>
+          <option value="">Select</option>
+          <option value="m" {% if traveler.gender == 'm' %}selected{% endif %}>Male</option>
+          <option value="f" {% if traveler.gender == 'f' %}selected{% endif %}>Female</option>
+        </select>
+        {% if errors.get('traveler_' ~ traveler.index ~ '_gender') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_gender') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-email">
+        <label for="traveler_{{ traveler.index }}_email">Email</label>
+        <div class="checkout-input-icon-wrap">
+          <span class="checkout-field-icon checkout-field-icon--mail checkout-input-icon" aria-hidden="true"></span>
+          <input id="traveler_{{ traveler.index }}_email" name="traveler_{{ traveler.index }}_email" type="email" value="{{ traveler.email }}" placeholder="Email address" autocomplete="email" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_email') else '' }}" required />
+        </div>
+        {% if errors.get('traveler_' ~ traveler.index ~ '_email') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_email') }}</div>{% endif %}
+      </div>
+
+      <div class="field field--traveler-phone checkout-phone-field{% if errors.get('traveler_' ~ traveler.index ~ '_phone_number') %} checkout-phone-field--error{% endif %}" data-checkout-phone>
+        <label for="traveler_{{ traveler.index }}_phone_national">Phone number</label>
+        <div class="checkout-phone-row checkout-phone-row--composite">
+          <div class="checkout-phone-country">
+            <button
+              type="button"
+              class="checkout-phone-country-btn"
+              data-phone-country-btn
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-controls="checkout-phone-list-{{ traveler.index }}"
+            >
+              <span class="checkout-phone-btn-visual" aria-hidden="true">
+                <span class="checkout-phone-flag" data-phone-flag>🏳️</span>
+                <span class="checkout-phone-iso" data-phone-iso>US</span>
+              </span>
+              <span class="checkout-phone-dial" data-phone-dial>+1</span>
+              <span class="checkout-phone-btn-caret" aria-hidden="true"></span>
+            </button>
+            <div class="checkout-phone-dropdown" data-phone-dropdown hidden>
+              <input
+                type="search"
+                class="checkout-phone-search"
+                data-phone-search
+                placeholder="GB, +44, UK…"
+                aria-label="Filter by country code or name"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+              <ul class="checkout-phone-list" data-phone-list id="checkout-phone-list-{{ traveler.index }}" role="listbox" aria-label="Country codes"></ul>
+            </div>
+          </div>
+          <input
+            id="traveler_{{ traveler.index }}_phone_national"
+            type="tel"
+            class="checkout-phone-national {{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_phone_number') else '' }}"
+            value=""
+            inputmode="numeric"
+            autocomplete="tel-national"
+            placeholder="555 123 4567"
+            required
+            data-phone-national
+          />
+        </div>
+        <input type="hidden" name="traveler_{{ traveler.index }}_phone_number" value="{{ traveler.phone_number }}" data-phone-hidden />
+        {% if errors.get('traveler_' ~ traveler.index ~ '_phone_number') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_phone_number') }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if traveler.needs_identity_documents %}
+      <div class="traveler-document-panel traveler-document-panel--tight">
+        <p class="checkout-eyebrow">Travel document</p>
+        <div class="booking-form-grid premium-grid">
+          <div class="field">
+            <label for="traveler_{{ traveler.index }}_passport_number">Passport number</label>
+            <input id="traveler_{{ traveler.index }}_passport_number" name="traveler_{{ traveler.index }}_passport_number" type="text" value="{{ traveler.passport_number }}" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_passport_number') else '' }}" required />
+            {% if errors.get('traveler_' ~ traveler.index ~ '_passport_number') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_passport_number') }}</div>{% endif %}
+          </div>
+          <div class="field">
+            <label for="traveler_{{ traveler.index }}_passport_country_code">Issuing country</label>
+            <input id="traveler_{{ traveler.index }}_passport_country_code" name="traveler_{{ traveler.index }}_passport_country_code" type="text" value="{{ traveler.passport_country_code }}" placeholder="US" maxlength="2" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_passport_country_code') else '' }}" required />
+            {% if errors.get('traveler_' ~ traveler.index ~ '_passport_country_code') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_passport_country_code') }}</div>{% endif %}
+          </div>
+          <div class="field">
+            <label for="traveler_{{ traveler.index }}_passport_expires_on">Passport expiry</label>
+            <input id="traveler_{{ traveler.index }}_passport_expires_on" name="traveler_{{ traveler.index }}_passport_expires_on" type="date" value="{{ traveler.passport_expires_on }}" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') else '' }}" required />
+            {% if errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</details>

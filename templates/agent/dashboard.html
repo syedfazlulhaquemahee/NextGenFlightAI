@@ -1,0 +1,380 @@
+{% extends "agent/layout.html" %}
+{% block title %}Agent Dashboard{% endblock %}
+{% block page_class %}agent-dashboard-page{% endblock %}
+
+{% block content %}
+{% set display_name = (agent_user.first_name ~ ' ' ~ agent_user.last_name).strip() if (agent_user.first_name or agent_user.last_name) else 'Skairova Admin' %}
+{% set initials = (agent_user.first_name[:1] ~ agent_user.last_name[:1]) if (agent_user.first_name and agent_user.last_name) else agent_user.email[:2] %}
+{% set role_label = agent_effective_role.replace('_', ' ').title() %}
+{% set quick_count = review_request_count if review_request_count else unread_count %}
+
+{% if backup_codes %}
+<section class="panel panel-backup dashboard-backup-panel">
+  <div class="panel-header dashboard-panel-header">
+    <div>
+      <h2>Save your backup codes</h2>
+      <p>These one-time recovery codes are only shown once. Store them before you continue.</p>
+    </div>
+    <button type="button" class="button button-secondary button-compact copy-all-btn" id="copyAllCodes" aria-label="Copy all backup codes">Copy all</button>
+  </div>
+  <div class="backup-grid" id="backupCodesGrid">
+    {% for code in backup_codes %}
+    <code class="backup-code">{{ code }}</code>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="dashboard-frame">
+  <div class="dashboard-frame-top">
+    <form class="dashboard-searchbar" role="search" onsubmit="event.preventDefault()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
+        <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <input type="search" value="" placeholder="Search tools, bookings, users..." aria-label="Search dashboard">
+      <span class="dashboard-search-shortcut">⌘K</span>
+    </form>
+
+    <div class="dashboard-top-tools">
+      <div class="notif-wrapper" id="notifWrapper">
+        <button type="button" class="dashboard-icon-btn notif-bell" id="notifBell" aria-label="Notifications" aria-expanded="false" aria-haspopup="true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M9 2.5a3.5 3.5 0 0 0-3.5 3.5v1.5c0 .55-.22 1.08-.6 1.47L3.8 10.2c-.44.47-.13 1.3.52 1.3h9.36c.65 0 .96-.83.52-1.3L13.1 9a2.08 2.08 0 0 1-.6-1.47V6A3.5 3.5 0 0 0 9 2.5Z" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M7.3 13.5a1.7 1.7 0 0 0 3.4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+          <span class="notif-badge" id="notifBadge" hidden>0</span>
+        </button>
+        <div class="notif-dropdown" id="notifDropdown" hidden role="dialog" aria-label="Notifications">
+          <div class="notif-dropdown-header">
+            <strong>Notifications</strong>
+            <button type="button" class="notif-mark-read" id="notifMarkRead">Mark all read</button>
+          </div>
+          <ul class="notif-list" id="notifList">
+            <li class="notif-empty">No notifications</li>
+          </ul>
+        </div>
+      </div>
+
+      <button type="button" class="dashboard-icon-btn" aria-label="Preferences">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3v2.2M12 18.8V21M4.93 4.93l1.56 1.56M17.5 17.5l1.57 1.57M3 12h2.2M18.8 12H21M4.93 19.07l1.56-1.56M17.5 6.5l1.57-1.57" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.7"/>
+        </svg>
+      </button>
+
+      <details class="dashboard-profile-menu">
+        <summary class="dashboard-profile-trigger">
+          <span class="dashboard-avatar">{{ initials.upper() }}</span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </summary>
+        <div class="dashboard-profile-popover">
+          <div class="dashboard-profile-head">
+            <strong>{{ display_name }}</strong>
+            <span>{{ role_label }}</span>
+          </div>
+          <form method="post" action="{{ url_for('agent.logout') }}" class="dashboard-profile-actions">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button type="submit" class="button button-secondary button-compact">Sign out</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="dashboard-frame-body">
+    <section class="dashboard-welcome-row">
+      <div>
+        <h1>Welcome back, {{ display_name }} <span aria-hidden="true">👋</span></h1>
+        <p>Here's what's happening across your platform today.</p>
+      </div>
+      <div class="dashboard-quick-actions">
+        <span class="dashboard-quick-label">Quick actions</span>
+        <a href="{{ url_for('agent.search') }}" class="dashboard-quick-button">
+          <span class="dashboard-quick-plus">＋</span>
+          <span>Create booking</span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel dashboard-surface-panel">
+      <div class="dashboard-surface-head">
+        <h2>Tools</h2>
+        <p>Everything you need to manage operations, users, and performance.</p>
+      </div>
+
+      <div class="dashboard-tools-grid dashboard-tools-grid-reference">
+        <a href="{{ url_for('agent.search') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="m6 14 4-4 3 3 5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Booking workspace</strong>
+            <span>Live fares, comparison, and direct booking.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+
+        {% if 'agent.users.create' in agent_permissions %}
+        <a href="{{ url_for('agent.new_user_page') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-violet">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15.5 19v-1.5a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4V19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+              <circle cx="9.5" cy="7.5" r="3" stroke="currentColor" stroke-width="1.9"/>
+              <path d="M18 8v6M15 11h6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Create user login</strong>
+            <span>Provision a new agent or admin account.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.users.request' in agent_permissions %}
+        <a href="{{ url_for('agent.new_user_request') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.9"/>
+              <path d="M8 10V8a4 4 0 1 1 8 0v2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Request teammate access</strong>
+            <span>Submit a user-add request for review.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.requests.review' in agent_permissions %}
+        <a href="{{ url_for('agent.user_requests') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.9"/>
+              <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Review requests</strong>
+            <span>Approve or reject pending agency submissions.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.users.view' in agent_permissions %}
+        <a href="{{ url_for('agent.users_list') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-indigo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.9"/>
+              <circle cx="17" cy="9" r="2.2" stroke="currentColor" stroke-width="1.9" opacity=".65"/>
+              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+              <path d="M14.5 19a3.5 3.5 0 0 1 6 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" opacity=".65"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Manage users</strong>
+            <span>Search, review, and maintain user accounts.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.bookings.view' in agent_permissions %}
+        <a href="{{ url_for('agent.bookings_list') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-lilac">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="4" y="7" width="16" height="13" rx="2" stroke="currentColor" stroke-width="1.9"/>
+              <path d="M8 7V5M16 7V5M4 11h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Bookings</strong>
+            <span>Inspect live orders and booking activity.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.finance.view' in agent_permissions %}
+        <a href="{{ url_for('agent.finance') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-mint">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3v18M16 7.5c0-1.4-1.79-2.5-4-2.5s-4 1.1-4 2.5 1.79 2.5 4 2.5 4 1.1 4 2.5-1.79 2.5-4 2.5-4-1.1-4-2.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Finance</strong>
+            <span>Balances, disbursements, and earnings data.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.logs.view' in agent_permissions %}
+        <a href="{{ url_for('agent.logs') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-cobalt">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M8 4h7l5 5v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.9"/>
+              <path d="M15 4v5h5M10 13h6M10 17h6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Logs</strong>
+            <span>Authentication and audit records.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+
+        {% if 'agent.markup.manage' in agent_permissions %}
+        <a href="{{ url_for('agent.markup_settings') }}" class="dashboard-tool-card dashboard-tool-card-reference">
+          <div class="dashboard-tool-icon dashboard-tool-icon-pink">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 17 17 7M8.5 8.5h.01M15.5 15.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="8.5" cy="8.5" r="2" stroke="currentColor" stroke-width="1.8"/>
+              <circle cx="15.5" cy="15.5" r="2" stroke="currentColor" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <div class="dashboard-tool-copy">
+            <strong>Markup settings</strong>
+            <span>Pricing controls and revenue rules.</span>
+          </div>
+          <span class="dashboard-tool-arrow">›</span>
+        </a>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="dashboard-bottom-grid">
+      <article class="panel dashboard-bottom-card">
+        <div class="dashboard-bottom-head">
+          <div class="dashboard-bottom-title">
+            <span class="dashboard-tool-icon dashboard-tool-icon-soft">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/>
+                <circle cx="17" cy="9" r="2" stroke="currentColor" stroke-width="1.8" opacity=".65"/>
+                <path d="M3.5 19a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M14.5 18.5A3.5 3.5 0 0 1 20 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".65"/>
+              </svg>
+            </span>
+            <div>
+              <h2>Operational snapshot</h2>
+              <p>Real-time overview of platform activity.</p>
+            </div>
+          </div>
+          <div class="dashboard-scope-chip">
+            <span>{{ agent_scope_label }}</span>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="dashboard-metric-grid">
+          <div class="dashboard-metric-card">
+            <span class="dashboard-metric-label">Agencies</span>
+            <strong class="dashboard-metric-value">{{ summary.agency_count }}</strong>
+            <span class="dashboard-metric-sub">Active</span>
+            <svg class="dashboard-sparkline" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M4 28 L22 28 L34 20 L48 24 L63 12 L76 26 L94 10 L108 18 L116 10" />
+            </svg>
+          </div>
+          <div class="dashboard-metric-card">
+            <span class="dashboard-metric-label">Bookings</span>
+            <strong class="dashboard-metric-value">{{ finance_summary.booking_count or 0 }}</strong>
+            <span class="dashboard-metric-sub">{{ summary.active_user_count }} active users</span>
+            <svg class="dashboard-sparkline dashboard-sparkline-blue" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M4 26 L20 26 L31 22 L48 23 L60 24 L73 10 L88 10 L101 24 L116 18" />
+            </svg>
+          </div>
+          <div class="dashboard-metric-card">
+            <span class="dashboard-metric-label">Revenue</span>
+            <strong class="dashboard-metric-value">${{ '{:,.0f}'.format(finance_summary.gross_revenue_usd or 0) }}</strong>
+            <span class="dashboard-metric-sub">{{ summary.user_count }} total users</span>
+            <svg class="dashboard-sparkline dashboard-sparkline-violet" viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M4 28 L22 20 L37 24 L54 23 L70 13 L84 21 L97 12 L109 16 L116 8" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="dashboard-bottom-footer">
+          <a href="{{ url_for('agent.finance') }}" class="dashboard-inline-link">View full analytics</a>
+        </div>
+      </article>
+
+      <article class="panel dashboard-bottom-card">
+        <div class="dashboard-bottom-head">
+          <div class="dashboard-bottom-title">
+            <span class="dashboard-tool-icon dashboard-tool-icon-soft">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3 6 5v5c0 4.1 2.62 7.92 6 9 3.38-1.08 6-4.9 6-9V5l-6-2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="m9.5 11.5 1.7 1.7 3.3-3.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div>
+              <h2>State</h2>
+              <p>Current review queue status.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-state-stack">
+          <div class="dashboard-state-banner">
+            <span class="dashboard-state-icon dashboard-state-icon-success">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m3.5 8 2.5 2.5 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div>
+              <strong>{% if review_request_count %}{{ review_request_count }} waiting{% else %}Nothing waiting{% endif %}</strong>
+              <span>{% if review_request_count %}There are pending review items that need attention.{% else %}No pending review items are competing for attention right now.{% endif %}</span>
+            </div>
+          </div>
+
+          <div class="dashboard-state-note">
+            <span class="dashboard-state-icon dashboard-state-icon-plain">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 1.5 3.5 9h3L5.8 14.5 12.5 6H9.1L10.2 1.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div>
+              <strong>{% if review_request_count %}Review queue active{% else %}Queue is clear{% endif %}</strong>
+              <span>Use the tools above to jump into bookings, users, requests, or controls.</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</section>
+
+<script>
+  var copyAllBtn = document.getElementById('copyAllCodes');
+  if (copyAllBtn) {
+    copyAllBtn.addEventListener('click', function () {
+      var codes = Array.from(document.querySelectorAll('#backupCodesGrid .backup-code'))
+                       .map(function (el) { return el.textContent.trim(); })
+                       .join('\n');
+      navigator.clipboard.writeText(codes).then(function () {
+        copyAllBtn.textContent = 'Copied!';
+        copyAllBtn.disabled = true;
+        setTimeout(function () {
+          copyAllBtn.textContent = 'Copy all';
+          copyAllBtn.disabled = false;
+        }, 2000);
+      });
+    });
+  }
+</script>
+{% endblock %}

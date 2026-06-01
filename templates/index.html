@@ -3,125 +3,2050 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NextGen Flights</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  {% include "partials/theme_init.html" %}
+  <title>Skairova</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260601-font-weights') }}" />
+  <!-- Flatpickr -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/monthSelect.css', v='4.6.13') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/themes/dark.css', v='4.6.13') }}">
+  {% include "partials/theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='calendar-standard.css', v='20260525-flatpickr-dark') }}">
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">✈︎</div>
-      <div>
-        <div class="brand-title">NextGen Flights</div>
-        <div class="brand-sub">Minimal flight search with AI commands</div>
-      </div>
-    </div>
-  </header>
+<body class="home-page">
+  {% macro manual_search_icon(name, class_name='') -%}
+    {% if name == 'search' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+        <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'trip' %}
+      <span class="ms2-svg-icon svg-mask-icon svg-mask-icon--roundtrip {{ class_name }}" aria-hidden="true"></span>
+    {% elif name == 'passengers' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="9.5" cy="7" r="4" stroke="currentColor" stroke-width="2" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    {% elif name == 'cabin' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 10V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M5 10h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 18v3M17 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'sort' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <circle cx="16" cy="6" r="2" stroke="currentColor" stroke-width="2" />
+        <circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="2" />
+        <circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="2" />
+      </svg>
+    {% elif name == 'origin' %}
+      <span class="ms2-svg-icon svg-mask-icon svg-mask-icon--takeoff {{ class_name }}" aria-hidden="true"></span>
+    {% elif name == 'destination' %}
+      <span class="ms2-svg-icon svg-mask-icon svg-mask-icon--landing {{ class_name }}" aria-hidden="true"></span>
+    {% elif name == 'calendar' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="4.5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2" />
+        <path d="M8 2.5v4M16 2.5v4M3 9.5h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'month' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="4.5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2" />
+        <path d="M8 2.5v4M16 2.5v4M3 9.5h18M8 14h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'duration' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" />
+        <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    {% elif name == 'plus' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'remove' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'split' %}
+      <svg class="ms2-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 6h5a4 4 0 0 1 4 4v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M20 6h-3a4 4 0 0 0-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="m17 3 3 3-3 3M10 15l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    {% elif name == 'nonstop' %}
+      <span class="ms2-svg-icon svg-mask-icon svg-mask-icon--direct {{ class_name }}" aria-hidden="true"></span>
+    {% endif %}
+  {%- endmacro %}
+
+  {% include "partials/platform_header.html" %}
+
+  {% if global_notice %}
+    <div class="site-popup" role="status" id="globalNoticePopup">{{ global_notice }}</div>
+  {% endif %}
 
   <main class="wrap">
-    <section class="hero">
-      <h1>Book flights with less noise.</h1>
-      <p>
-        Use a simple form, or just type what you want. We show the best matches first.
-      </p>
+    <section class="hero hero-with-art">
+      <div class="hero-copy-block">
+        <h1 class="hero-title">Just say the trip.<br><span class="hero-plain">We'll </span><span class="hero-accent">find the flight.</span></h1>
+        <p class="hero-copy hero-copy-default">
+          Use a simple form, type what you want, or let us find the cheapest week in a month.
+        </p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <img
+          class="hero-art-img"
+          src="{{ url_for('static', filename='illustrations/undraw_airplane_do9t.svg', v='20260526-home-hero-art') }}"
+          alt=""
+          loading="eager"
+          decoding="async"
+        />
+      </div>
     </section>
 
-    <section class="grid">
-      <!-- Standard Search -->
-      <div class="card">
-        <h2>Standard Search</h2>
-        <p class="muted">Quick, familiar, clean.</p>
+    <!-- AI + collapsed manual share one column; manual expands to full flow below -->
+    <div class="home-search-stack">
+    <div class="ai-wrap ai-narrow">
+      <section class="ai-card expanded" id="aiCard">
+        <form class="ai-form" method="POST" action="/search/shell" id="aiForm">
+          <input type="hidden" name="mode" value="ai" />
+          <input type="hidden" name="search_submitted" value="1" />
+          <input type="hidden" name="parse_token" id="aiParseToken" value="" />
 
-        <form class="form" method="POST" action="/search">
-          <input type="hidden" name="mode" value="standard" />
+          <label class="ai-prompt-shell" for="aiText">
+            <span class="ai-input-ring">
+              <span class="ai-input-wrap">
+                <button type="button" class="ai-input-icon-btn ai-input-magic-btn" id="sampleSearchBtn" aria-label="Sample searches" title="Insert a searchable example">
+                  <svg class="ai-input-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
+                    <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                    <path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8z" opacity="0.7"/>
+                  </svg>
+                </button>
+                <textarea
+                  name="ai_text"
+                  id="aiText"
+                  class="ai-input"
+                  rows="1"
+                  wrap="soft"
+                  maxlength="500"
+                  style="white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow-x: hidden;"
+                  placeholder="Try: NYC to London next month, nonstop, under $900"
+                  aria-describedby="aiSearchKeyboardHint aiInputCount"
+                ></textarea>
+                <span class="ai-input-toolbar" role="group" aria-label="Input actions">
+                  <span class="ai-input-count" id="aiInputCount" aria-live="polite">0 / 500</span>
+                  <span class="ai-input-actions">
+<button type="submit" class="ai-input-submit-btn" aria-label="Search with AI" title="Search with AI">
+                      <svg class="ai-input-send-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7"/>
+                        <path d="m20 20-3.5-3.5"/>
+                      </svg>
+                    </button>
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span id="aiSearchKeyboardHint" class="sr-only">Press Enter to search. Shift+Enter adds a new line.</span>
+          </label>
 
-          <div class="row">
-            <div class="field">
-              <label>Origin</label>
-              <input name="origin" placeholder="JFK" maxlength="3" />
-            </div>
-            <div class="field">
-              <label>Destination</label>
-              <input name="destination" placeholder="LAX" maxlength="3" />
-            </div>
+          <div class="ai-suggest-chips" role="group" aria-label="Quick search types">
+            <button type="button" class="chip ai-suggest-chip" data-chip="Round trip from [ORIGIN] to [DESTINATION] [DATES], economy" aria-label="Round trip">
+              <span class="ai-suggest-chip-icon svg-mask-icon svg-mask-icon--roundtrip" aria-hidden="true"></span>
+              <span class="ai-suggest-chip-title">Round trip</span>
+            </button>
+            <button type="button" class="chip ai-suggest-chip" data-chip="One way from [ORIGIN] to [DESTINATION] on [DATE], economy" aria-label="One way">
+              <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+              <span class="ai-suggest-chip-title">One way</span>
+            </button>
+            <button type="button" class="chip ai-suggest-chip" data-chip="Cheapest week from [ORIGIN] to [DESTINATION] in [MONTH], economy" aria-label="Flexible week">
+              <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span class="ai-suggest-chip-title">Flexible week</span>
+            </button>
+            <button type="button" class="chip ai-suggest-chip" data-chip="Flights from [ORIGIN] to [DESTINATION] under $[BUDGET], economy" aria-label="Under budget">
+              <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span class="ai-suggest-chip-title">Under budget</span>
+            </button>
+            <button type="button" class="chip ai-suggest-chip" data-chip="Nonstop flights from [ORIGIN] to [DESTINATION] on [DATE], economy" aria-label="Nonstop">
+              <span class="ai-suggest-chip-icon svg-mask-icon svg-mask-icon--direct" aria-hidden="true"></span>
+              <span class="ai-suggest-chip-title">Nonstop</span>
+            </button>
           </div>
 
-          <div class="row">
-            <div class="field">
-              <label>Depart</label>
-              <input name="depart_date" type="date" />
-            </div>
-            <div class="field">
-              <label>Return</label>
-              <input name="return_date" type="date" />
-            </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="home-mode-divider" aria-hidden="true">
+      <span>or</span>
+    </div>
+
+    <!-- Manual Search v2 -->
+    <section class="manual-search-v2 standard-mode is-collapsed" id="unified" aria-label="Flight search">
+      <div class="ms2-peek ms2-peek-home-pill" id="manualPeek">
+        <button type="button" class="manual-open-pill ms2-peek-open" aria-label="Open manual search">
+          <span>Manual search</span>
+          <svg class="manual-open-pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <div class="ms2-full" id="manualFull">
+        <div class="search-mode-label search-mode-label--manual">
+          <span class="search-mode-kicker">Manual search</span>
+          <span class="search-mode-copy">Use route, dates, cabin, and traveler fields</span>
+        </div>
+        <form class="ms2-form" method="POST" action="/search/shell" id="unifiedForm" autocomplete="off">
+          <input type="hidden" name="mode" id="unifiedMode" value="standard" />
+          <input type="hidden" name="search_submitted" value="1" />
+
+          <!-- Row 1: Trip type + date mode -->
+          <div class="gf-toprow">
+            <label class="gf-chip-wrap">
+              <select name="trip_type" id="tripType" class="gf-chip-sel">
+                <option value="roundtrip" selected>Round-trip</option>
+                <option value="oneway">One-way</option>
+                <option value="multicity">Multi-city</option>
+              </select>
+              <svg class="gf-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
+            <label class="gf-chip-wrap">
+              <select id="gfDateMode" class="gf-chip-sel">
+                <option value="standard" selected>Specific dates</option>
+                <option value="flex">Cheapest week</option>
+              </select>
+              <svg class="gf-chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
           </div>
 
-          <div class="row">
-            <div class="field">
-              <label>Passengers</label>
-              <input name="passengers" type="number" min="1" value="1" />
+          <!-- Row 2: Unified search bar -->
+          <div class="gf-bar" id="primaryRouteRow">
+            <div class="gf-seg gf-seg--from">
+              {{ manual_search_icon('origin', 'gf-seg-icon') }}
+              <input name="origin" class="gf-seg-input airport-input" placeholder="From?" maxlength="30" aria-label="From" />
             </div>
-            <div class="field">
-              <label>Cabin</label>
-              <select name="cabin">
-                <option value="ECONOMY">Economy</option>
+            <button type="button" class="gf-swap-btn" id="swapBtn" aria-label="Swap origin and destination">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>
+            </button>
+            <div class="gf-seg gf-seg--to">
+              {{ manual_search_icon('destination', 'gf-seg-icon') }}
+              <input name="destination" class="gf-seg-input airport-input" placeholder="To?" maxlength="30" aria-label="To" />
+            </div>
+            <div class="gf-bar-sep" aria-hidden="true"></div>
+            <!-- Dates segment: invisible flatpickr inputs overlay on click -->
+            <div class="gf-seg gf-seg--dates ms2-date-sort-row" id="gfDatesSeg" tabindex="0" role="button" aria-label="Select dates">
+              {{ manual_search_icon('calendar', 'gf-seg-icon gf-seg-icon--standard') }}
+              {{ manual_search_icon('month', 'gf-seg-icon gf-seg-icon--flex') }}
+              <span class="gf-seg-label" id="gfDatesText">Add dates</span>
+              <div id="panel-standard" class="gf-cal-anchors" aria-hidden="true">
+                <input class="calendar-input calendar-display-input" id="departPickerDisplay" type="text" placeholder="Depart" aria-label="Depart" readonly tabindex="-1" />
+                <input class="calendar-input calendar-display-input" id="returnPickerDisplay" type="text" placeholder="Return" aria-label="Return" readonly tabindex="-1" />
+              </div>
+              <div id="panel-flex" style="display:none">
+                <input class="ms2-input calendar-input" id="flexMonthPicker" type="text" name="flex_month" placeholder="Select month" aria-label="Month" />
+              </div>
+              <input id="departPicker" name="depart_date" type="hidden" />
+              <input id="returnPicker" name="return_date" type="hidden" />
+            </div>
+            <div class="gf-bar-sep" aria-hidden="true"></div>
+            <!-- Travelers + cabin segment -->
+            <button type="button" class="gf-seg gf-seg--pax" id="gfPaxBtn" aria-haspopup="true" aria-expanded="false" aria-label="Select travelers and cabin class">
+              {{ manual_search_icon('passengers', 'gf-seg-icon') }}
+              <span class="gf-seg-label" id="gfPaxText">1 traveler, Economy</span>
+              <select name="passengers" id="topPassengers" class="gf-hidden-sel" aria-hidden="true" tabindex="-1">
+                {% for n in range(1, 10) %}
+                  <option value="{{ n }}" {% if n == 1 %}selected{% endif %}>{{ n }} adult{% if n != 1 %}s{% endif %}</option>
+                {% endfor %}
+              </select>
+              <select name="cabin" id="topCabin" class="gf-hidden-sel" aria-hidden="true" tabindex="-1">
+                <option value="ECONOMY" selected>Economy</option>
                 <option value="PREMIUM_ECONOMY">Premium Economy</option>
                 <option value="BUSINESS">Business</option>
                 <option value="FIRST">First</option>
               </select>
+            </button>
+            <button class="gf-search-cta" type="submit" id="unifiedCta">{{ manual_search_icon('search', 'gf-cta-icon') }}<span>Search</span></button>
+          </div>
+
+          <!-- Travelers / cabin popup -->
+          <div class="gf-pax-panel" id="gfPaxPanel" hidden>
+            <div class="gf-pax-block">
+              <p class="gf-pax-heading">Travelers</p>
+              <div class="gf-pax-row">
+                <div class="gf-pax-info"><span>Adults</span><small>18+</small></div>
+                <div class="gf-counter"><button type="button" class="gf-counter-btn" data-pax="adults" data-dir="-1">−</button><span class="gf-counter-num" id="gfAdultsNum">1</span><button type="button" class="gf-counter-btn" data-pax="adults" data-dir="1">+</button></div>
+              </div>
+              <div class="gf-pax-row">
+                <div class="gf-pax-info"><span>Children</span><small>0–17</small></div>
+                <div class="gf-counter"><button type="button" class="gf-counter-btn" data-pax="children" data-dir="-1">−</button><span class="gf-counter-num" id="gfChildrenNum">0</span><button type="button" class="gf-counter-btn" data-pax="children" data-dir="1">+</button></div>
+              </div>
+            </div>
+            <div class="gf-cabin-block">
+              <p class="gf-pax-heading">Cabin Class</p>
+              <div class="gf-cabin-chips">
+                <button type="button" class="gf-cabin-chip gf-cabin-chip--active" data-cabin="ECONOMY">Economy</button>
+                <button type="button" class="gf-cabin-chip" data-cabin="PREMIUM_ECONOMY">Premium Economy</button>
+                <button type="button" class="gf-cabin-chip" data-cabin="BUSINESS">Business</button>
+                <button type="button" class="gf-cabin-chip" data-cabin="FIRST">First</button>
+              </div>
             </div>
           </div>
 
-          <div class="row row-tight">
-            <label class="check">
+          <!-- Multi-city panel (managed by existing JS) -->
+          <div class="ms2-multicity-panel" id="panel-multicity" style="display:none;" aria-label="Multi-city legs">
+            <div class="ms2-multicity-legs" id="multiCityLegs">
+              <div class="ms2-route ms2-multicity-leg" data-multicity-leg>
+                <label class="ms2-field">
+                  <span class="ms2-label">{{ manual_search_icon('origin', 'ms2-label-icon') }}<span>From</span></span>
+                  <input name="leg_origin" class="ms2-input airport-input" placeholder="City or airport" maxlength="30" />
+                </label>
+                <label class="ms2-field">
+                  <span class="ms2-label">{{ manual_search_icon('destination', 'ms2-label-icon') }}<span>To</span></span>
+                  <input name="leg_destination" class="ms2-input airport-input" placeholder="City or airport" maxlength="30" />
+                </label>
+                <label class="ms2-field calendar-field">
+                  <span class="ms2-label">{{ manual_search_icon('calendar', 'ms2-label-icon') }}<span>Depart</span></span>
+                  <input name="leg_date" class="ms2-input calendar-input" type="text" placeholder="Depart" readonly />
+                </label>
+                <button type="button" class="ms2-swap ms2-remove-leg" data-remove-leg aria-label="Remove leg">{{ manual_search_icon('remove', 'ms2-control-icon') }}</button>
+              </div>
+              <div class="ms2-route ms2-multicity-leg" data-multicity-leg>
+                <label class="ms2-field">
+                  <span class="ms2-label">{{ manual_search_icon('origin', 'ms2-label-icon') }}<span>From</span></span>
+                  <input name="leg_origin" class="ms2-input airport-input" placeholder="City or airport" maxlength="30" />
+                </label>
+                <label class="ms2-field">
+                  <span class="ms2-label">{{ manual_search_icon('destination', 'ms2-label-icon') }}<span>To</span></span>
+                  <input name="leg_destination" class="ms2-input airport-input" placeholder="City or airport" maxlength="30" />
+                </label>
+                <label class="ms2-field calendar-field">
+                  <span class="ms2-label">{{ manual_search_icon('calendar', 'ms2-label-icon') }}<span>Depart</span></span>
+                  <input name="leg_date" class="ms2-input calendar-input" type="text" placeholder="Depart" readonly />
+                </label>
+                <button type="button" class="ms2-swap ms2-remove-leg" data-remove-leg aria-label="Remove leg">{{ manual_search_icon('remove', 'ms2-control-icon') }}</button>
+              </div>
+            </div>
+            <button type="button" class="btn ms2-icon-btn" id="addMultiCityLeg">{{ manual_search_icon('plus', 'ms2-control-icon') }}<span>Add another leg</span></button>
+            <div class="ms2-multicity-actions">
+              <button class="gf-search-cta" type="submit" id="unifiedCtaMulti"><span>Search multi-city</span></button>
+            </div>
+          </div>
+
+          <!-- Under bar -->
+          <div class="gf-underbar">
+            <label class="gf-underbar-check" id="nonstopInline">
               <input type="checkbox" name="nonstop" />
-              Nonstop only
+              {{ manual_search_icon('nonstop', 'gf-check-icon') }}
+              <span>Direct flights only</span>
             </label>
-
-            <div class="field inline">
-              <label>Sort</label>
-              <select name="sort">
-                <option value="recommended">Recommended</option>
-                <option value="cheapest">Cheapest</option>
-                <option value="fastest">Fastest</option>
-              </select>
-            </div>
+            <label class="gf-underbar-check" id="combinationInline" style="display:none">
+              <input type="checkbox" name="combination_mode" id="manualCombinationInput" value="manual" />
+              {{ manual_search_icon('split', 'gf-check-icon') }}
+              <span>Let me choose departure and return separately</span>
+            </label>
           </div>
 
-          <button class="btn primary" type="submit">Search Flights</button>
+          <!-- Hidden compat elements for existing JS -->
+          <div id="flexTripLengthField" style="display:none">
+            <select name="trip_length_days" aria-label="Duration">
+              {% for d in [3,5,7,10,14] %}
+                <option value="{{ d }}" {% if d == 7 %}selected{% endif %}>{{ d }} days</option>
+              {% endfor %}
+            </select>
+          </div>
         </form>
       </div>
+    </section>
+    </div>
 
-      <!-- AI Search -->
-      <div class="card">
-        <h2>AI Command Search</h2>
-        <p class="muted">Type it like you’re talking to a smart assistant.</p>
-
-        <form class="form" method="POST" action="/search">
-          <input type="hidden" name="mode" value="ai" />
-
-          <div class="field">
-            <label>Your request</label>
-            <textarea name="ai_text" rows="6" placeholder="Example: Find me the cheapest round-trip flight from JFK to DEL from May 18 to Aug 22. Nonstop only."></textarea>
-          </div>
-
-          <div class="chips">
-            <span class="chip">“earliest flight today”</span>
-            <span class="chip">“under $800”</span>
-            <span class="chip">“no overnight layovers”</span>
-          </div>
-
-          <button class="btn primary" type="submit">Search with AI</button>
-          <p class="hint">
-            Later: Gemini will parse your text into structured fields automatically.
-          </p>
-        </form>
+    <section class="home-trust-stats" aria-label="Why Skairova">
+      <div class="home-trust-item">
+        <div class="home-trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="home-trust-body">
+          <h3 class="home-trust-title">Best price guarantee</h3>
+          <p class="home-trust-desc">We compare millions of fares to get you the best deal.</p>
+        </div>
+      </div>
+      <div class="home-trust-item">
+        <div class="home-trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </div>
+        <div class="home-trust-body">
+          <h3 class="home-trust-title">Trusted by travelers</h3>
+          <p class="home-trust-desc">Join millions who book with confidence every day.</p>
+        </div>
+      </div>
+      <div class="home-trust-item">
+        <div class="home-trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+        </div>
+        <div class="home-trust-body">
+          <h3 class="home-trust-title">24/7 support</h3>
+          <p class="home-trust-desc">Real people, here to help whenever you need us.</p>
+        </div>
+      </div>
+      <div class="home-trust-item">
+        <div class="home-trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="home-trust-body">
+          <h3 class="home-trust-title">Secure booking</h3>
+          <p class="home-trust-desc">Your data is protected with enterprise-grade security.</p>
+        </div>
       </div>
     </section>
 
     <footer class="footer">
-      <span class="muted">No login. No tracking. Just search.</span>
+      <span class="muted"><a href="{{ url_for('terms_and_conditions') }}">Terms &amp; Conditions</a></span>
     </footer>
   </main>
+
+  <!-- Loading overlay -->
+  <div class="loader-overlay" id="loader" aria-hidden="true">
+    <div class="loader-card" role="status" aria-live="polite" aria-busy="true">
+      <div class="loader-visual" aria-hidden="true">
+        <div class="loader-glyph">
+          <div class="loader-glyph-ring"></div>
+          <div class="loader-glyph-sweep"></div>
+          <div class="loader-glyph-core"></div>
+        </div>
+      </div>
+      <div class="loader-text">
+        <div class="loader-eyebrow" id="loaderEyebrow">Live search</div>
+        <div class="loader-title" id="loaderTitle">Searching live inventory for you</div>
+        <div class="loader-sub muted" id="loaderSub">We query airlines in real time. Richer searches can take up to about a minute—your page will update automatically.</div>
+        <div class="loader-progress-track" aria-hidden="true">
+          <div class="loader-progress-fill" id="loaderProgressFill" style="width: 4%;"></div>
+        </div>
+        <div class="loader-meta">
+          <span class="loader-stage" id="loaderStage">Connecting to fare sources</span>
+          <span class="loader-elapsed" id="loaderElapsed">0:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unified mode toggle -->
+  <script>
+    (function(){
+      const root = document.getElementById("unified");
+      if (!root) return;
+
+      const manualPeek = document.getElementById("manualPeek");
+      const manualFull = document.getElementById("manualFull");
+      const manualPeekOpenButtons = root.querySelectorAll(".ms2-peek-open");
+      const revealButtons = root.querySelectorAll("[data-manual-mode]");
+      const modeField = document.getElementById("unifiedMode");
+      const panelStd = document.getElementById("panel-standard");
+      const panelFlex = document.getElementById("panel-flex");
+      const panelMulti = document.getElementById("panel-multicity");
+      const primaryRouteRow = document.getElementById("primaryRouteRow");
+      const dateSortRow = root.querySelector(".ms2-date-sort-row");
+      const multiCityLegs = document.getElementById("multiCityLegs");
+      const addMultiCityLegBtn = document.getElementById("addMultiCityLeg");
+      const metaSortWrap = document.getElementById("metaSortWrap");
+      const vsepSort = document.getElementById("vsepSort");
+      const nonstopInline = document.getElementById("nonstopInline");
+      const combinationInline = document.getElementById("combinationInline");
+      const manualCombinationInput = document.getElementById("manualCombinationInput");
+      const cta = document.getElementById("unifiedCta");
+      const multiCta = document.getElementById("unifiedCtaMulti");
+      const btns = root.querySelectorAll(".seg-btn");
+      const form = document.getElementById("unifiedForm");
+      const aiInput = document.getElementById("aiText");
+      const aiPromptShell = aiInput?.closest(".ai-prompt-shell") || aiInput;
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const phoneLayout = window.matchMedia("(max-width: 760px)");
+      let lastScrollY = getViewportScrollTop();
+      /** Ignore desktop auto-collapse briefly after trip/mode toggles resize the manual form (layout clamp mimics scroll-up). */
+      let manualFormLayoutLockUntil = 0;
+      function setCtaLabel(button, label) {
+        const labelNode = button?.querySelector("span:last-child");
+        if (labelNode) {
+          labelNode.textContent = label;
+        } else if (button) {
+          button.textContent = label;
+        }
+      }
+
+      let ms2MetaMeasureCanvas = null;
+      function fitMs2MetaPillSelects() {
+        const meta = root.querySelector(".ms2-meta");
+        if (!meta) return;
+        const selects = meta.querySelectorAll("select.ms2-select");
+        if (window.matchMedia("(max-width: 768px)").matches) {
+          selects.forEach((sel) => {
+            sel.style.width = "";
+          });
+          return;
+        }
+        if (!ms2MetaMeasureCanvas) ms2MetaMeasureCanvas = document.createElement("canvas");
+        const ctx = ms2MetaMeasureCanvas.getContext("2d");
+        selects.forEach((sel) => {
+          if (sel.offsetParent === null) return;
+          const opt = sel.options[sel.selectedIndex];
+          const text = opt && opt.textContent ? opt.textContent.trim() : "";
+          const cs = window.getComputedStyle(sel);
+          ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          const w = ctx.measureText(text || " ").width;
+          const pl = parseFloat(cs.paddingLeft) || 11;
+          const pr = parseFloat(cs.paddingRight) || 28;
+          const bw = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
+          const cap = Math.min(window.innerWidth - 48, 520);
+          sel.style.width = Math.min(Math.ceil(w + pl + pr + bw + 4), cap) + "px";
+        });
+      }
+
+      function afterManualFormLayoutChange() {
+        manualFormLayoutLockUntil = Date.now() + 650;
+        requestAnimationFrame(() => {
+          lastScrollY = getViewportScrollTop();
+        });
+      }
+
+      function isPhoneLayout() {
+        return phoneLayout.matches;
+      }
+
+      function getTopbarOffset() {
+        return document.querySelector(".topbar")?.offsetHeight || 0;
+      }
+
+      function getViewportScrollTop() {
+        const scrollingElement = document.scrollingElement || document.documentElement || document.body;
+        return Math.max(
+          window.scrollY || 0,
+          window.pageYOffset || 0,
+          scrollingElement?.scrollTop || 0,
+          document.documentElement?.scrollTop || 0,
+          document.body?.scrollTop || 0,
+        );
+      }
+
+      function hasManualValue(){
+        if (!form) return false;
+
+        const fields = form.querySelectorAll("input, select");
+        for (const el of fields) {
+          if (el.type === "hidden" && el.name === "mode") continue;
+          if (el.type === "checkbox") {
+            if (el.checked) return true;
+            continue;
+          }
+          if (el.tagName === "SELECT") continue;
+          if ((el.value || "").trim() !== "") return true;
+        }
+        return false;
+      }
+
+      function getScrollTop(el, offset = null) {
+        if (!el) return 0;
+        const topbarOffset = getTopbarOffset();
+        const extraOffset = offset ?? (isPhoneLayout() ? 12 : 22);
+        return Math.max(el.getBoundingClientRect().top + getViewportScrollTop() - topbarOffset - extraOffset, 0);
+      }
+
+      function scrollToSection(el, offset = null) {
+        window.scrollTo({
+          top: getScrollTop(el, offset),
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+      }
+
+      function scrollToTop(top) {
+        window.scrollTo({
+          top: Math.max(top, 0),
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+      }
+
+      function setManualFocus(active) {
+        const isActive = !!active && !root.classList.contains("is-collapsed");
+        document.body.classList.toggle("manual-focus-active", isActive);
+      }
+
+      function syncCombinationModeAvailability() {
+        const standardRoundTrip = modeField.value === "standard" && tripSel?.value === "roundtrip";
+        if (combinationInline) combinationInline.style.display = standardRoundTrip ? "" : "none";
+        if (manualCombinationInput) manualCombinationInput.disabled = !standardRoundTrip;
+      }
+
+      function syncManualVisibility() {
+        const collapsed = root.classList.contains("is-collapsed");
+        root.setAttribute("data-expanded", collapsed ? "false" : "true");
+        document.body.classList.toggle("manual-open", !collapsed);
+        if (collapsed) {
+          document.body.classList.remove("manual-pill-visible");
+        }
+        if (manualPeek) manualPeek.setAttribute("aria-hidden", collapsed ? "false" : "true");
+        if (manualFull) manualFull.setAttribute("aria-hidden", collapsed ? "true" : "false");
+        revealButtons.forEach((button) => button.setAttribute("aria-expanded", collapsed ? "false" : "true"));
+        setManualFocus(document.body.classList.contains("manual-focus-active"));
+      }
+
+      function collapseManual({ keepFocusState = false } = {}) {
+        root.classList.add("is-collapsed");
+        document.dispatchEvent(new CustomEvent("airportSuggestClose", { bubbles: true }));
+        if (!keepFocusState) {
+          document.body.classList.remove("manual-focus-active");
+        }
+        syncManualVisibility();
+      }
+
+      function closeManualSearch({ keepFocusState = false } = {}) {
+        if (root.classList.contains("is-collapsed")) {
+          syncAiBoundaryState();
+          return false;
+        }
+
+        collapseManual({ keepFocusState });
+        syncAiBoundaryState();
+        return true;
+      }
+
+      function shouldCollapseMobileManual(scrollTop = getViewportScrollTop()) {
+        // Require scrolling the page clearly above the manual block. Do not treat
+        // "AI peeked into view" alone as enough — that made collapse feel twitchy.
+        const collapseBoundary = Math.max(getManualAnchorTop() - 96, 0);
+        return scrollTop <= collapseBoundary;
+      }
+
+      function syncMobileManualState({ scrollingUp = false, collapseIfNeeded = false, scrollTop = getViewportScrollTop() } = {}) {
+        document.body.classList.remove("manual-pill-visible");
+
+        if (!isPhoneLayout()) {
+          return false;
+        }
+
+        if (root.classList.contains("is-collapsed")) {
+          return false;
+        }
+
+        const aiVisible = isAiInputInView() || isAiSectionInView();
+        document.body.classList.toggle("ai-in-view", aiVisible);
+
+        if (collapseIfNeeded && scrollingUp && shouldCollapseMobileManual(scrollTop)) {
+          closeManualSearch({ keepFocusState: false });
+          document.body.classList.add("ai-in-view");
+          return false;
+        }
+
+        return aiVisible;
+      }
+
+      function isAiInputInView() {
+        if (!aiPromptShell) return false;
+        const topbarOffset = getTopbarOffset();
+        const rect = aiPromptShell.getBoundingClientRect();
+        const upperViewportEdge = topbarOffset + (isPhoneLayout() ? 8 : 12);
+        const lowerViewportEdge = isPhoneLayout()
+          ? window.innerHeight - Math.min(72, Math.round(window.innerHeight * 0.12))
+          : window.innerHeight - 28;
+        return rect.bottom > upperViewportEdge && rect.top < lowerViewportEdge;
+      }
+
+      function isAiSectionInView() {
+        if (isPhoneLayout()) {
+          const section = document.getElementById("aiCard");
+          if (!section) return false;
+          const topbarOffset = getTopbarOffset();
+          const rect = section.getBoundingClientRect();
+          return rect.bottom > topbarOffset + 20 && rect.top < window.innerHeight * 0.58;
+        }
+
+        return isAiInputInView();
+      }
+
+      function getManualAnchorTop() {
+        const topbarOffset = getTopbarOffset();
+        const anchorTarget = (isPhoneLayout() ? manualFull : form) || manualFull || form || root;
+        const extraOffset = isPhoneLayout() ? 4 : 18;
+        return Math.max(anchorTarget.getBoundingClientRect().top + getViewportScrollTop() - topbarOffset - extraOffset, 0);
+      }
+
+      function isNearAiBoundary() {
+        const topbarOffset = getTopbarOffset();
+        const manualTop = root.getBoundingClientRect().top;
+        return manualTop > topbarOffset + (isPhoneLayout() ? 20 : 36);
+      }
+
+      function syncAiBoundaryState() {
+        const aiInView = isAiInputInView() || isNearAiBoundary();
+        document.body.classList.toggle("ai-in-view", aiInView);
+        return aiInView;
+      }
+
+      function setMode(mode){
+        let forcedTripType = false;
+        if (mode === "flex" && tripSel?.value === "multicity") {
+          tripSel.value = "roundtrip";
+          forcedTripType = true;
+        }
+        const isMultiCity = tripSel?.value === "multicity";
+        modeField.value = isMultiCity ? "standard" : mode;
+        syncTripTypeOptionsForMode();
+
+        const isStd = modeField.value === "standard";
+        panelStd.style.display = isMultiCity ? "none" : (isStd ? "" : "none");
+        panelFlex.style.display = isMultiCity ? "none" : (isStd ? "none" : "");
+        if (panelMulti) panelMulti.style.display = isMultiCity ? "" : "none";
+        if (dateSortRow) dateSortRow.style.display = isMultiCity ? "none" : "";
+        if (cta) cta.style.display = isMultiCity ? "none" : "";
+        if (metaSortWrap) metaSortWrap.style.display = isStd ? "" : "none";
+        if (vsepSort) vsepSort.style.display = isStd ? "" : "none";
+        if (nonstopInline) nonstopInline.style.display = (!isMultiCity && !isStd) ? "" : "none";
+
+        root.classList.toggle("standard-mode", isStd);
+        root.classList.toggle("flex-mode", !isStd);
+        root.classList.toggle("multicity", isMultiCity);
+        syncCombinationModeAvailability();
+        syncFlexControls();
+        fitMs2MetaPillSelects();
+
+        btns.forEach(b => {
+          b.classList.remove("active", "is-active");
+          b.setAttribute("aria-selected", "false");
+        });
+
+        const selectedBtn = root.querySelector(`.seg-btn[data-mode="${modeField.value}"]`);
+        if (selectedBtn) {
+          selectedBtn.classList.add("active", "is-active");
+          selectedBtn.setAttribute("aria-selected", "true");
+        }
+
+        if (forcedTripType) {
+          setTripType("roundtrip");
+        }
+
+        afterManualFormLayoutChange();
+      }
+
+      const swapBtn = document.getElementById("swapBtn");
+      const fromInp = root.querySelector('input[name="origin"]');
+      const toInp = root.querySelector('input[name="destination"]');
+      if (swapBtn && fromInp && toInp){
+        swapBtn.addEventListener("click", () => {
+          const a = fromInp.value;
+          fromInp.value = toInp.value;
+          toInp.value = a;
+          fromInp.focus();
+        });
+      }
+
+      const tripSel = document.getElementById("tripType");
+      const dateModeSel = document.getElementById("gfDateMode");
+      const multiCityOption = tripSel?.querySelector('option[value="multicity"]') || null;
+      const retInp = root.querySelector('input[name="return_date"]');
+      const departDisplay = document.getElementById("departPickerDisplay");
+      const flexMonthPicker = document.getElementById("flexMonthPicker");
+      const flexTripLengthField = document.getElementById("flexTripLengthField");
+      const aiCard = document.getElementById("aiCard");
+      function syncTripTypeOptionsForMode() {
+        if (!multiCityOption) return;
+        const isFlexMode = modeField.value === "flex" || dateModeSel?.value === "flex";
+        multiCityOption.disabled = isFlexMode;
+        multiCityOption.hidden = isFlexMode;
+        if (isFlexMode && multiCityOption.parentElement) {
+          multiCityOption.remove();
+        } else if (!isFlexMode && tripSel && !multiCityOption.parentElement) {
+          tripSel.appendChild(multiCityOption);
+        }
+        if (isFlexMode && tripSel?.value === "multicity") {
+          tripSel.value = "roundtrip";
+        }
+      }
+      function syncFlexControls() {
+        const isOneWay = tripSel?.value === "oneway";
+        const isMultiCity = tripSel?.value === "multicity";
+        const isFlexMode = modeField.value === "flex";
+        if (flexTripLengthField) {
+          flexTripLengthField.style.display = isOneWay ? "none" : "";
+        }
+        const nextCtaLabel = isMultiCity
+          ? "Search multi-city"
+          : (!isFlexMode ? "Search flights" : (isOneWay ? "Find cheapest day" : "Find cheapest week"));
+        setCtaLabel(cta, nextCtaLabel);
+        setCtaLabel(multiCta, "Search multi-city");
+      }
+      function setTripType(v){
+        syncTripTypeOptionsForMode();
+        if (modeField.value === "flex" && v === "multicity") {
+          v = "roundtrip";
+          if (tripSel) tripSel.value = v;
+        }
+        const isOneWay = v === "oneway";
+        const isMultiCity = v === "multicity";
+        root.classList.toggle("oneway", isOneWay);
+        root.classList.toggle("multicity", isMultiCity);
+        if (retInp){
+          retInp.disabled = isOneWay || isMultiCity;
+          if (isOneWay) retInp.value = "";
+        }
+        if (isMultiCity) {
+          modeField.value = "standard";
+        }
+        if (primaryRouteRow) primaryRouteRow.style.display = isMultiCity ? "none" : "";
+        if (fromInp) fromInp.required = !isMultiCity;
+        if (toInp) toInp.required = !isMultiCity;
+        if (swapBtn) swapBtn.disabled = isMultiCity;
+        btns.forEach((btn) => {
+          btn.disabled = isMultiCity && btn.dataset.mode === "flex";
+        });
+        if (panelStd) panelStd.style.display = isMultiCity ? "none" : (modeField.value === "standard" ? "" : "none");
+        if (panelFlex) panelFlex.style.display = isMultiCity ? "none" : (modeField.value === "flex" ? "" : "none");
+        if (panelMulti) panelMulti.style.display = isMultiCity ? "" : "none";
+        if (dateSortRow) dateSortRow.style.display = isMultiCity ? "none" : "";
+        if (cta) cta.style.display = isMultiCity ? "none" : "";
+        syncCombinationModeAvailability();
+        syncFlexControls();
+        afterManualFormLayoutChange();
+        fitMs2MetaPillSelects();
+      }
+      if (tripSel){
+        tripSel.addEventListener("change", () => setTripType(tripSel.value));
+        setTripType(tripSel.value);
+        window.addEventListener("pageshow", () => setTripType(tripSel.value));
+        window.setTimeout(() => setTripType(tripSel.value), 0);
+      }
+
+      function syncMultiCitySummaryFields() {
+        if (!tripSel || tripSel.value !== "multicity") return;
+        if (!fromInp || !toInp || !departDisplay) return;
+        const legRows = Array.from((multiCityLegs?.querySelectorAll("[data-multicity-leg]") || []));
+        legRows.forEach((row, index) => {
+          const dateInput = row.querySelector('input[name="leg_date"]');
+          if (!dateInput) return;
+          if (index === 0) {
+            dateInput.min = "";
+            if (dateInput._flatpickr) {
+              dateInput._flatpickr.set("minDate", "today");
+            }
+            return;
+          }
+          const prevDate = legRows[index - 1]?.querySelector('input[name="leg_date"]')?.value || "";
+          dateInput.min = prevDate || "";
+          if (dateInput._flatpickr) {
+            dateInput._flatpickr.set("minDate", prevDate || "today");
+          }
+          const current = (dateInput.value || "").trim();
+          if (prevDate && current && /^\d{4}-\d{2}-\d{2}$/.test(current) && current < prevDate) {
+            dateInput.value = "";
+            dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+            dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        });
+        legRows.forEach((row, index) => {
+          const removeBtn = row.querySelector("[data-remove-leg]");
+          if (removeBtn) removeBtn.disabled = legRows.length <= 2;
+          if (index > 0) {
+            const prevDest = legRows[index - 1]?.querySelector('input[name="leg_destination"]')?.value || "";
+            const originInput = row.querySelector('input[name="leg_origin"]');
+            const lastAutoValue = originInput?.dataset.autofilledFromPrev || "";
+            const currentValue = originInput?.value.trim() || "";
+            const shouldAutofill = !currentValue || currentValue === lastAutoValue;
+            if (originInput && shouldAutofill) {
+              originInput.value = prevDest.trim();
+              originInput.dataset.autofilledFromPrev = prevDest.trim();
+            }
+          }
+        });
+        const first = legRows[0];
+        const last = legRows[legRows.length - 1];
+        const firstOrigin = first?.querySelector('input[name="leg_origin"]')?.value || "";
+        const lastDestination = last?.querySelector('input[name="leg_destination"]')?.value || "";
+        const firstDate = first?.querySelector('input[name="leg_date"]')?.value || "";
+        fromInp.value = firstOrigin;
+        toInp.value = lastDestination;
+        if (departDisplay) departDisplay.value = firstDate;
+      }
+
+      function syncNextLegOriginFromRow(row) {
+        if (!row || !multiCityLegs) return;
+        const rows = Array.from(multiCityLegs.querySelectorAll("[data-multicity-leg]"));
+        const index = rows.indexOf(row);
+        if (index < 0 || index >= rows.length - 1) return;
+        const destinationInput = row.querySelector('input[name="leg_destination"]');
+        const nextOriginInput = rows[index + 1]?.querySelector('input[name="leg_origin"]');
+        if (!destinationInput || !nextOriginInput) return;
+        const nextOriginValue = nextOriginInput.value.trim();
+        const lastAutoValue = nextOriginInput.dataset.autofilledFromPrev || "";
+        if (!nextOriginValue || nextOriginValue === lastAutoValue) {
+          const nextValue = destinationInput.value.trim();
+          nextOriginInput.value = nextValue;
+          nextOriginInput.dataset.autofilledFromPrev = nextValue;
+        }
+        syncMultiCitySummaryFields();
+      }
+
+      function bindMultiCityLegRow(row) {
+        if (!row) return;
+        const dateInput = row.querySelector('input[name="leg_date"]');
+        const destinationInput = row.querySelector('input[name="leg_destination"]');
+        const originInput = row.querySelector('input[name="leg_origin"]');
+        if (typeof window.initSingleCalendarInput === "function" && dateInput) {
+          window.initSingleCalendarInput(dateInput);
+        }
+        originInput?.addEventListener("input", () => {
+          const autoValue = originInput.dataset.autofilledFromPrev || "";
+          if ((originInput.value || "").trim() !== autoValue) {
+            delete originInput.dataset.autofilledFromPrev;
+          }
+        });
+        destinationInput?.addEventListener("input", () => syncNextLegOriginFromRow(row));
+        destinationInput?.addEventListener("change", () => syncNextLegOriginFromRow(row));
+        row.querySelectorAll('input[name="leg_origin"], input[name="leg_destination"], input[name="leg_date"]').forEach((input) => {
+          input?.addEventListener("input", syncMultiCitySummaryFields);
+          input?.addEventListener("change", syncMultiCitySummaryFields);
+        });
+        const removeBtn = row.querySelector("[data-remove-leg]");
+        removeBtn?.addEventListener("click", () => {
+          const rows = multiCityLegs ? multiCityLegs.querySelectorAll("[data-multicity-leg]") : [];
+          if (rows.length <= 2) return;
+          row.remove();
+          syncMultiCitySummaryFields();
+        });
+      }
+
+      if (multiCityLegs) {
+        multiCityLegs.querySelectorAll("[data-multicity-leg]").forEach((row) => bindMultiCityLegRow(row));
+      }
+      addMultiCityLegBtn?.addEventListener("click", () => {
+        if (!multiCityLegs) return;
+        const rows = multiCityLegs.querySelectorAll("[data-multicity-leg]");
+        if (rows.length >= 6) return;
+        const template = rows[rows.length - 1];
+        if (!template) return;
+        const clone = template.cloneNode(true);
+        clone.querySelectorAll("input").forEach((input) => {
+          input.value = "";
+          if (input.name === "leg_date") {
+            input.removeAttribute("data-calendar-bound");
+            if (input._flatpickr) {
+              try { input._flatpickr.destroy(); } catch (e) {}
+              input._flatpickr = null;
+            }
+          }
+        });
+        multiCityLegs.appendChild(clone);
+        bindMultiCityLegRow(clone);
+        syncMultiCitySummaryFields();
+      });
+      syncMultiCitySummaryFields();
+
+      root.querySelector(".ms2-meta")?.addEventListener("change", (e) => {
+        if (e.target && e.target.matches && e.target.matches("select.ms2-select")) {
+          fitMs2MetaPillSelects();
+        }
+      });
+
+      function getFirstManualTarget(mode) {
+        if (fromInp && !(fromInp.value || "").trim()) return fromInp;
+        if (toInp && !(toInp.value || "").trim()) return toInp;
+        if (mode === "flex" && flexMonthPicker) return flexMonthPicker._monthRollerDisplay || flexMonthPicker;
+        // Never return departDisplay — focusing it triggers flatpickr to open the calendar
+        return null;
+      }
+
+      function scrollManualIntoView() {
+        const target = isPhoneLayout() ? (manualFull || root) : (form || manualFull || root);
+        const offset = isPhoneLayout() ? 4 : 18;
+        const followUpDelay = isPhoneLayout() ? 260 : 180;
+        const finalDelay = isPhoneLayout() ? 520 : 320;
+        const settleDelay = isPhoneLayout() ? 820 : 0;
+        const align = () => {
+          if (isPhoneLayout() && target?.scrollIntoView) {
+            target.scrollIntoView({
+              behavior: prefersReducedMotion ? "auto" : "smooth",
+              block: "start",
+            });
+          }
+          scrollToSection(target, offset);
+        };
+        requestAnimationFrame(() => {
+          requestAnimationFrame(align);
+          if (!prefersReducedMotion) {
+            window.setTimeout(align, followUpDelay);
+            window.setTimeout(align, finalDelay);
+            if (settleDelay) {
+              window.setTimeout(align, settleDelay);
+            }
+          }
+        });
+      }
+
+      function openManual(mode = modeField.value || "standard", { focus = true, scroll = true } = {}) {
+        setMode(mode);
+        root.classList.remove("is-collapsed");
+        document.body.classList.add("manual-focus-active");
+        document.body.classList.remove("ai-in-view");
+        syncManualVisibility();
+        requestAnimationFrame(() => {
+          fitMs2MetaPillSelects();
+          window.setTimeout(fitMs2MetaPillSelects, 160);
+        });
+
+        if (scroll) {
+          scrollManualIntoView();
+          if (!prefersReducedMotion) {
+            window.setTimeout(() => {
+              if (isPhoneLayout()) {
+                syncMobileManualState();
+                return;
+              }
+              syncAiBoundaryState();
+            }, isPhoneLayout() ? 520 : 280);
+          } else {
+            if (isPhoneLayout()) {
+              syncMobileManualState();
+            } else {
+              syncAiBoundaryState();
+            }
+          }
+        }
+
+        if (focus && !isPhoneLayout()) {
+          const target = getFirstManualTarget(mode);
+          const delay = scroll && !prefersReducedMotion ? 260 : 0;
+          window.setTimeout(() => {
+            target?.focus?.({ preventScroll: true });
+          }, delay);
+        }
+      }
+
+      function returnToAi() {
+        document.body.classList.remove("manual-focus-active");
+        document.body.classList.remove("manual-pill-visible");
+        closeManualSearch({ keepFocusState: false });
+
+        if (typeof window.focusAiSearch === "function") {
+          window.focusAiSearch({ scroll: true });
+          return;
+        }
+
+        if (aiCard) scrollToSection(aiCard);
+      }
+
+      btns.forEach((button) => {
+        button.addEventListener("click", () => {
+          setMode(button.dataset.mode);
+          if (!root.classList.contains("is-collapsed")) {
+            document.body.classList.add("manual-focus-active");
+            syncManualVisibility();
+          }
+        });
+      });
+
+      revealButtons.forEach((button) => {
+        button.addEventListener("click", () => openManual(button.dataset.manualMode || "standard"));
+      });
+
+      manualPeekOpenButtons.forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openManual(modeField.value || "standard");
+        });
+      });
+      manualPeek?.addEventListener("click", (event) => {
+        if (!isPhoneLayout() || !root.classList.contains("is-collapsed")) return;
+        if (event.target.closest("button, a, input, select, textarea, label")) return;
+        openManual(modeField.value || "standard");
+      });
+
+      root.addEventListener("focusin", (event) => {
+        if (!root.classList.contains("is-collapsed") && manualFull?.contains(event.target)) {
+          document.body.classList.add("manual-focus-active");
+          syncManualVisibility();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && document.body.classList.contains("manual-focus-active")) {
+          event.preventDefault();
+          returnToAi();
+        }
+      });
+
+      window.addEventListener("scroll", () => {
+        const currentScrollY = getViewportScrollTop();
+        if (document.body.classList.contains("month-roller-open")) {
+          lastScrollY = currentScrollY;
+          return;
+        }
+        // Ignore tiny scroll jitter; only treat deliberate scroll-up as collapse intent.
+        const scrollDeltaUp = lastScrollY - currentScrollY;
+        const scrollingUp = scrollDeltaUp >= (isPhoneLayout() ? 14 : 36);
+        lastScrollY = currentScrollY;
+
+        if (isPhoneLayout()) {
+          syncMobileManualState({ scrollingUp, collapseIfNeeded: true, scrollTop: currentScrollY });
+          return;
+        }
+
+        const aiInView = syncAiBoundaryState();
+
+        if (
+          scrollingUp &&
+          aiInView &&
+          !root.classList.contains("is-collapsed") &&
+          Date.now() > manualFormLayoutLockUntil
+        ) {
+          collapseManual({ keepFocusState: false });
+        }
+      }, { passive: true });
+
+      window.addEventListener("resize", () => {
+        if (isPhoneLayout()) {
+          syncMobileManualState();
+        } else {
+          syncAiBoundaryState();
+        }
+        fitMs2MetaPillSelects();
+      });
+
+      setMode(modeField.value || "standard");
+      if (hasManualValue()) {
+        root.classList.remove("is-collapsed");
+      }
+      syncManualVisibility();
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(fitMs2MetaPillSelects);
+      }
+      requestAnimationFrame(() => fitMs2MetaPillSelects());
+      if (isPhoneLayout() && !root.classList.contains("is-collapsed")) {
+        syncMobileManualState();
+      } else {
+        syncAiBoundaryState();
+      }
+      window.closeManualSearch = closeManualSearch;
+      window.openManualSearch = openManual;
+    })();
+  </script>
+
+  <!-- Loader + AI expand -->
+  <script>
+    (function(){
+      const card = document.getElementById("aiCard");
+      const ta = document.getElementById("aiText");
+      const aiForm = document.getElementById("aiForm");
+      const aiParseTokenInput = document.getElementById("aiParseToken");
+      const aiInputCount = document.getElementById("aiInputCount");
+      const promptShell = ta?.closest(".ai-prompt-shell") || ta;
+      if (!card || !ta || !promptShell) return;
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const phoneLayout = window.matchMedia("(max-width: 760px)");
+      const warmParseMinChars = 12;
+      const warmParseDebounceMs = 320;
+      let warmParseTimer = null;
+      let warmParseController = null;
+      let lastWarmParsedText = "";
+
+      function normalizeWarmParseText(value) {
+        return String(value || "").trim().replace(/\s+/g, " ");
+      }
+
+      function abortWarmParse() {
+        if (warmParseController) {
+          try { warmParseController.abort(); } catch (e) {}
+          warmParseController = null;
+        }
+      }
+
+      function clearWarmParseToken() {
+        if (aiParseTokenInput) aiParseTokenInput.value = "";
+      }
+
+      function syncAiInputCount() {
+        if (!aiInputCount) return;
+        const max = Number.parseInt(ta.getAttribute("maxlength") || "500", 10) || 500;
+        aiInputCount.textContent = `${ta.value.length} / ${max}`;
+      }
+
+      function scheduleWarmParse() {
+        if (!aiForm) return;
+        const normalized = normalizeWarmParseText(ta.value);
+        if (normalized.length < warmParseMinChars) {
+          lastWarmParsedText = "";
+          clearWarmParseToken();
+          if (warmParseTimer) {
+            clearTimeout(warmParseTimer);
+            warmParseTimer = null;
+          }
+          abortWarmParse();
+          return;
+        }
+
+        if (normalized !== lastWarmParsedText) {
+          clearWarmParseToken();
+        }
+        if (warmParseTimer) clearTimeout(warmParseTimer);
+
+        warmParseTimer = setTimeout(async () => {
+          const current = normalizeWarmParseText(ta.value);
+          if (current.length < warmParseMinChars || current === lastWarmParsedText) return;
+          abortWarmParse();
+          warmParseController = new AbortController();
+          try {
+            const response = await fetch("/search/ai-parse-preview", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "X-Requested-With": "fetch"
+              },
+              body: JSON.stringify({ ai_text: current }),
+              signal: warmParseController.signal
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (!payload || !payload.ok) return;
+            const fresh = normalizeWarmParseText(ta.value);
+            if (fresh !== current) return;
+            if (aiParseTokenInput && payload.parse_token) {
+              aiParseTokenInput.value = String(payload.parse_token);
+            }
+            lastWarmParsedText = current;
+          } catch (e) {
+            if (e && e.name === "AbortError") return;
+          } finally {
+            warmParseController = null;
+          }
+        }, warmParseDebounceMs);
+      }
+
+      const isPhoneLayout = () => phoneLayout.matches;
+
+      const syncAiViewportState = () => {
+        const topbarOffset = document.querySelector(".topbar")?.offsetHeight || 0;
+        const aiInView = isPhoneLayout()
+          ? (() => {
+              const rect = card.getBoundingClientRect();
+              return rect.bottom > topbarOffset + 20 && rect.top < window.innerHeight * 0.58;
+            })()
+          : (() => {
+              const rect = promptShell.getBoundingClientRect();
+              return (
+                rect.bottom > topbarOffset + 12 &&
+                rect.top < window.innerHeight - 28
+              );
+            })();
+
+        document.body.classList.toggle("ai-in-view", aiInView);
+      };
+
+      const isHomePage = document.body.classList.contains("home-page");
+      const inputWrap = ta.closest(".ai-input-wrap");
+      const autoResize = () => {
+        const width = window.innerWidth || document.documentElement.clientWidth || 0;
+        ta.style.whiteSpace = "pre-wrap";
+        ta.style.overflowWrap = "anywhere";
+        ta.style.wordBreak = "break-word";
+        ta.style.overflowX = "hidden";
+        const computed = window.getComputedStyle(ta);
+        const lineHeight = Number.parseFloat(computed.lineHeight) || 24;
+        const maxHeight = isHomePage
+          ? Math.ceil(lineHeight * (width <= 760 ? 2 : 4))
+          : (width <= 760 ? 132 : 190);
+        let shouldUseComposerLayout = false;
+
+        if (isHomePage && inputWrap) {
+          inputWrap.classList.remove("is-multiline");
+          const hasValue = (ta.value || "").trim().length > 0;
+          if (hasValue) {
+            ta.style.height = "0px";
+            const inlineHeight = ta.scrollHeight;
+            shouldUseComposerLayout = ta.value.includes("\n") || inlineHeight > lineHeight * 1.55;
+            inputWrap.classList.toggle("is-multiline", shouldUseComposerLayout);
+          }
+        }
+
+        const minHeight = isHomePage
+          ? Math.ceil(lineHeight * (shouldUseComposerLayout ? 2 : 1))
+          : (width <= 560 ? 96 : width <= 760 ? 92 : width <= 1024 ? 88 : 74);
+        ta.style.height = "0px";
+        const nextHeight = Math.min(Math.max(ta.scrollHeight, minHeight), maxHeight);
+        ta.style.height = nextHeight + "px";
+        ta.style.overflowY = ta.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
+      };
+
+      const setExpanded = (expanded) => {
+        card.classList.toggle("collapsed", !expanded);
+        card.classList.toggle("expanded", !!expanded);
+      };
+
+      const focusAiSearch = ({ scroll = false } = {}) => {
+        if (isPhoneLayout() && typeof window.closeManualSearch === "function") {
+          window.closeManualSearch({ keepFocusState: false });
+        }
+        document.body.classList.remove("manual-focus-active");
+        setExpanded(true);
+        autoResize();
+
+        if (scroll) {
+          const scrollToTop = (behavior) => window.scrollTo({ top: 0, behavior });
+          scrollToTop(prefersReducedMotion ? "auto" : "smooth");
+          if (!prefersReducedMotion) {
+            window.setTimeout(() => scrollToTop("auto"), 220);
+            window.setTimeout(() => scrollToTop("auto"), 520);
+          }
+        }
+
+        const delay = scroll && !prefersReducedMotion ? 280 : 0;
+        window.setTimeout(() => {
+          ta.focus({ preventScroll: true });
+          ta.setSelectionRange(ta.value.length, ta.value.length);
+        }, delay);
+      };
+
+      setExpanded(true);
+      autoResize();
+      syncAiInputCount();
+      syncAiViewportState();
+      window.focusAiSearch = focusAiSearch;
+
+      ta.addEventListener("focus", () => {
+        if (isPhoneLayout() && typeof window.closeManualSearch === "function") {
+          window.closeManualSearch({ keepFocusState: false });
+        }
+        document.body.classList.remove("manual-focus-active");
+        setExpanded(true);
+        autoResize();
+        syncAiViewportState();
+      });
+
+      ta.addEventListener("input", () => {
+        autoResize();
+        syncAiInputCount();
+      });
+      ta.addEventListener("input", scheduleWarmParse);
+      window.addEventListener("resize", autoResize);
+      window.addEventListener("resize", syncAiViewportState);
+      window.addEventListener("scroll", syncAiViewportState, { passive: true });
+
+      ta.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          ta.form.requestSubmit();
+        }
+      });
+
+      card.querySelectorAll(".chip[data-chip]").forEach(chip => {
+        chip.addEventListener("mousedown", (e) => e.preventDefault());
+
+        chip.addEventListener("click", () => {
+          const txt = chip.getAttribute("data-chip");
+          ta.value = txt;
+          autoResize();
+          syncAiInputCount();
+          scheduleWarmParse();
+          ta.focus();
+          ta.setSelectionRange(ta.value.length, ta.value.length);
+          setExpanded(true);
+        });
+      });
+
+      /* ── Rotating placeholder suggestions ── */
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      const placeholderExamples = isMobile ? [
+        "JFK to LAX 2026-06-10 to 2026-06-17",
+        "One way SFO to SEA on 2026-07-15",
+        "Cheapest 5 day trip BOS to MIA in August",
+        "Nonstop LAX to JFK in December",
+        "ORD to DEN in September, economy",
+        "LAX to NRT on 2026-09-20, one way"
+      ] : [
+        "Round trip JFK to London, 2026-08-05 to 2026-08-12, economy",
+        "Cheapest 7 day trip from SEA to San Diego in July, economy",
+        "One way from DEN to PHX on 2026-06-01, economy",
+        "Find flights from ORD to MCO in October, 2 passengers",
+        "Nonstop SFO to JFK on 2026-11-22, economy",
+        "NYC to Miami under $300 in August, economy"
+      ];
+      let placeholderIdx = 0;
+      let placeholderTimer = null;
+      let userInteracted = false;
+
+      const placeholderOverlay = document.createElement("span");
+      placeholderOverlay.className = "ai-placeholder-overlay";
+      placeholderOverlay.textContent = placeholderExamples[0];
+      ta.setAttribute("placeholder", "");
+      if (inputWrap) inputWrap.appendChild(placeholderOverlay);
+
+      function showPlaceholder(show) {
+        placeholderOverlay.style.opacity = show ? "1" : "0";
+        placeholderOverlay.style.visibility = show ? "visible" : "hidden";
+      }
+
+      function rotatePlaceholder() {
+        if (userInteracted) return;
+        placeholderOverlay.style.opacity = "0";
+        setTimeout(() => {
+          placeholderIdx = (placeholderIdx + 1) % placeholderExamples.length;
+          placeholderOverlay.textContent = placeholderExamples[placeholderIdx];
+          placeholderOverlay.style.opacity = "1";
+        }, 400);
+      }
+
+      function startPlaceholderRotation() {
+        if (placeholderTimer) return;
+        placeholderTimer = setInterval(rotatePlaceholder, 3500);
+      }
+
+      function stopPlaceholderRotation() {
+        if (placeholderTimer) { clearInterval(placeholderTimer); placeholderTimer = null; }
+      }
+
+      function onUserInteract() {
+        userInteracted = true;
+        stopPlaceholderRotation();
+        showPlaceholder(false);
+      }
+
+      ta.addEventListener("focus", onUserInteract);
+      ta.addEventListener("input", () => {
+        if (ta.value.trim()) {
+          onUserInteract();
+        } else if (!document.activeElement || document.activeElement !== ta) {
+          userInteracted = false;
+          showPlaceholder(true);
+          startPlaceholderRotation();
+        }
+      });
+      ta.addEventListener("blur", () => {
+        if (!ta.value.trim()) {
+          userInteracted = false;
+          showPlaceholder(true);
+          startPlaceholderRotation();
+        }
+      });
+
+      startPlaceholderRotation();
+
+/* ── Sample search suggestions (match parse_ai_flight_request: clear routes + ISO or month) ── */
+      const sampleBtn = document.getElementById("sampleSearchBtn");
+      if (sampleBtn) {
+        const sampleSuggestions = [
+          "Round trip JFK to LHR departing 2026-08-05 returning 2026-08-12, economy",
+          "One way LAX to NRT on 2026-09-20, economy",
+          "Cheapest 5 day trip from SEA to SAN in July, economy",
+          "Find flights from ORD to DEN in October, economy",
+          "Nonstop from SFO to JFK on 2026-11-22, economy",
+          "NYC to MIA under $300 in August, economy",
+          "One way BOS to DUB on 2026-07-08, economy",
+          "Cheapest week in June, JFK to Barcelona, economy",
+          "Round trip DFW to MCO on 2026-03-10 returning 2026-03-17, 2 passengers, economy"
+        ];
+        let sampleIdx = Math.floor(Math.random() * sampleSuggestions.length);
+
+        sampleBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const suggestion = sampleSuggestions[sampleIdx];
+          sampleIdx = (sampleIdx + 1) % sampleSuggestions.length;
+
+          onUserInteract();
+          ta.value = "";
+          ta.focus();
+
+          let charIdx = 0;
+          const typeSpeed = 22;
+          function typeChar() {
+            if (charIdx < suggestion.length) {
+              ta.value += suggestion[charIdx];
+              charIdx++;
+              autoResize();
+              syncAiInputCount();
+              scheduleWarmParse();
+              setTimeout(typeChar, typeSpeed);
+            } else {
+              ta.setSelectionRange(ta.value.length, ta.value.length);
+            }
+          }
+          typeChar();
+          setExpanded(true);
+        });
+      }
+    })();
+  </script>
+
+  <script>
+    (function(){
+      const inputs = document.querySelectorAll(".airport-input");
+      if (!inputs.length) return;
+
+      const box = document.createElement("div");
+      box.className = "airport-suggest";
+      box.style.display = "none";
+      document.body.appendChild(box);
+
+      let activeInput = null;
+      let abortCtrl = null;
+      let debounceTimer = null;
+
+      const closeBox = () => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+        try {
+          abortCtrl?.abort();
+        } catch (e) {}
+        abortCtrl = null;
+        box.style.display = "none";
+        box.innerHTML = "";
+        activeInput = null;
+      };
+
+      document.addEventListener("airportSuggestClose", closeBox);
+
+      const positionBox = (inp) => {
+        const r = inp.getBoundingClientRect();
+        const pad = 12;
+        const minSuggest = 360;
+        const maxSuggest = 600;
+        const vw = document.documentElement.clientWidth;
+        const sx = window.scrollX;
+        const avail = Math.max(200, vw - pad * 2);
+
+        let w = Math.max(r.width, minSuggest);
+        w = Math.min(w, maxSuggest, avail);
+
+        let left = sx + r.left;
+        const maxLeft = sx + vw - pad - w;
+        if (left > maxLeft) left = Math.max(sx + pad, maxLeft);
+
+        box.style.left = `${Math.round(left)}px`;
+        box.style.top = `${Math.round(window.scrollY + r.bottom + 8)}px`;
+        box.style.width = `${Math.round(w)}px`;
+      };
+
+      const render = (items) => {
+        box.innerHTML = items.map((it) => `
+          <button type="button" class="airport-item" data-code="${it.code}" data-label="${it.label}">
+            <span class="airport-code">${it.code}</span>
+            <span class="airport-label">${it.label.replace(it.code + " — ", "")}</span>
+          </button>
+        `).join("");
+
+        box.style.display = items.length ? "block" : "none";
+      };
+
+      const fetchSuggestions = async (q) => {
+        if (abortCtrl) abortCtrl.abort();
+        abortCtrl = new AbortController();
+
+        const res = await fetch(`/airports?q=${encodeURIComponent(q)}`, { signal: abortCtrl.signal });
+        if (!res.ok) return [];
+        return await res.json();
+      };
+
+      const isAirportInput = (node) => node && node.classList && node.classList.contains("airport-input");
+
+      document.addEventListener("input", (event) => {
+        const inp = event.target;
+        if (!isAirportInput(inp)) return;
+        const q = (inp.value || "").trim();
+        activeInput = inp;
+
+        if (q.length < 3) { closeBox(); return; }
+
+        positionBox(inp);
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          try {
+            const items = await fetchSuggestions(q);
+            if (document.activeElement !== inp) return;
+            render(items);
+            positionBox(inp);
+          } catch (e) {}
+        }, 180);
+      });
+
+      document.addEventListener("focusin", (event) => {
+        const inp = event.target;
+        if (!isAirportInput(inp)) return;
+        activeInput = inp;
+        if (box.innerHTML.trim()) {
+          positionBox(inp);
+          box.style.display = "block";
+        }
+      });
+
+      document.addEventListener("focusout", (event) => {
+        const inp = event.target;
+        if (!isAirportInput(inp)) return;
+        setTimeout(() => {
+          if (!box.matches(":hover")) closeBox();
+        }, 120);
+      });
+
+      box.addEventListener("click", (e) => {
+        const btn = e.target.closest(".airport-item");
+        if (!btn || !activeInput) return;
+
+        const targetInput = activeInput;
+        const code = btn.getAttribute("data-code");
+        targetInput.value = code;
+        targetInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+        closeBox();
+        targetInput.focus();
+      });
+
+      window.addEventListener("scroll", () => {
+        if (!activeInput) return;
+        const unified = document.getElementById("unified");
+        if (unified?.classList.contains("is-collapsed") && unified.contains(activeInput)) {
+          closeBox();
+          return;
+        }
+        positionBox(activeInput);
+      }, { passive: true });
+      window.addEventListener("resize", () => { if (activeInput) positionBox(activeInput); });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeBox();
+      });
+    })();
+  </script>
+
+  <!-- Flatpickr -->
+  <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/flatpickr/monthSelect.js', v='4.6.13') }}"></script>
+  <script src="{{ url_for('static', filename='search-validation.js', v='20260513-month-roller-tight') }}"></script>
+  <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
+  <script src="{{ url_for('static', filename='calendar.js', v='20260525-flex-month-mode') }}"></script>
+  {% if edit_search_fields %}
+    <script id="editSearchFieldsPayload" type="application/json">{{ edit_search_fields|tojson }}</script>
+    <script>
+      (function () {
+        const payloadNode = document.getElementById("editSearchFieldsPayload");
+        if (!payloadNode) return;
+        let pairs = [];
+        try {
+          pairs = JSON.parse(payloadNode.textContent || "[]");
+        } catch (e) {
+          return;
+        }
+        if (!Array.isArray(pairs) || !pairs.length) return;
+
+        const values = {};
+        pairs.forEach((pair) => {
+          if (!Array.isArray(pair) || pair.length < 2) return;
+          const key = String(pair[0] || "").trim();
+          const value = String(pair[1] || "");
+          if (!key) return;
+          if (!values[key]) values[key] = [];
+          values[key].push(value);
+        });
+
+        const setValue = (selector, value) => {
+          const node = document.querySelector(selector);
+          if (!node) return;
+          node.value = value;
+          node.dispatchEvent(new Event("input", { bubbles: true }));
+          node.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+
+        const setCheckbox = (selector, checked) => {
+          const node = document.querySelector(selector);
+          if (!node) return;
+          node.checked = !!checked;
+          node.dispatchEvent(new Event("change", { bubbles: true }));
+        };
+
+        const root = document.getElementById("unified");
+        if (root) {
+          root.classList.remove("is-collapsed");
+          root.classList.add("expanded");
+          root.classList.remove("manual-hidden");
+          root.classList.add("manual-visible");
+        }
+
+        const mode = (values.mode && values.mode[0]) || "standard";
+        if (mode === "ai") {
+          setValue("#aiText", (values.ai_text && values.ai_text[0]) || "");
+        } else {
+          setValue("#tripType", (values.trip_type && values.trip_type[0]) || "roundtrip");
+          setValue('input[name="origin"]', (values.origin && values.origin[0]) || "");
+          setValue('input[name="destination"]', (values.destination && values.destination[0]) || "");
+          setValue("#departPicker", (values.depart_date && values.depart_date[0]) || "");
+          setValue("#returnPicker", (values.return_date && values.return_date[0]) || "");
+          setValue("#departPickerDisplay", (values.depart_date && values.depart_date[0]) || "");
+          setValue("#returnPickerDisplay", (values.return_date && values.return_date[0]) || "");
+          setValue("#topPassengers", (values.passengers && values.passengers[0]) || "1");
+          setValue("#topCabin", (values.cabin && values.cabin[0]) || "ECONOMY");
+          setCheckbox('input[name="nonstop"]', !!(values.nonstop && values.nonstop[0]));
+        }
+
+        document.getElementById("unified")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      })();
+    </script>
+  {% endif %}
+  {% if global_notice %}
+    <script>
+      (function () {
+        const popup = document.getElementById("globalNoticePopup");
+        if (!popup) return;
+        requestAnimationFrame(() => popup.classList.add("is-visible"));
+        setTimeout(() => popup.classList.remove("is-visible"), 3300);
+      })();
+    </script>
+  {% endif %}
+  <!-- GF-style travelers panel + date display -->
+  <script>
+    (function(){
+      const paxBtn    = document.getElementById("gfPaxBtn");
+      const paxPanel  = document.getElementById("gfPaxPanel");
+      const paxText   = document.getElementById("gfPaxText");
+      const datesSeg  = document.getElementById("gfDatesSeg");
+      const datesText = document.getElementById("gfDatesText");
+      const departDisplay = document.getElementById("departPickerDisplay");
+      const returnDisplay = document.getElementById("returnPickerDisplay");
+      const flexMonthPicker = document.getElementById("flexMonthPicker");
+      const dateModeSelect = document.getElementById("gfDateMode");
+      const topPassengers = document.getElementById("topPassengers");
+      const topCabin      = document.getElementById("topCabin");
+
+      let pax = { adults: 1, children: 0 };
+      let cabin = "ECONOMY";
+      const cabinLabels = { ECONOMY: "Economy", PREMIUM_ECONOMY: "Prem. Economy", BUSINESS: "Business", FIRST: "First" };
+
+      function updatePaxDisplay(){
+        const total = pax.adults + pax.children;
+        paxText.textContent = `${total} traveler${total !== 1 ? "s" : ""}, ${cabinLabels[cabin] || cabin}`;
+        if (topPassengers) topPassengers.value = String(total);
+        if (topCabin) topCabin.value = cabin;
+      }
+
+      function updateDatesDisplay(){
+        if (dateModeSelect?.value === "flex") {
+          const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
+          const month = (flexMonthDisplay?.value || flexMonthPicker?.value || "").trim();
+          datesText.textContent = month || "Select month";
+          datesText.classList.toggle("is-placeholder", !month);
+          return;
+        }
+
+        const d = (departDisplay?.value || "").trim();
+        const r = (returnDisplay?.value || "").trim();
+        if (d && r) {
+          datesText.textContent = `${d} – ${r}`;
+          datesText.classList.remove("is-placeholder");
+        } else if (d) {
+          datesText.textContent = d;
+          datesText.classList.remove("is-placeholder");
+        } else {
+          datesText.textContent = "Add dates";
+          datesText.classList.add("is-placeholder");
+        }
+      }
+
+      function closeDateCalendar(){
+        try {
+          window.__manualDateRangePicker?.close();
+        } catch (e) {}
+      }
+
+      /* Move panel to body so fixed positioning works without clipping */
+      document.body.appendChild(paxPanel);
+
+      function positionPaxPanel() {
+        const rect = paxBtn.getBoundingClientRect();
+        const gutter = 12;
+        const panelW = Math.min(360, window.innerWidth - (gutter * 2));
+        let left = rect.left;
+        if (left + panelW > window.innerWidth - gutter) left = window.innerWidth - panelW - gutter;
+        const preferredTop = rect.bottom + 10;
+        const maxTop = Math.max(gutter, window.innerHeight - paxPanel.offsetHeight - gutter);
+        paxPanel.style.top  = Math.min(preferredTop, maxTop) + "px";
+        paxPanel.style.left = Math.max(gutter, left) + "px";
+      }
+
+      /* Travelers panel toggle */
+      if (paxBtn && paxPanel){
+        paxBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const open = !paxPanel.hidden;
+          paxPanel.hidden = open;
+          paxBtn.setAttribute("aria-expanded", String(!open));
+          if (!open) positionPaxPanel();
+        });
+        document.addEventListener("click", (e) => {
+          if (!paxPanel.hidden && !paxPanel.contains(e.target) && e.target !== paxBtn){
+            paxPanel.hidden = true;
+            paxBtn.setAttribute("aria-expanded", "false");
+          }
+        });
+        window.addEventListener("scroll", () => { if (!paxPanel.hidden) positionPaxPanel(); }, { passive: true });
+        window.addEventListener("resize", () => { if (!paxPanel.hidden) positionPaxPanel(); });
+
+        /* Counter buttons */
+        paxPanel.querySelectorAll(".gf-counter-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const type = btn.dataset.pax;
+            const dir  = Number(btn.dataset.dir);
+            pax[type] = Math.max(type === "adults" ? 1 : 0, Math.min(9, pax[type] + dir));
+            document.getElementById(`gf${type.charAt(0).toUpperCase()+type.slice(1)}Num`).textContent = pax[type];
+            /* disable minus at zero / min */
+            const row = btn.closest(".gf-counter");
+            row.querySelector("[data-dir='-1']").disabled = pax[type] <= (type === "adults" ? 1 : 0);
+            row.querySelector("[data-dir='1']").disabled  = pax[type] >= 9;
+            updatePaxDisplay();
+          });
+        });
+        /* sync disabled state on load */
+        paxPanel.querySelectorAll(".gf-counter").forEach(row => {
+          const type = row.querySelector("[data-pax]")?.dataset.pax;
+          if (!type) return;
+          row.querySelector("[data-dir='-1']").disabled = pax[type] <= (type === "adults" ? 1 : 0);
+          row.querySelector("[data-dir='1']").disabled  = pax[type] >= 9;
+        });
+
+        /* Cabin chips */
+        paxPanel.querySelectorAll(".gf-cabin-chip").forEach(chip => {
+          chip.addEventListener("click", () => {
+            cabin = chip.dataset.cabin;
+            paxPanel.querySelectorAll(".gf-cabin-chip").forEach(c => c.classList.remove("gf-cabin-chip--active"));
+            chip.classList.add("gf-cabin-chip--active");
+            updatePaxDisplay();
+          });
+        });
+      }
+
+      /* Dates segment: click opens flatpickr on the invisible depart input */
+      if (datesSeg && departDisplay){
+        datesSeg.addEventListener("click", (e) => {
+          if (dateModeSelect?.value !== "flex") return;
+          const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
+          const target = flexMonthDisplay || flexMonthPicker;
+          if (target && e.target === target) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          closeDateCalendar();
+          if (typeof flexMonthPicker?._openMonthRoller === "function") {
+            flexMonthPicker._openMonthRoller();
+          } else {
+            target?.click?.();
+          }
+        }, true);
+
+        datesSeg.addEventListener("click", (e) => {
+          if (dateModeSelect?.value === "flex") {
+            closeDateCalendar();
+            const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
+            const target = flexMonthDisplay || flexMonthPicker;
+            if (target && e.target !== target) target.click();
+            return;
+          }
+          if (e.target === departDisplay || e.target === returnDisplay) return;
+          if (departDisplay._flatpickr) {
+            departDisplay._flatpickr.open();
+          } else {
+            departDisplay.click();
+          }
+        });
+        datesSeg.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); departDisplay.click(); }
+        });
+
+        /* Watch for date changes and update the display text */
+        const watchDates = () => updateDatesDisplay();
+        departDisplay.addEventListener("change", watchDates);
+        if (returnDisplay) returnDisplay.addEventListener("change", watchDates);
+        /* Fallback: MutationObserver in case flatpickr sets value without firing change */
+        const mo = new MutationObserver(updateDatesDisplay);
+        if (returnDisplay) mo.observe(returnDisplay, { attributes: true, attributeFilter: ["value"] });
+      }
+
+      updatePaxDisplay();
+      updateDatesDisplay();
+
+      /* Date mode chip wires into existing setMode() exposed on window via btns logic */
+      if (dateModeSelect) {
+        dateModeSelect.addEventListener("change", () => {
+          if (typeof window.openManualSearch === "function") {
+            window.openManualSearch(dateModeSelect.value, { focus: false, scroll: false });
+          }
+          const mf = document.getElementById("unifiedMode");
+          if (mf) mf.value = dateModeSelect.value;
+          document.body.classList.toggle("flex-week-active", dateModeSelect.value === "flex");
+          /* Show/hide dates segment vs flex month picker */
+          const panelStd = document.getElementById("panel-standard");
+          const panelFlex = document.getElementById("panel-flex");
+          const datesSeg = document.getElementById("gfDatesSeg");
+          if (dateModeSelect.value === "flex") {
+            closeDateCalendar();
+            if (panelStd) panelStd.style.display = "none";
+            if (panelFlex) panelFlex.style.display = "";
+            if (datesSeg) { datesSeg.style.cursor = "default"; }
+          } else {
+            if (panelStd) panelStd.style.display = "";
+            if (panelFlex) panelFlex.style.display = "none";
+            if (datesSeg) { datesSeg.style.cursor = "pointer"; }
+          }
+          updateDatesDisplay();
+          enforceCtaLabel();
+        });
+      }
+
+      flexMonthPicker?.addEventListener("input", updateDatesDisplay);
+      flexMonthPicker?.addEventListener("change", updateDatesDisplay);
+      document.getElementById("flexMonthPickerDisplay")?.addEventListener("input", updateDatesDisplay);
+      document.getElementById("flexMonthPickerDisplay")?.addEventListener("change", updateDatesDisplay);
+
+      /* Keep CTA label synced after existing mode/trip handlers run. */
+      function enforceCtaLabel() {
+        const s = document.querySelector("#unifiedCta span");
+        if (!s || document.getElementById("tripType")?.value === "multicity") return;
+        s.textContent = dateModeSelect?.value === "flex" ? "Find cheapest week" : "Search";
+      }
+      window.setTimeout(enforceCtaLabel, 50);
+      document.getElementById("tripType")?.addEventListener("change", () => window.setTimeout(enforceCtaLabel, 50));
+    })();
+  </script>
+
+  {% include "partials/theme_scripts.html" %}
+
+  <!-- Search persistence: save on submit, restore on back navigation -->
+  <script>
+  (function () {
+    var STORAGE_KEY = "skair_last_search";
+    var MAX_AGE_MS  = 30 * 60 * 1000; // 30 minutes
+
+    /* ── Save ── */
+    function saveAiSearch(text) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          mode: "ai", ai_text: text, ts: Date.now()
+        }));
+      } catch (e) {}
+    }
+
+    function saveManualSearch(params) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(
+          Object.assign({ mode: "manual", ts: Date.now() }, params)
+        ));
+      } catch (e) {}
+    }
+
+    var aiForm = document.getElementById("aiForm");
+    var aiText = document.getElementById("aiText");
+    if (aiForm && aiText) {
+      aiForm.addEventListener("submit", function () {
+        var txt = (aiText.value || "").trim();
+        if (txt) saveAiSearch(txt);
+      });
+    }
+
+    var manualForm = document.getElementById("unifiedForm");
+    if (manualForm) {
+      manualForm.addEventListener("submit", function () {
+        var get = function (name) {
+          var el = manualForm.querySelector('[name="' + name + '"]');
+          return el ? (el.value || "").trim() : "";
+        };
+        saveManualSearch({
+          origin: get("origin"),
+          destination: get("destination"),
+          depart_date: get("depart_date"),
+          return_date: get("return_date"),
+          cabin: get("cabin"),
+          passengers: get("passengers"),
+          trip_type: get("trip_type"),
+          flex_month: get("flex_month"),
+          nonstop: (manualForm.querySelector('[name="nonstop"]') || {}).checked ? "on" : "",
+        });
+      });
+    }
+
+    /* ── Restore ── */
+    function restoreSearch() {
+      var raw;
+      try { raw = sessionStorage.getItem(STORAGE_KEY); } catch (e) { return; }
+      if (!raw) return;
+      var saved;
+      try { saved = JSON.parse(raw); } catch (e) { return; }
+      if (!saved || (Date.now() - (saved.ts || 0)) > MAX_AGE_MS) return;
+
+      if (saved.mode === "ai" && saved.ai_text) {
+        var ta = document.getElementById("aiText");
+        if (ta && !ta.value.trim()) {
+          ta.value = saved.ai_text;
+          ta.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        return;
+      }
+
+      if (saved.mode === "manual") {
+        var mf = document.getElementById("unifiedForm");
+        if (!mf) return;
+
+        function setInput(name, value) {
+          if (!value) return;
+          var el = mf.querySelector('[name="' + name + '"]');
+          if (!el || el.value) return; // don't overwrite if user already typed
+          el.value = value;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        /* Open manual search panel first */
+        if (typeof window.openManualSearch === "function") {
+          window.openManualSearch(saved.flex_month ? "flex" : "standard", { focus: false, scroll: false });
+        }
+
+        setInput("origin", saved.origin);
+        setInput("destination", saved.destination);
+        setInput("passengers", saved.passengers);
+
+        /* Cabin requires clicking the chip */
+        if (saved.cabin) {
+          var cabinChip = mf.querySelector('[data-cabin="' + saved.cabin + '"]');
+          if (cabinChip) cabinChip.click();
+        }
+
+        /* Trip type */
+        var tripSel = document.getElementById("tripType");
+        if (tripSel && saved.trip_type) {
+          tripSel.value = saved.trip_type;
+          tripSel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        /* Dates: set hidden inputs + display text */
+        if (saved.depart_date) {
+          setInput("depart_date", saved.depart_date);
+          var departDisplay = document.getElementById("departPickerDisplay");
+          if (departDisplay && !departDisplay.value) departDisplay.value = saved.depart_date;
+        }
+        if (saved.return_date) {
+          setInput("return_date", saved.return_date);
+          var returnDisplay = document.getElementById("returnPickerDisplay");
+          if (returnDisplay && !returnDisplay.value) returnDisplay.value = saved.return_date;
+        }
+        if (saved.flex_month) {
+          setInput("flex_month", saved.flex_month);
+        }
+      }
+    }
+
+    /* Use pageshow so bfcache-restored pages also trigger restore */
+    window.addEventListener("pageshow", function (e) {
+      /* Small delay to let the calendar/form JS initialize first */
+      setTimeout(restoreSearch, 120);
+    });
+  })();
+  </script>
+
+  <script>
+    window.addEventListener("pageshow", function () {
+      document.documentElement.style.opacity = "";
+      document.documentElement.style.transition = "";
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,105 @@
+{% extends "agent/layout.html" %}
+{% block title %}User Add Requests{% endblock %}
+{% block heading %}User add requests{% endblock %}
+{% block subheading %}Review and action requests from agency admins to add new users.{% endblock %}
+
+{% block content %}
+<div class="tab-row" style="margin-bottom:1.5rem">
+  <a href="{{ url_for('agent.user_requests', status='pending') }}" class="tab-link{% if status_filter == 'pending' %} active{% endif %}">
+    Pending{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('agent.user_requests', status='approved') }}" class="tab-link{% if status_filter == 'approved' %} active{% endif %}">Approved</a>
+  <a href="{{ url_for('agent.user_requests', status='rejected') }}" class="tab-link{% if status_filter == 'rejected' %} active{% endif %}">Rejected</a>
+  <a href="{{ url_for('agent.user_requests', status='all') }}" class="tab-link{% if status_filter == 'all' %} active{% endif %}">All</a>
+</div>
+
+{% if not requests %}
+<div class="info-banner">No {{ status_filter }} requests.</div>
+{% else %}
+<div class="requests-list">
+  {% for req in requests %}
+  <div class="panel request-card" id="req-{{ req.id }}">
+    <div class="request-card-header">
+      <div class="request-card-meta">
+        <strong>{{ req.first_name }} {{ req.last_name }}</strong>
+        <span class="td-muted">{{ req.email }}</span>
+        <span class="badge badge-{{ req.role }}">{{ req.role | replace('_', ' ') | title }}</span>
+      </div>
+      <div class="request-card-status">
+        {% if req.status == 'pending' %}
+          <span class="status-pill status-pending">Pending review</span>
+        {% elif req.status == 'approved' %}
+          <span class="status-pill status-approved">Approved</span>
+        {% else %}
+          <span class="status-pill status-rejected">Rejected</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <dl class="detail-list detail-list-inline">
+      <dt>Agency</dt><dd>{{ req.agency_name or '—' }}</dd>
+      <dt>Requested by</dt><dd>{{ req.requested_by_name or req.requested_by_email or '—' }}</dd>
+      <dt>Submitted</dt><dd class="td-muted">{{ req.created_at[:16] if req.created_at else '—' }}</dd>
+      {% if req.notes %}
+      <dt>Notes</dt><dd>{{ req.notes }}</dd>
+      {% endif %}
+      {% if req.status != 'pending' %}
+      <dt>Reviewed by</dt><dd>{{ req.reviewed_by_email or '—' }}</dd>
+      <dt>Reviewed</dt><dd class="td-muted">{{ req.updated_at[:16] if req.updated_at else '—' }}</dd>
+      {% if req.review_note %}
+      <dt>Review note</dt><dd>{{ req.review_note }}</dd>
+      {% endif %}
+      {% endif %}
+    </dl>
+
+    {% if req.status == 'pending' %}
+    <div class="request-card-actions">
+      <!-- Approve -->
+      <details class="create-agent-details">
+        <summary class="create-agent-summary" style="color:var(--color-success)">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M4 10l5 5L16 6"/></svg>
+          Approve &amp; create account
+        </summary>
+        <form method="post" action="{{ url_for('agent.approve_request', request_id=req.id) }}" class="agent-admin-form" autocomplete="off" style="padding:1rem 0 0">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <div class="agent-admin-grid">
+            <label>
+              <span>Initial password</span>
+              <input type="password" name="initial_password" minlength="8" required autocomplete="new-password"
+                     placeholder="User will use this to first sign in">
+            </label>
+            <label>
+              <span>Review note (optional)</span>
+              <input type="text" name="review_note" maxlength="500" placeholder="e.g. Verified via email">
+            </label>
+          </div>
+          <div class="agent-admin-actions">
+            <button type="submit" class="button button-primary btn-sm">Approve →</button>
+          </div>
+        </form>
+      </details>
+
+      <!-- Reject -->
+      <details class="create-agent-details">
+        <summary class="create-agent-summary" style="color:var(--color-error)">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6 6l8 8M14 6l-8 8"/></svg>
+          Reject request
+        </summary>
+        <form method="post" action="{{ url_for('agent.reject_request', request_id=req.id) }}" class="agent-admin-form" autocomplete="off" style="padding:1rem 0 0">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <label>
+            <span>Reason (shown to agency admin)</span>
+            <input type="text" name="review_note" maxlength="500" placeholder="e.g. Duplicate account">
+          </label>
+          <div class="agent-admin-actions">
+            <button type="submit" class="button btn-sm" style="background:var(--color-error);color:#fff;border-color:var(--color-error)">Reject</button>
+          </div>
+        </form>
+      </details>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

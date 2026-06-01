@@ -1,0 +1,111 @@
+{% set ancillary_total = offer_summary.price_breakdown.ancillaries_amount|float %}
+{% set show_ancillaries = ancillary_total > 0 %}
+{% set selected_services = model.ancillaries.selected_services or [] %}
+<div class="summary-rail-card summary-rail-card--compact checkout-price-panel">
+  <div class="summary-rail-head">
+    <div class="flight-brand compact checkout-price-panel-brand">
+      {% with logo_url=offer_summary.airline_logo_url, fallback_text=offer_summary.airline_logo, modifier_class='flight-brand-mark--price-panel' %}
+        {% include "partials/airline_brand_mark.html" %}
+      {% endwith %}
+    </div>
+    <div class="summary-rail-price" aria-label="Total due">{{ offer_summary.currency }} <span data-total-display>{{ offer_summary.total_amount }}</span></div>
+  </div>
+
+  <div class="summary-rail-slices" aria-label="Itinerary">
+    {% for slice in offer_summary.slices %}
+      {% set slice_segments = slice.segments or [] %}
+      {% set first_segment = slice_segments[0] if slice_segments else None %}
+      {% set last_segment = slice_segments[-1] if slice_segments else None %}
+      <div class="rail-slice-line">
+        <span class="rail-slice-route">{{ slice.city_route or slice.route }}</span>
+        <span class="rail-slice-meta">
+          <span class="rail-slice-datetime">
+            {{ slice.date_short_label or slice.date_label }}
+            {% if first_segment and last_segment %} · {{ first_segment.depart_time }} – {{ last_segment.arrive_time }}{% endif %}
+          </span>
+          <span class="rail-slice-stops">
+            <span class="checkout-summary-icon checkout-summary-icon--direct" aria-hidden="true"></span>
+            <span>{{ slice.stops_label }}</span>
+          </span>
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="summary-expiry summary-expiry--compact" data-expiry-bar data-expiry-at="{{ offer_summary.expires_at_iso }}">
+    <span class="summary-expiry-copy">
+      <svg class="summary-expiry-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.25" stroke="currentColor" stroke-width="2" />
+        <path d="M12 7.75v4.7l3.1 1.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <span class="summary-expiry-label">Price expires in</span>
+    </span>
+    <strong data-expiry-countdown aria-live="polite">—</strong>
+  </div>
+
+  <div class="rail-rules-row">
+    <div class="rail-rule-compact"><span class="rail-rule-label"><span class="checkout-summary-icon checkout-summary-icon--change" aria-hidden="true"></span><span>Changes</span></span><strong>{{ offer_summary.flexibility.changes.label }}</strong></div>
+    <div class="rail-rule-compact"><span class="rail-rule-label"><span class="checkout-summary-icon checkout-summary-icon--refund" aria-hidden="true"></span><span>Refunds</span></span><strong>{{ offer_summary.flexibility.refunds.label }}</strong></div>
+  </div>
+
+  {% if offer_summary.baggage_summary %}
+    <div class="summary-baggage-block" aria-label="Included baggage allowance">
+      <span class="rail-block-label">Baggage</span>
+      <div class="summary-baggage-list">
+        {% for bag in offer_summary.baggage_summary %}
+          <div class="summary-baggage-item">
+            <span class="summary-baggage-icon summary-baggage-icon--{{ bag.type }}" aria-hidden="true"></span>
+            <span class="summary-baggage-copy">
+              <strong>{{ bag.label }}</strong>
+              <span>{{ bag.quantity_label }}{% if bag.weight_label %} · {{ bag.weight_label }}{% endif %}</span>
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if show_ancillaries and selected_services %}
+    <div class="summary-rail-extras-block">
+      <span class="rail-block-label">Extras</span>
+      <div class="selected-extras-list" data-selected-extras-list>
+        {% for service in selected_services %}
+          <div class="selected-extra-item"><span>{{ service.label }}</span><strong>{{ service.currency }} {{ service.amount }}</strong></div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="summary-rail-prices">
+    <div class="price-breakdown-row"><span>Base fare</span><strong>{{ offer_summary.currency }} {{ offer_summary.price_breakdown.base_fare_amount }}</strong></div>
+    <div class="price-breakdown-row"><span>Taxes</span><strong>{{ offer_summary.currency }} {{ offer_summary.price_breakdown.tax_amount }}</strong></div>
+    {% if show_ancillaries %}
+      <div class="price-breakdown-row"><span>Ancillaries</span><strong>{{ offer_summary.currency }} <span data-ancillary-total>{{ offer_summary.price_breakdown.ancillaries_amount }}</span></strong></div>
+    {% endif %}
+  </div>
+
+  <div class="summary-rail-total-due">
+    <div class="summary-rail-total-line">
+      <span>Total due</span>
+      <strong>
+        <span class="summary-total-currency">{{ offer_summary.currency }}</span>
+        <span class="summary-total-amount" data-total-display>{{ offer_summary.total_amount }}</span>
+      </strong>
+    </div>
+    <div class="summary-rail-secure">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="6.5" y="10" width="11" height="9" rx="2" stroke="currentColor" stroke-width="2" />
+        <path d="M9 10V7.8a3 3 0 0 1 6 0V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span>Secure checkout powered by Duffel</span>
+    </div>
+  </div>
+</div>
+
+<div class="mobile-booking-bar mobile-booking-bar--compact">
+  <div>
+    <small>Total</small>
+    <strong>{{ offer_summary.currency }} <span data-total-display>{{ offer_summary.total_amount }}</span></strong>
+  </div>
+  <button class="checkout-primary-cta mobile" form="premiumCheckoutForm" type="submit" data-final-submit="true" {% if not booking_enabled %}disabled{% endif %}>Book</button>
+</div>

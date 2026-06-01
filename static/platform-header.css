@@ -1,0 +1,529 @@
+:root {
+  --platform-header-h: 64px;
+  --platform-header-side-pad: 40px;
+  --platform-header-max: 100%;
+  --results-mobile-topbar-h: 64px;
+}
+
+.topbar.platform-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1200 !important;
+  min-height: var(--platform-header-h) !important;
+  height: var(--platform-header-h) !important;
+  background: #030b1f !important;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.2) !important;
+  backdrop-filter: blur(14px) !important;
+  box-shadow: none !important;
+}
+
+.results-page .topbar.platform-header,
+.results-page .topbar.platform-header.is-scroll-hidden {
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+.topbar.platform-header .platform-header-inner {
+  width: min(var(--platform-header-max), calc(100% - 2 * var(--platform-header-side-pad))) !important;
+  max-width: none !important;
+  margin: 0 auto !important;
+  min-height: var(--platform-header-h) !important;
+  height: var(--platform-header-h) !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center !important;
+  gap: 0 !important;
+}
+
+.topbar.platform-header .brand-link {
+  justify-self: start !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.055em !important;
+  font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif) !important;
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  color: transparent !important;
+  background: linear-gradient(to right, #f2f5fc 0 46%, #7d8cff 46% 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.topbar.platform-header .site-nav {
+  justify-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin: 0 !important;
+}
+
+.topbar.platform-header .site-nav-link {
+  position: relative !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: rgba(227, 235, 255, 0.68) !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 1.08rem !important;
+  line-height: 1 !important;
+  font-weight: 500 !important;
+  padding: 10px 8px !important;
+  text-decoration: none !important;
+}
+
+.topbar.platform-header .site-nav-link:hover {
+  color: rgba(238, 243, 255, 0.9) !important;
+  background: transparent !important;
+}
+
+.topbar.platform-header .site-nav-link.site-nav-active {
+  color: #7d8cff !important;
+}
+
+.topbar.platform-header .site-nav-link.site-nav-active::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  bottom: -8px !important;
+  height: 2px !important;
+  border-radius: 2px !important;
+  background: #7d8cff !important;
+}
+
+.topbar.platform-header .site-nav-explore {
+  cursor: default !important;
+}
+
+.topbar.platform-header .site-nav-explore svg {
+  opacity: 0.55 !important;
+}
+
+.topbar.platform-header .topbar-utility {
+  justify-self: end !important;
+  margin-left: 0 !important;
+}
+
+.topbar.platform-header .topbar-links {
+  margin-left: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.topbar.platform-header .hdr-nav {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.topbar.platform-header .theme-toggle-slot {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Icon buttons + theme switch: uniform 36×36 transparent squares */
+.topbar.platform-header .hdr-icon-btn,
+.topbar.platform-header .theme-switch {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: rgba(227, 235, 255, 0.62) !important;
+  cursor: pointer !important;
+}
+
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+}
+
+.topbar.platform-header .hdr-icon-btn svg {
+  display: block !important;
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+.topbar.platform-header .hdr-icon-btn:hover,
+.topbar.platform-header .theme-switch:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(240, 245, 255, 0.96) !important;
+}
+
+/* Strip the pill track/thumb completely — just show the icon */
+.topbar.platform-header .theme-switch-track {
+  all: unset !important;
+  display: contents !important;
+}
+
+.topbar.platform-header .theme-switch-thumb {
+  display: none !important;
+}
+
+/* Icon container: static, centered */
+.topbar.platform-header .theme-switch-icons {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+}
+
+/* Reset individual icon to static, auto-sized */
+.topbar.platform-header .theme-switch-icon {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.topbar.platform-header .theme-switch-icon svg {
+  display: block !important;
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Dark mode: show moon, hide sun */
+.topbar.platform-header .theme-switch-icon--dark {
+  opacity: 0.9 !important;
+  display: inline-flex !important;
+}
+
+.topbar.platform-header .theme-switch-icon--light {
+  display: none !important;
+}
+
+/* Light mode: show sun, hide moon */
+html[data-theme="light"] .topbar.platform-header .theme-switch-icon--dark {
+  display: none !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .theme-switch-icon--light {
+  display: inline-flex !important;
+  opacity: 1 !important;
+}
+
+.topbar.platform-header .hdr-sep {
+  display: inline-block !important;
+  width: 1px !important;
+  height: 18px !important;
+  margin: 0 6px !important;
+  background: rgba(227, 235, 255, 0.14) !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+}
+
+.topbar.platform-header .hdr-signin-btn {
+  height: 36px !important;
+  padding: 0 8px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: rgba(227, 235, 255, 0.84) !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 1.08rem !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+}
+
+.topbar.platform-header .hdr-signup-btn {
+  height: 40px !important;
+  padding: 0 18px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #4d46db !important;
+  color: #f7f8ff !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 1.02rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+.topbar.platform-header .hdr-signup-btn:hover {
+  background: #5c53f0 !important;
+  color: #ffffff !important;
+}
+
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(125, 140, 255, 0.24) !important;
+  background: rgba(2, 10, 28, 0.9) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  gap: 0 !important;
+}
+
+.topbar.platform-header .hdr-account-name,
+.topbar.platform-header .hdr-chevron {
+  display: none !important;
+}
+
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger .hdr-avatar {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  border: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transform: none !important;
+  background: linear-gradient(135deg, #6d64f8 0%, #5a4ee2 58%, #503cd4 100%) !important;
+  color: #eef2ff !important;
+}
+
+html[data-theme="light"] .topbar.platform-header {
+  background: #f7f9ff !important;
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .brand-link {
+  background: linear-gradient(to right, #0f172a 0 46%, #4f46e5 46% 100%) !important;
+  background-repeat: no-repeat !important;
+  display: inline-block !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .site-nav-link {
+  color: rgba(15, 23, 42, 0.64) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .site-nav-link:hover {
+  color: rgba(15, 23, 42, 0.92) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .site-nav-link.site-nav-active {
+  color: #4f46e5 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .hdr-icon-btn,
+html[data-theme="light"] .topbar.platform-header .theme-switch {
+  color: rgba(15, 23, 42, 0.58) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .hdr-icon-btn:hover,
+html[data-theme="light"] .topbar.platform-header .theme-switch:hover {
+  background: rgba(15, 23, 42, 0.07) !important;
+  color: rgba(15, 23, 42, 0.92) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .hdr-sep {
+  background: rgba(15, 23, 42, 0.16) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .hdr-signin-btn {
+  color: rgba(15, 23, 42, 0.88) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
+  border-color: rgba(79, 70, 229, 0.24) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+@media (max-width: 1180px) {
+  :root {
+    --platform-header-side-pad: 18px;
+  }
+
+  .topbar.platform-header .brand-link {
+    font-size: 1.07rem !important;
+  }
+
+  .topbar.platform-header .site-nav-link {
+    font-size: 0.95rem !important;
+    padding: 9px 6px !important;
+  }
+}
+
+@media (max-width: 920px) {
+  :root {
+    --platform-header-h: 58px;
+    --platform-header-side-pad: 14px;
+    --results-mobile-topbar-h: 58px;
+  }
+
+  .topbar.platform-header .platform-header-inner {
+    grid-template-columns: 1fr auto !important;
+  }
+
+  .topbar.platform-header .site-nav {
+    display: none !important;
+  }
+
+  .topbar.platform-header .brand-link {
+    font-size: 1rem !important;
+  }
+
+  .topbar.platform-header .hdr-signin-btn,
+  .topbar.platform-header .hdr-signup-btn {
+    display: none !important;
+  }
+
+  .topbar.platform-header .hdr-sep {
+    display: none !important;
+  }
+}
+
+/* =============================================================================
+   MOBILE REFINEMENTS  ·  Added for sub-920px viewports
+   ============================================================================= */
+
+/* ── 920px: re-expose a compact Sign-in so logged-out users can reach auth ── */
+@media (max-width: 920px) {
+  .topbar.platform-header .hdr-signin-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 34px !important;
+    padding: 0 14px !important;
+    border: 1px solid rgba(227, 235, 255, 0.18) !important;
+    border-radius: 9px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: rgba(227, 235, 255, 0.82) !important;
+    background: transparent !important;
+    white-space: nowrap !important;
+  }
+
+  html[data-theme="light"] .topbar.platform-header .hdr-signin-btn {
+    border-color: rgba(15, 23, 42, 0.18) !important;
+    color: rgba(15, 23, 42, 0.82) !important;
+  }
+}
+
+/* ── 640px: tighten everything on large phones ── */
+@media (max-width: 640px) {
+  :root {
+    --platform-header-h: 54px;
+    --platform-header-side-pad: 12px;
+    --results-mobile-topbar-h: 54px;
+  }
+
+  .topbar.platform-header .hdr-icon-btn,
+  .topbar.platform-header .theme-switch {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    border-radius: 9px !important;
+  }
+
+  .topbar.platform-header .hdr-nav {
+    gap: 6px !important;
+  }
+
+  .topbar.platform-header .hdr-signin-btn {
+    height: 32px !important;
+    padding: 0 11px !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar.platform-header {
+    background:
+      linear-gradient(#030b1f, #030b1f) top / 100% env(safe-area-inset-top, 0px) no-repeat,
+      #030b1f !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    min-height: calc(var(--platform-header-h) + env(safe-area-inset-top, 0px)) !important;
+    height: calc(var(--platform-header-h) + env(safe-area-inset-top, 0px)) !important;
+    box-sizing: content-box !important;
+  }
+}
+
+/* ── 480px: standard phones ── */
+@media (max-width: 480px) {
+  :root {
+    --platform-header-h: 52px;
+    --platform-header-side-pad: 10px;
+  }
+
+  .topbar.platform-header .brand-link {
+    font-size: 0.94rem !important;
+  }
+
+  .topbar.platform-header .hdr-icon-btn,
+  .topbar.platform-header .theme-switch {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+
+  .topbar.platform-header .hdr-signin-btn {
+    height: 30px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    border-radius: 8px !important;
+  }
+
+  .topbar.platform-header .hdr-nav {
+    gap: 4px !important;
+  }
+
+  .topbar.platform-header .hdr-sep {
+    display: none !important;
+  }
+}
+
+/* ── 380px: very small phones (iPhone SE, Galaxy A series) ── */
+@media (max-width: 380px) {
+  :root {
+    --platform-header-side-pad: 8px;
+  }
+
+  .topbar.platform-header .brand-link {
+    font-size: 0.88rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .topbar.platform-header .hdr-signin-btn {
+    padding: 0 8px !important;
+    font-size: 0.74rem !important;
+  }
+
+  /* Hide manage-booking icon on very small screens to save space */
+  .topbar.platform-header .hdr-icon-btn {
+    display: none !important;
+  }
+}

@@ -1,0 +1,208 @@
+{% extends "agent/layout.html" %}
+{% block title %}Finance{% endblock %}
+{% block heading %}Finance{% endblock %}
+{% block subheading %}
+  {% if selected_agency %}
+    {{ selected_agency.name }} — earnings, disbursements, and balance owed.
+  {% else %}
+    Platform-wide financial overview — markup collected, agency balances, and payouts.
+  {% endif %}
+{% endblock %}
+{% block content %}
+
+{# ── Agency filter (platform admin only) ──────────────────────────────────── #}
+{% if agencies %}
+<section class="filter-section">
+  <form method="get" action="{{ url_for('agent.finance') }}" class="filter-form">
+    <label class="filter-field">
+      <span>View</span>
+      <select name="agency_id" onchange="this.form.submit()">
+        <option value="">Platform-wide</option>
+        {% for a in agencies %}
+        <option value="{{ a.id }}" {% if filter_agency_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button type="submit" class="button button-secondary">Go</button></noscript>
+  </form>
+</section>
+{% endif %}
+
+{# ── Summary stats ─────────────────────────────────────────────────────────── #}
+{# Agency admins see only their earnings — platform profit is hidden #}
+{% set is_platform_admin = 'agent.agencies.view' in agent_permissions %}
+<section class="stats-grid" aria-label="Financial summary">
+  <article class="stat-card">
+    <span class="stat-label">Bookings</span>
+    <strong class="stat-value">{{ summary.booking_count or 0 }}</strong>
+  </article>
+  {% if is_platform_admin %}
+  <article class="stat-card">
+    <span class="stat-label">Gross revenue</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.gross_revenue_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Total markup</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.total_markup_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">Platform profit</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.total_platform_share_usd or 0) }}</strong>
+  </article>
+  {% endif %}
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">{% if is_platform_admin %}Total agency earned{% else %}Your agency earned{% endif %}</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.total_agency_share_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Disbursed</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.total_disbursed_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card {% if (summary.balance_owed_usd or 0) > 0 %}stat-card-warn{% endif %}">
+    <span class="stat-label">Balance owed</span>
+    <strong class="stat-value">${{ '%.2f' | format(summary.balance_owed_usd or 0) }}</strong>
+  </article>
+</section>
+
+{# ── Markup config info ────────────────────────────────────────────────────── #}
+{% if markup_cfg %}
+<div class="info-banner">
+  <span>
+    Current markup: <strong>${{ '%.2f' | format(markup_cfg.markup_flat_usd) }} flat</strong>
+    · Agency split: <strong>{{ '%.0f' | format(markup_cfg.agency_split_pct) }}%</strong>
+    · Platform keeps: <strong>{{ '%.0f' | format(100 - markup_cfg.agency_split_pct) }}%</strong>
+  </span>
+  <a href="{{ url_for('agent.markup_settings') }}" class="button button-ghost btn-sm">Edit →</a>
+</div>
+{% endif %}
+
+{# ── Disburse form (super admin + agency scoped) ───────────────────────────── #}
+{% if 'agent.finance.disburse' in agent_permissions %}
+<section class="panel panel-create-agent">
+  <details class="create-agent-details" id="disburseDetails">
+    <summary class="create-agent-summary">
+      <div class="create-agent-summary-text">
+        <h2>Record disbursement</h2>
+        <p>Mark a payout from platform balance to an agency. This reduces the agency's owed balance.</p>
+      </div>
+      <span class="create-agent-toggle" aria-hidden="true">+ Record payout</span>
+    </summary>
+    <div class="create-agent-body">
+      <form method="post" action="{{ url_for('agent.disburse') }}" class="agent-admin-form" autocomplete="off">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="agent-admin-grid" style="grid-template-columns: repeat(3, minmax(0,1fr))">
+          <label>
+            <span>Agency</span>
+            <select name="agency_id" required>
+              <option value="">— Select agency —</option>
+              {% for a in agencies %}
+              <option value="{{ a.id }}" {% if filter_agency_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span>Amount (USD)</span>
+            <input type="number" name="amount_usd" step="0.01" min="0.01" placeholder="e.g. 500.00" required>
+          </label>
+          <label>
+            <span>Note (optional)</span>
+            <input type="text" name="note" placeholder="Reference, bank transfer ID…" maxlength="240">
+          </label>
+        </div>
+        <div class="agent-admin-actions">
+          <p class="helper-text admin-hint">Amount is deducted from the agency's owed balance.</p>
+          <button type="submit" class="button button-primary">Record payout →</button>
+        </div>
+      </form>
+    </div>
+  </details>
+</section>
+{% endif %}
+
+{# ── Per-agency breakdown table (platform-wide view only) ─────────────────── #}
+{% if agency_breakdowns %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Per-agency breakdown</h2>
+      <p>Drill into any agency for full detail.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Agency</th>
+          <th>Bookings</th>
+          {% if is_platform_admin %}<th>Gross revenue</th><th>Total markup</th>{% endif %}
+          <th>Agency earned</th>
+          <th>Disbursed</th>
+          <th>Balance owed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in agency_breakdowns %}
+        <tr>
+          <td><strong>{{ a.name }}</strong></td>
+          <td class="td-num">{{ a.booking_count }}</td>
+          {% if is_platform_admin %}
+          <td class="td-num">${{ '%.2f' | format(a.gross_revenue_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(a.total_markup_usd) }}</td>
+          {% endif %}
+          <td class="td-num">${{ '%.2f' | format(a.total_earned_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(a.total_disbursed_usd) }}</td>
+          <td class="td-num {% if a.balance_owed_usd > 0 %}td-warn{% endif %}">
+            ${{ '%.2f' | format(a.balance_owed_usd) }}
+          </td>
+          <td>
+            <a href="{{ url_for('agent.finance', agency_id=a.id) }}"
+               class="button button-ghost btn-sm">Detail →</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-cell">No agencies with bookings yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{# ── Disbursements history ─────────────────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Disbursement history</h2>
+      <p>{{ disbursements | length }} payout record{{ 's' if disbursements | length != 1 }}.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          {% if not filter_agency_id %}<th>Agency</th>{% endif %}
+          <th>Amount</th>
+          <th>Note</th>
+          <th>Recorded by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in disbursements %}
+        <tr>
+          <td class="td-mono">{{ d.created_at[:10] }}</td>
+          {% if not filter_agency_id %}<td>{{ d.agency_name or '—' }}</td>{% endif %}
+          <td class="td-num">${{ '%.2f' | format(d.amount_usd) }}</td>
+          <td>{{ d.note or '—' }}</td>
+          <td>{{ d.created_by_email or 'System' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-cell">No disbursements recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

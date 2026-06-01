@@ -1,0 +1,154 @@
+{% extends "agent/layout.html" %}
+{% block title %}Users{% endblock %}
+{% block heading %}Users{% endblock %}
+{% block subheading %}
+  {% if selected_agency %}
+    {{ selected_agency.name }} — {{ users | length }} user{{ 's' if users | length != 1 }}
+  {% else %}
+    All agent accounts across the platform.
+  {% endif %}
+{% endblock %}
+{% block content %}
+
+{% if 'agent.users.request' in agent_permissions and 'agent.users.create' not in agent_permissions %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+  <a href="{{ url_for('agent.new_user_request') }}" class="button button-primary">Request new user →</a>
+</div>
+{% endif %}
+
+{# ── Filter bar ───────────────────────────────────────────────────────────── #}
+{% if agencies %}
+<section class="filter-section">
+  <form method="get" action="{{ url_for('agent.users_list') }}" class="filter-form">
+    <label class="filter-field">
+      <span>Agency</span>
+      <select name="agency_id" onchange="this.form.submit()">
+        <option value="">All agencies</option>
+        {% for a in agencies %}
+        <option value="{{ a.id }}" {% if filter_agency_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript><button type="submit" class="button button-secondary">Filter</button></noscript>
+  </form>
+</section>
+{% endif %}
+
+{# ── Stats ────────────────────────────────────────────────────────────────── #}
+<section class="stats-grid" aria-label="User summary">
+  <article class="stat-card">
+    <span class="stat-label">Total</span>
+    <strong class="stat-value">{{ users | length }}</strong>
+  </article>
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">Active</span>
+    <strong class="stat-value">{{ users | selectattr('is_active') | list | length }}</strong>
+  </article>
+  <article class="stat-card {% if users | rejectattr('is_active') | list | length > 0 %}stat-card-warn{% endif %}">
+    <span class="stat-label">Disabled</span>
+    <strong class="stat-value">{{ users | rejectattr('is_active') | list | length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Total bookings</span>
+    <strong class="stat-value">{{ users | sum(attribute='booking_count') }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Gross revenue</span>
+    <strong class="stat-value">${{ '%.2f' | format(users | sum(attribute='gross_revenue_usd')) }}</strong>
+  </article>
+</section>
+
+{# ── Users table ──────────────────────────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Agent accounts</h2>
+      <p>{{ users | length }} account{{ 's' if users | length != 1 }} shown.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Agency</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Bookings</th>
+          <th>Revenue</th>
+          <th>Last login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <a href="{{ url_for('agent.user_manage', user_id=u.id) }}" style="font-weight:500">
+              {{ (u.first_name ~ ' ' ~ u.last_name).strip() or 'Unnamed' }}
+            </a>
+          </td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.agency_name %}
+            {% if 'agent.agencies.view' in agent_permissions %}
+            <a href="{{ url_for('agent.agency_detail', agency_id=u.agency_id) }}">{{ u.agency_name }}</a>
+            {% else %}
+            {{ u.agency_name }}
+            {% endif %}
+            {% else %}
+            <span class="td-muted">Platform</span>
+            {% endif %}
+          </td>
+          <td>{{ u.effective_role.replace('_', ' ').title() }}</td>
+          <td>
+            {% if not u.is_active %}
+            <span class="status-pill status-disabled">Disabled</span>
+            {% elif u.locked_until %}
+            <span class="status-pill status-locked">Locked</span>
+            {% else %}
+            <span class="status-pill status-active">Active</span>
+            {% endif %}
+          </td>
+          <td class="td-num">{{ u.booking_count or 0 }}</td>
+          <td class="td-num">${{ '%.2f' | format(u.gross_revenue_usd or 0) }}</td>
+          <td class="td-mono">{{ (u.last_login_at or '—')[:10] }}</td>
+          <td style="white-space:nowrap">
+            <a href="{{ url_for('agent.user_manage', user_id=u.id) }}" class="button btn-sm button-ghost">Manage</a>
+            {% if 'agent.users.disable' in agent_permissions and u.is_active and u.id != agent_user.id %}
+            <button type="button" class="button btn-sm button-ghost" style="color:var(--color-error)"
+                    data-disable-url="{{ url_for('agent.disable_user', user_id=u.id) }}"
+                    data-user-email="{{ u.email }}"
+                    data-csrf="{{ csrf_token }}"
+                    onclick="confirmDisable(this)">Disable</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty-cell">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<form id="disableForm" method="post" style="display:none">
+  <input type="hidden" name="_csrf" id="disableCsrf">
+  <input type="hidden" name="reason" id="disableReason">
+</form>
+
+<script>
+function confirmDisable(btn) {
+  var email = btn.dataset.userEmail;
+  var reason = prompt('Reason for disabling ' + email + ' (required):');
+  if (!reason || !reason.trim()) return;
+  var form = document.getElementById('disableForm');
+  form.action = btn.dataset.disableUrl;
+  document.getElementById('disableCsrf').value = btn.dataset.csrf;
+  document.getElementById('disableReason').value = reason.trim();
+  form.submit();
+}
+</script>
+
+{% endblock %}

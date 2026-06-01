@@ -1,0 +1,67 @@
+<nav class="hdr-nav" aria-label="Site navigation">
+
+  {% if portal_signed_in %}
+
+    <a class="hdr-icon-btn" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/>
+      </svg>
+    </a>
+
+    {% include "partials/theme_toggle.html" %}
+
+    <details class="portal-menu" id="portalMenuDropdown">
+      <summary class="hdr-account-btn portal-menu-trigger" aria-label="Account menu for {{ portal_account_name }}">
+        <span class="hdr-avatar" aria-hidden="true">{{ portal_account_initials }}</span>
+        <span class="hdr-account-name">{{ portal_account_name.split()[0] if portal_account_name else 'Account' }}</span>
+        <svg class="hdr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </summary>
+      <div class="portal-menu-dropdown" role="menu">
+        <div class="portal-menu-header" aria-hidden="true">
+          <div class="portal-menu-avatar">{{ portal_account_initials }}</div>
+          <div>
+            <div class="portal-menu-name">{{ portal_account_name }}</div>
+            <div class="portal-menu-email">Signed in</div>
+          </div>
+        </div>
+        <div class="portal-menu-divider" role="separator"></div>
+        <a class="portal-menu-item" role="menuitem" href="{{ url_for('user_portal') }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
+          My Profile
+        </a>
+        <a class="portal-menu-item" role="menuitem" href="{{ url_for('manage_booking') }}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          Manage Booking
+        </a>
+        <div class="portal-menu-divider" role="separator"></div>
+        <form method="post" action="{{ url_for('user_portal_logout') }}" style="display:contents">
+          <button class="portal-menu-item portal-menu-item--danger" type="submit" role="menuitem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            Sign out
+          </button>
+        </form>
+      </div>
+    </details>
+
+  {% else %}
+
+    <a class="hdr-icon-btn" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/>
+      </svg>
+    </a>
+
+    {% include "partials/theme_toggle.html" %}
+
+    <span class="hdr-sep" aria-hidden="true"></span>
+
+    <a class="hdr-signin-btn" href="{{ url_for('auth_page', mode='login') }}">Sign in</a>
+    <a class="hdr-signup-btn" href="{{ url_for('auth_page', mode='signup') }}">Create account</a>
+
+  {% endif %}
+
+</nav>

@@ -1,0 +1,16 @@
+{# Same headline copy for /search/shell (pending) and results.html when search_pending #}
+{% if query.get('origin') and query.get('destination') %}
+  {% set loader_primary = "Live search · " ~ query.get('origin') ~ " → " ~ query.get('destination') %}
+{% elif query.get('raw_text') %}
+  {% set loader_primary = "Searching with AI…" %}
+{% elif query.get('legs') and (query.get('legs')|length > 1) %}
+  {% set loader_primary = "Live multi-city search" %}
+{% else %}
+  {% set loader_primary = "Searching live inventory…" %}
+{% endif %}
+{% if query.get('raw_text') %}
+  {% set loader_secondary = "Parsing your request and contacting live fare sources. Results appear automatically." %}
+{% else %}
+  {% set loader_secondary = "Querying airlines and aggregators in real time. Results appear automatically." %}
+{% endif %}
+{% include "partials/results_unified_loader.html" %}

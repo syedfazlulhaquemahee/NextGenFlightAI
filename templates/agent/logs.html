@@ -1,0 +1,169 @@
+{% extends "agent/layout.html" %}
+{% block title %}Logs{% endblock %}
+{% block heading %}Logs{% endblock %}
+{% block subheading %}Auth events and audit trail — filterable by agency and user.{% endblock %}
+{% block content %}
+
+{# ── Log type tabs ────────────────────────────────────────────────────────── #}
+<div class="tab-row">
+  <a href="{{ url_for('agent.logs', type='auth', agency_id=filter_agency_id or '', user_id=filter_user_id or '') }}"
+     class="tab-link {% if log_type == 'auth' %}active{% endif %}">Auth events</a>
+  <a href="{{ url_for('agent.logs', type='audit', agency_id=filter_agency_id or '', user_id=filter_user_id or '') }}"
+     class="tab-link {% if log_type == 'audit' %}active{% endif %}">Audit trail</a>
+</div>
+
+{# ── Filter bar ───────────────────────────────────────────────────────────── #}
+<section class="filter-section">
+  <form method="get" action="{{ url_for('agent.logs') }}" class="filter-form" id="logFilterForm">
+    <input type="hidden" name="type" value="{{ log_type }}">
+    {% if agencies %}
+    <label class="filter-field">
+      <span>Agency</span>
+      <select name="agency_id" id="agencySelect">
+        <option value="">All agencies</option>
+        {% for a in agencies %}
+        <option value="{{ a.id }}" {% if filter_agency_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    {% if agency_users %}
+    <label class="filter-field">
+      <span>User</span>
+      <select name="user_id">
+        <option value="">All users</option>
+        {% for u in agency_users %}
+        <option value="{{ u.id }}" {% if filter_user_id == u.id %}selected{% endif %}>
+          {{ u.email }} ({{ u.effective_role.replace('_', ' ').title() }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button type="submit" class="button button-secondary">Apply</button>
+    <a href="{{ url_for('agent.logs', type=log_type) }}" class="button button-ghost">Clear</a>
+  </form>
+</section>
+
+{# ── Active filter pills ───────────────────────────────────────────────────── #}
+{% if selected_agency or selected_user %}
+<div class="active-filters">
+  {% if selected_agency %}
+  <span class="filter-pill">
+    Agency: {{ selected_agency.name }}
+    <a href="{{ url_for('agent.logs', type=log_type, user_id=filter_user_id or '') }}" class="pill-remove" aria-label="Remove agency filter">×</a>
+  </span>
+  {% endif %}
+  {% if selected_user %}
+  <span class="filter-pill">
+    User: {{ selected_user.email }}
+    <a href="{{ url_for('agent.logs', type=log_type, agency_id=filter_agency_id or '') }}" class="pill-remove" aria-label="Remove user filter">×</a>
+  </span>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Auth events table ────────────────────────────────────────────────────── #}
+{% if log_type == 'auth' %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Auth events</h2>
+      <p>{{ entries | length }} event{{ 's' if entries | length != 1 }} shown.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Email</th>
+          {% if not filter_agency_id %}<th>Agency</th>{% endif %}
+          <th>Event</th>
+          <th>Success</th>
+          <th>IP address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td class="td-mono">{{ e.created_at | replace('T', ' ') | truncate(19, True, '') }}</td>
+          <td>{{ e.email or '—' }}</td>
+          {% if not filter_agency_id %}<td>{{ e.agency_name or '—' }}</td>{% endif %}
+          <td>
+            <span class="event-badge event-{{ e.event_type }}">
+              {{ e.event_type.replace('_', ' ') }}
+            </span>
+          </td>
+          <td>
+            {% if e.success %}
+            <span class="status-pill status-active">Yes</span>
+            {% else %}
+            <span class="status-pill status-disabled">No</span>
+            {% endif %}
+          </td>
+          <td class="td-mono">{{ e.ip_address or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty-cell">No auth events match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── Audit trail table ────────────────────────────────────────────────────── #}
+{% else %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Audit trail</h2>
+      <p>{{ entries | length }} record{{ 's' if entries | length != 1 }} shown.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Actor</th>
+          {% if not filter_agency_id %}<th>Agency</th>{% endif %}
+          <th>Action</th>
+          <th>Entity</th>
+          <th>IP address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td class="td-mono">{{ e.created_at | replace('T', ' ') | truncate(19, True, '') }}</td>
+          <td>{{ e.actor_email or 'System' }}</td>
+          {% if not filter_agency_id %}<td>{{ e.agency_name or '—' }}</td>{% endif %}
+          <td>
+            <span class="event-badge event-{{ e.action }}">
+              {{ e.action.replace('_', ' ') }}
+            </span>
+          </td>
+          <td>{{ e.entity_type }} <span class="td-id">{{ e.entity_id }}</span></td>
+          <td class="td-mono">{{ e.ip_address or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty-cell">No audit records match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<script>
+// Auto-submit agency select so user list populates
+var agencySelect = document.getElementById('agencySelect');
+if (agencySelect) {
+  agencySelect.addEventListener('change', function() {
+    document.getElementById('logFilterForm').submit();
+  });
+}
+</script>
+
+{% endblock %}

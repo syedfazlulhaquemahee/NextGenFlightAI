@@ -1,42 +1,1097 @@
 <!doctype html>
 <html lang="en">
+{% set search_pending = search_pending if search_pending is defined else (pending_fields is defined and pending_fields) %}
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Results • NextGen Flights</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  {% include "partials/theme_init.html" %}
+  <script>
+    (function () {
+      try {
+        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      } catch (e) {}
+      function toTop() {
+        window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+      }
+      toTop();
+      document.addEventListener("DOMContentLoaded", toTop, { once: true });
+      window.addEventListener("load", toTop, { once: true });
+    })();
+  </script>
+  <title>Results • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/monthSelect.css', v='4.6.13') }}">
+  {% include "partials/theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260529-border-only-focus') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260514-slim2') }}" />
+  {% if flex_streaming or search_pending %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
+  {% endif %}
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <a class="brand-link" href="/">
-        <div class="logo">✈︎</div>
-        <div>
-          <div class="brand-title">NextGen Flights</div>
-          <div class="brand-sub">Results</div>
-        </div>
-      </a>
-    </div>
-  </header>
+<body class="results-page{% if flex_streaming or search_pending %} flex-stream-results{% endif %}">
+  {% macro results_icon(name, class_name='') -%}
+    {% if name == 'search' %}
+      <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+        <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'trip' %}
+      <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M17 2l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M3 11V9a3 3 0 0 1 3-3h15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 22l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M21 13v2a3 3 0 0 1-3 3H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    {% elif name == 'passengers' %}
+      <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="9.5" cy="7" r="4" stroke="currentColor" stroke-width="2" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    {% elif name == 'cabin' %}
+      <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 10V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M5 10h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M7 18v3M17 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    {% elif name == 'sort' %}
+      <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <circle cx="16" cy="6" r="2" stroke="currentColor" stroke-width="2" />
+        <circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="2" />
+        <circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="2" />
+      </svg>
+    {% endif %}
+  {%- endmacro %}
 
-  <main class="wrap">
-    <section class="results-head">
-      <div>
-        <h1>{{ query.origin }} → {{ query.destination }}</h1>
-        <div class="muted small">
-          {% if query.raw_text %}
-            AI request: “{{ query.raw_text }}”
+  {% if search_pending %}
+  <form
+    id="resultsPendingBootForm"
+    method="post"
+    action="{{ pending_action or url_for('search') }}"
+    class="sr-only"
+    aria-hidden="true"
+  >
+    {% for name, value in pending_fields or [] %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}" />
+    {% endfor %}
+  </form>
+  {% endif %}
+  {% if flex_streaming %}
+  <form id="flexStreamBootForm" method="post" action="{{ url_for('search_flex_stream') }}" class="sr-only" aria-hidden="true">
+    {% for name, value in flex_stream_fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}" />
+    {% endfor %}
+  </form>
+  {% endif %}
+  {% macro flight_card(f, featured=False, rank=1, action=None, price_caption='Total price', price_note=None, price_badge=None, show_booking=True, best_price=None, best_duration=None, endpoint_airport_mode='outbound') %}
+    {% set tiers = f.tiers | default([]) %}
+    {% set has_tier_picker = false %}
+    {% set selected_tier = tiers[0] if tiers else None %}
+    {% if selected_tier and selected_tier.price_label %}
+      {% set total_price_label = selected_tier.price_label %}
+    {% else %}
+      {% set total_price_label %}${{ "%.2f"|format(f.price) }}{% endset %}
+    {% endif %}
+    {% set primary_price_label = price_badge or total_price_label %}
+    {% set primary_price_caption = 'Added cost' if price_badge else price_caption %}
+    {% set secondary_total_label = ('Total trip ' ~ total_price_label) if price_badge else None %}
+    {% set pax = [(f.passenger_count | default(1)) | int, 1] | max %}
+    {% if price_note %}
+      {% set secondary_note_label = price_note %}
+    {% elif pax > 1 %}
+      {% set secondary_note_label = 'Total for ' ~ pax ~ ' travelers' %}
+    {% else %}
+      {% set secondary_note_label = 'per traveler' %}
+    {% endif %}
+    {% set effective_offer_id = selected_tier.offer_id if selected_tier and selected_tier.offer_id else f.offer_id %}
+    {% set checkout_url = url_for('checkout_offer', offer_id=effective_offer_id) if effective_offer_id else None %}
+    {% set total_duration = f.total_duration_min if f.total_duration_min is defined else ((f.out_duration_min or 0) + (f.in_duration_min or 0)) %}
+    {% set total_stops = f.total_stop_count if f.total_stop_count is defined else ((f.out_stops or 0) + (f.in_stops or 0)) %}
+    {% set first_depart_iso = f.first_depart_at or f.out_depart_at or '' %}
+    {% set final_arrive_iso = f.final_arrive_at or f.out_arrive_at or '' %}
+    {% set chip_labels = [] %}
+    {% if f.smart_badge %}{% set _ = chip_labels.append(f.smart_badge) %}{% endif %}
+    {% if f.metric_is_best and 'Best' not in chip_labels and 'Top pick' not in chip_labels and 'Fastest trip' not in chip_labels and 'Lowest price' not in chip_labels %}{% set _ = chip_labels.append('Best') %}{% endif %}
+    {% if f.metric_is_cheapest and 'Cheapest' not in chip_labels and 'Lowest price' not in chip_labels %}{% set _ = chip_labels.append('Cheapest') %}{% endif %}
+    {% if f.metric_is_fastest and 'Fastest' not in chip_labels and 'Fastest trip' not in chip_labels %}{% set _ = chip_labels.append('Fastest') %}{% endif %}
+    <article
+      class="flight-card{{ ' best' if featured else '' }}{{ ' rank-1' if rank == 1 and featured else '' }}{{ ' rank-%d'|format(rank) if rank > 1 else '' }}"
+      data-price="{{ '%.2f'|format(f.price or 0) }}"
+      data-duration-min="{{ total_duration }}"
+      data-total-stops="{{ total_stops }}"
+      data-out-depart-iso="{{ first_depart_iso }}"
+      data-out-arrive-iso="{{ final_arrive_iso }}"
+      data-airline-codes="{{ (f.airline_code_summary or '')|lower|replace(' ', '') }}"
+      data-airline-names="{{ (f.out_airline or '')|lower }}|{{ (f.in_airline or '')|lower }}|{{ (f.airline_summary or '')|lower }}"
+      data-layover-airports="{% for seg in f.segments_ui %}{% for lay in seg.layovers %}{{ lay.code|lower }} {% endfor %}{% endfor %}"
+      data-layover-airport-options="{% for seg in f.segments_ui %}{% for lay in seg.layovers %}{{ lay.code|lower }}::{{ (lay.name or lay.code)|lower }}||{% endfor %}{% endfor %}"
+      data-out-origin="{{ (f.out_origin_code or '')|lower }}"
+      data-out-dest="{{ (f.out_dest_code or '')|lower }}"
+      data-in-origin="{{ (f.in_origin_code or '')|lower }}"
+      data-in-dest="{{ (f.in_dest_code or '')|lower }}"
+      data-out-origin-name="{{ (f.out_origin_name or '')|e }}"
+      data-in-origin-name="{{ (f.in_origin_name or '')|e }}"
+      data-out-dest-name="{{ (f.out_dest_name or '')|e }}"
+      data-in-dest-name="{{ (f.in_dest_name or '')|e }}"
+      {% if endpoint_airport_mode == 'return' %}
+      data-dep-airport-options="{% if f.in_origin_code %}{{ f.in_origin_code|lower }}::{{ (f.in_origin_name|default(f.in_origin_code))|lower }}||{% endif %}"
+      data-arr-airport-options="{% if f.in_dest_code %}{{ f.in_dest_code|lower }}::{{ (f.in_dest_name|default(f.in_dest_code))|lower }}||{% endif %}"
+      {% else %}
+      data-dep-airport-options="{% if f.out_origin_code %}{{ f.out_origin_code|lower }}::{{ (f.out_origin_name|default(f.out_origin_code))|lower }}||{% endif %}"
+      data-arr-airport-options="{% if f.out_dest_code %}{{ f.out_dest_code|lower }}::{{ (f.out_dest_name|default(f.out_dest_code))|lower }}||{% endif %}"
+      {% endif %}
+      data-checkout-template="{{ url_for('checkout_offer', offer_id='__OFFER_ID__') }}"
+    >
+      <div class="fc-row">
+        <div class="fc-carrier">
+          {% if f.airline_logo_url %}
+            <img class="fc-logo" src="{{ f.airline_logo_url }}" alt="" width="40" height="40" loading="lazy" decoding="async" />
           {% else %}
-            Standard search • {{ query.cabin }} • {{ query.passengers }} passenger(s)
+            <div class="fc-logo-ph"></div>
           {% endif %}
-          {% if query.nonstop %} • Nonstop only {% endif %}
-          • Sort: {{ query.sort }}
+          <div class="fc-carrier-meta">
+            <span class="fc-carrier-name">{{ f.airline_summary }}</span>
+            {% if f.airline_mix_label and f.airline_mix_label not in ['Single-airline itinerary', 'Same airline both ways'] %}
+              <div class="fc-carrier-note">{{ f.airline_mix_label }}</div>
+            {% endif %}
+            {% if chip_labels %}
+              <div class="fc-badges">
+                {% for chip in chip_labels %}
+                  {% set chip_key = (chip or '')|lower %}
+                  <span class="fc-badge{% if 'top' in chip_key or 'best' in chip_key %} fc-badge--top{% elif 'cheap' in chip_key or 'lowest' in chip_key or 'value' in chip_key %} fc-badge--value{% elif 'fast' in chip_key %} fc-badge--fast{% else %} fc-badge--alt{% endif %}">
+                    {% if 'top' in chip_key or 'best' in chip_key %}
+                      <svg class="fc-badge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.7 6.2 6.7.6-5.1 4.4 1.5 6.6-5.8-3.4-5.8 3.4 1.5-6.6-5.1-4.4 6.7-.6L12 2.5Z" fill="currentColor"/></svg>
+                    {% elif 'cheap' in chip_key or 'lowest' in chip_key or 'value' in chip_key %}
+                      <svg class="fc-badge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M17 7.5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% elif 'fast' in chip_key %}
+                      <svg class="fc-badge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12a9 9 0 1 1-3-6.7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M21 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% else %}
+                      <svg class="fc-badge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% endif %}
+                    <span>{{ 'Alt option' if chip_key == 'alternative option' else chip }}</span>
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if rank == 1 and featured and f.smart_badge %}
+              <div class="fc-ai-note">Top 5% for this route</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="fc-itinerary">
+          {% for seg in f.segments_ui %}
+            <div class="fc-seg">
+              {% if f.segments_ui|length > 1 %}<span class="fc-seg-label">{{ seg.label }}</span>{% endif %}
+              <div class="fc-leg-times">
+                <div class="fc-endpoint">
+                  <span class="fc-time">{{ seg.depart_time }}</span>
+                  <span class="fc-iata">{{ seg.origin }}</span>
+                  <span class="fc-date-lbl">{{ seg.depart_day }}</span>
+                </div>
+                <div class="fc-via">
+                  {% set layover_labels = [] %}
+                  {% for lay in seg.layovers %}
+                    {% set lay_code = (lay.code or 'Stop')|upper %}
+                    {% set lay_duration = lay.duration_label or 'duration unavailable' %}
+                    {% if lay_duration|lower == 'details unavailable' %}
+                      {% set _ = layover_labels.append(lay_code ~ ' duration unavailable') %}
+                    {% else %}
+                      {% set _ = layover_labels.append(lay_code ~ ' ' ~ lay_duration) %}
+                    {% endif %}
+                  {% endfor %}
+                  <span class="fc-via-dur"><span class="fc-via-dur-label">Travel</span>{{ seg.duration }}</span>
+                  <div class="fc-via-line{{ ' is-nonstop' if not seg.layovers else '' }}">
+                    {% for lay in seg.layovers %}<span class="fc-via-dot" style="left:{{ lay.line_position_pct }}%"></span>{% endfor %}
+                  </div>
+                  <span class="fc-via-stops{{ ' is-nonstop' if not seg.layovers else '' }}">{{ seg.stops_label }}</span>
+                  {% if seg.layovers %}
+                    <span class="fc-via-layover" title="{{ layover_labels|join(' · ') }}">{{ 'Layover' if seg.layovers|length == 1 else 'Layovers' }} {{ layover_labels|join(' · ') }}</span>
+                  {% endif %}
+                </div>
+                <div class="fc-endpoint fc-endpoint--end">
+                  <span class="fc-time">{{ seg.arrive_time }}</span>
+                  <span class="fc-iata">{{ seg.destination }}</span>
+                  <span class="fc-date-lbl">{{ seg.arrive_day }}</span>
+                </div>
+              </div>
+            </div>
+            {% if not loop.last %}<div class="fc-seg-div"></div>{% endif %}
+          {% endfor %}
+        </div>
+
+        <div class="fc-pricing">
+          <div class="fc-price-wrap">
+            <div class="fc-price-cap">{{ primary_price_caption }}</div>
+            <div class="fc-price-amt" data-tier-price-desktop>{{ primary_price_label }}</div>
+            {% if secondary_total_label %}<div class="fc-price-total">{{ secondary_total_label }}</div>{% endif %}
+            <div class="fc-price-note">{{ secondary_note_label }}</div>
+            {% if not price_badge %}
+              <div class="fc-price-cue{{ ' fc-price-cue--low' if (f.price_vs_cheapest or 0) <= 0.5 else '' }}" data-price-compare-cue data-initial-delta="{{ '%.2f'|format(f.price_vs_cheapest or 0) }}">
+                {% if (f.price_vs_cheapest or 0) > 0.5 %}+${{ "%.0f"|format(f.price_vs_cheapest or 0) }} vs cheapest{% else %}Lowest price{% endif %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="fc-actions">
+            {% if action %}
+              <form method="post" action="{{ action.get('url', url_for('search')) }}" class="flight-action-form">
+                {% for name, value in action.get('fields', {}).items() %}<input type="hidden" name="{{ name }}" value="{{ value }}" />{% endfor %}
+                {% set _cta_cls = 'fc-book--best' if (rank == 1 and featured and f.metric_is_best) else ('primary' if featured else 'fc-book--alt') %}
+                <button class="btn fc-book {{ _cta_cls }}" type="submit">
+                  <span>Choose this flight</span>
+                </button>
+              </form>
+            {% elif show_booking and checkout_url %}
+              {% set _cta_cls = 'fc-book--best' if (rank == 1 and featured and f.metric_is_best) else ('primary' if featured else 'fc-book--alt') %}
+              <a class="btn fc-book {{ _cta_cls }}" href="{{ checkout_url }}" target="_blank" rel="noopener noreferrer" data-tier-cta>
+                <span>Choose this flight</span>
+              </a>
+            {% elif show_booking %}
+              <span class="btn fc-book booking-unavailable" aria-disabled="true">Unavailable</span>
+            {% endif %}
+            <button type="button" class="fc-dtl-btn" aria-expanded="false">
+              Details
+              <svg class="fc-dtl-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
         </div>
       </div>
-      <a class="btn" href="/">New Search</a>
+
+      {% if has_tier_picker %}
+      <section class="fare-tier-panel" data-fare-tier-panel>
+        <div class="fare-tier-header">
+          <strong>Fare options</strong>
+          <span class="muted small">Same itinerary, different flexibility</span>
+        </div>
+        <div class="fare-tier-options" role="radiogroup" aria-label="Fare tiers">
+          {% for tier in tiers %}
+            {% set tier_key = (f.selection_token or f.offer_id or loop.index0) ~ '-tier-' ~ loop.index0 %}
+            <button type="button" class="fare-tier-option{{ ' is-active' if loop.first else '' }}" role="radio" aria-checked="{{ 'true' if loop.first else 'false' }}" data-tier-option="{{ tier_key }}" data-offer-id="{{ tier.offer_id }}" data-price-label="{{ tier.price_label }}">
+              <span class="fare-tier-name">{{ tier.name }}</span>
+              <span class="fare-tier-price">{{ tier.price_label }}</span>
+            </button>
+          {% endfor %}
+        </div>
+        <div class="fare-tier-details">
+          {% for tier in tiers %}
+            {% set tier_key = (f.selection_token or f.offer_id or loop.index0) ~ '-tier-' ~ loop.index0 %}
+            <div class="fare-tier-detail{{ ' is-active' if loop.first else '' }}" data-tier-detail="{{ tier_key }}">
+              <div class="fare-tier-meta">
+                {% if tier.cabin_label %}<span>{{ tier.cabin_label }}</span>{% endif %}
+                {% if tier.fare_brand %}<span>{{ tier.fare_brand }}</span>{% endif %}
+              </div>
+              <ul class="fare-tier-feature-list">
+                {% for feature in tier.features %}<li>{{ feature }}</li>{% endfor %}
+              </ul>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <div class="fc-details" hidden>
+        <div class="fc-details-inner">
+          {% for seg in f.segments_ui %}
+            <div class="fc-dtl-seg">
+              <div class="fc-dtl-seg-head">
+                {% if f.segments_ui|length > 1 %}<span class="fc-dtl-dir">{{ seg.label }}</span>{% endif %}
+                <div class="fc-dtl-airline">
+                  {% if seg.airline_logo_url %}<img class="fc-dtl-alogo" src="{{ seg.airline_logo_url }}" alt="" width="16" height="16" loading="lazy" />{% endif %}
+                  <span>{{ seg.airline }}</span>
+                </div>
+                {% if seg.airline_note %}
+                  <span class="fc-chip">{{ seg.airline_note }}</span>
+                {% endif %}
+                <div class="fc-dtl-chips">
+                  <span class="fc-chip fc-chip--time">{{ seg.time_chip }}</span>
+                  <span class="fc-chip{{ ' fc-chip--good' if seg.stops_label|lower == 'nonstop' else (' fc-chip--warn' if seg.layovers|length > 1 else '') }}">{{ seg.stops_label }}</span>
+                  {% if seg.stops_label|lower != 'nonstop' %}<span class="fc-chip">{{ seg.route_chip }}</span>{% endif %}
+                </div>
+              </div>
+              <div class="fc-dtl-timeline">
+                <div class="fc-dtl-pt">
+                  <div class="fc-dtl-time">{{ seg.depart_time }}</div>
+                  <div class="fc-dtl-day">{{ seg.depart_day }}</div>
+                  <div class="fc-dtl-apt">
+                    <span class="fc-dtl-iata">{{ seg.origin }}</span>
+                    {% if seg.origin_name %}<span class="fc-dtl-apt-name">{{ seg.origin_name }}</span>{% endif %}
+                  </div>
+                </div>
+                <div class="fc-dtl-track">
+                  <div class="fc-dtl-dur">{{ seg.duration }}</div>
+                  <div class="fc-dtl-line{{ ' is-nonstop' if not seg.layovers else '' }}"></div>
+                  {% if seg.layovers %}
+                    <div class="fc-dtl-lays">
+                      {% for lay in seg.layovers %}
+                        <div class="fc-dtl-lay">
+                          <span class="fc-dtl-lay-code">{{ lay.code }}</span>
+                          <span class="fc-dtl-lay-info">{{ lay.name }} · {{ lay.duration_label }}</span>
+                          {% if lay.quality_label %}<span class="fc-dtl-lay-q">{{ lay.quality_label }}</span>{% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="fc-dtl-pt fc-dtl-pt--end">
+                  <div class="fc-dtl-time">{{ seg.arrive_time }}</div>
+                  <div class="fc-dtl-day">{{ seg.arrive_day }}</div>
+                  <div class="fc-dtl-apt">
+                    <span class="fc-dtl-iata">{{ seg.destination }}</span>
+                    {% if seg.destination_name %}<span class="fc-dtl-apt-name">{{ seg.destination_name }}</span>{% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% if not loop.last %}<div class="fc-dtl-sep"></div>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </article>
+  {% endmacro %}
+
+  {% include "partials/platform_header.html" %}
+
+  <main class="wrap">
+    {% set requested_trip_type = query.get('trip_type') %}
+    {% set results_trip_mode = requested_trip_type if requested_trip_type in ['roundtrip', 'oneway', 'multicity'] else ("roundtrip" if query.get('return_date') else "oneway") %}
+    {% set trip_mode = requested_trip_type if requested_trip_type in ['roundtrip', 'oneway'] else ("roundtrip" if query.get('return_date') else "oneway") %}
+    {% set passenger_count = query.get('passengers', 1) %}
+    {% set cabin_label = query.get('cabin', 'ECONOMY').replace("_", " ")|title %}
+    {% set combination_mode = query.get('combination_mode', 'auto') %}
+
+    <div class="srb-region">
+    <section class="results-head">
+      <div class="srb">
+
+        {# ── SRB inline-edit form (desktop: per-segment panels; mobile: opens sheet) ── #}
+        <form id="srbEditForm" method="post" action="{{ url_for('search') }}" autocomplete="off" class="srb-form-wrap">
+          <input type="hidden" name="mode" value="standard" />
+          <input type="hidden" name="force_refresh" value="1" />
+          <input type="hidden" name="trip_type" id="srbTripType" value="{{ trip_mode }}" />
+
+          {# Visual pill bar — back arrow + segments, all in one unified pill #}
+          <div class="srb-bar" id="srbBar">
+            <a class="srb-back srb-seg srb-seg--back" href="{{ url_for('index') }}" aria-label="Back to search">
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M11 14L6 9l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+
+            <button class="srb-seg srb-seg--route" type="button" data-srb-seg="route" aria-expanded="false">
+              <span class="srb-icon srb-mask-icon {{ 'srb-mask-icon--roundtrip' if trip_mode == 'roundtrip' else 'srb-mask-icon--takeoff' }}" aria-hidden="true"></span>
+              <span class="srb-route-text-wrap">
+                <span class="srb-seg-val srb-seg-val--route" id="srbRouteLabel">
+                  {% if query.get('origin') and query.get('destination') %}
+                    {{ airport_header_label_local(query.get('origin')) }} {{ '↔' if trip_mode == 'roundtrip' else '→' }} {{ airport_header_label_local(query.get('destination')) }}
+                  {% else %}
+                    Flight search
+                  {% endif %}
+                </span>
+                <span class="srb-route-sub" aria-hidden="true">
+                  {%- if flex_streaming and query.get('flex_month') -%}
+                    {{ query.flex_month }}{% if trip_mode != 'oneway' and query.get('trip_length_days') %} · {{ query.trip_length_days }}d{% endif %}
+                  {%- elif query.depart_date -%}
+                    {{ query.depart_date|format_date }}{% if query.return_date %} – {{ query.return_date|format_date }}{% endif %}
+                  {%- else -%}Any dates{%- endif -%}
+                  &nbsp;·&nbsp;{{ passenger_count }} {{ 'traveler' if passenger_count == 1 else 'travelers' }}&nbsp;·&nbsp;{{ cabin_label }}
+                </span>
+              </span>
+            </button>
+
+            <button class="srb-seg srb-seg--dates" type="button" data-srb-seg="dates" aria-expanded="false">
+              <span class="srb-icon srb-mask-icon srb-mask-icon--calendar" aria-hidden="true"></span>
+              <span class="srb-seg-val" id="srbDatesLabel">
+                {% if flex_streaming and query.get('flex_month') %}
+                  <span id="resultsFlexHeadDates">{{ query.flex_month }}{% if trip_mode != 'oneway' and query.get('trip_length_days') %} · {{ query.trip_length_days }}d{% endif %}</span>
+                {% elif query.depart_date %}
+                  {{ query.depart_date|format_date }}{% if query.return_date %} – {{ query.return_date|format_date }}{% endif %}
+                {% else %}
+                  Add dates
+                {% endif %}
+              </span>
+            </button>
+
+            <button class="srb-seg srb-seg--pax" type="button" data-srb-seg="pax" aria-expanded="false">
+              <span class="srb-icon srb-mask-icon srb-mask-icon--user" aria-hidden="true"></span>
+              <span class="srb-seg-val" id="srbPaxLabel">{{ "Round trip" if trip_mode == "roundtrip" else "One way" }} · {{ passenger_count }} traveler{{ '' if passenger_count == 1 else 's' }}{% if cabin_label %} · {{ cabin_label }}{% endif %}</span>
+            </button>
+
+            <button class="srb-edit" type="submit" aria-label="Search flights">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+
+          </div>
+
+          {# ── Route panel ── #}
+          <div class="srb-panel srb-panel--route" id="srbPanelRoute" hidden>
+            <div class="srb-panel-inner">
+              <div class="srb-trip-row">
+                <button type="button" class="srb-trip-btn{{ ' is-active' if trip_mode == 'roundtrip' }}" data-srb-trip="roundtrip">Round trip</button>
+                <button type="button" class="srb-trip-btn{{ ' is-active' if trip_mode == 'oneway' }}" data-srb-trip="oneway">One way</button>
+              </div>
+              <div class="srb-route-grid">
+                <div class="srb-field">
+                  <label class="srb-field-label" for="srbOriginInput">From</label>
+                  <input name="origin" class="airport-input srb-input" id="srbOriginInput"
+                    value="{{ query.origin or '' }}" placeholder="City or airport" maxlength="40" autocomplete="off" required />
+                </div>
+                <button type="button" class="srb-swap" id="srbSwapBtn" aria-label="Swap">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+                </button>
+                <div class="srb-field">
+                  <label class="srb-field-label" for="srbDestInput">To</label>
+                  <input name="destination" class="airport-input srb-input" id="srbDestInput"
+                    value="{{ query.destination or '' }}" placeholder="City or airport" maxlength="40" autocomplete="off" required />
+                </div>
+              </div>
+              <div class="srb-panel-footer">
+                <button type="button" class="srb-panel-next" data-srb-next="dates">
+                  Dates
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {# ── Dates panel ── #}
+          <div class="srb-panel srb-panel--dates" id="srbPanelDates" hidden>
+            <div class="srb-panel-inner srb-panel-inner--dates">
+              <input type="hidden" name="depart_date" id="srbDepartHidden" value="{{ query.depart_date or '' }}" />
+              <input type="hidden" name="return_date" id="srbReturnHidden" value="{{ query.return_date or '' }}" />
+              <div id="srbInlineCalendar"></div>
+              <div class="srb-panel-footer">
+                <button type="button" class="srb-panel-next" data-srb-next="pax">
+                  Travelers
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {# ── Pax panel ── #}
+          <div class="srb-panel srb-panel--pax" id="srbPanelPax" hidden>
+            <div class="srb-panel-inner">
+              <div class="srb-pax-grid">
+                <div class="srb-field">
+                  <label class="srb-field-label" for="srbPassengers">Travelers</label>
+                  <select name="passengers" class="srb-select" id="srbPassengers">
+                    {% for n in range(1, 10) %}
+                      <option value="{{ n }}" {{ 'selected' if passenger_count == n }}>{{ n }} traveler{{ '' if n == 1 else 's' }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="srb-field">
+                  <label class="srb-field-label" for="srbCabin">Cabin</label>
+                  <select name="cabin" class="srb-select" id="srbCabin">
+                    {% for c in ["ECONOMY","PREMIUM_ECONOMY","BUSINESS","FIRST"] %}
+                      <option value="{{ c }}" {{ 'selected' if query.cabin == c }}>{{ c.replace('_', ' ')|title }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <label class="srb-nonstop-toggle">
+                <input type="checkbox" name="nonstop" id="srbNonstop" {{ 'checked' if query.nonstop }} />
+                <span>Nonstop only</span>
+              </label>
+              <div class="srb-panel-footer">
+                <button type="submit" class="btn primary srb-search-btn">
+                  {{ results_icon('search', 'btn-search-icon') }}
+                  <span>Search flights</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
     </section>
 
-    {% if error %}
+    {# Mobile sheet: existing #refine form. Hidden on desktop via CSS. #}
+    {# The hidden data-toggle-refine button keeps the mobile-sheet JS initialised. #}
+    <section class="results-query collapsed" id="refine">
+      <button class="sr-only" data-toggle-refine aria-hidden="true" tabindex="-1" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"></button>
+      <button class="results-mobile-sheet-backdrop" type="button" data-mobile-close aria-label="Close edit search"></button>
+
+      <section class="results-query-card card">
+        <form class="results-query-form results-query-form--compact" method="post" action="{{ url_for('search') }}" id="resultsQueryForm" autocomplete="off">
+          <input type="hidden" name="mode" value="standard" />
+          <input type="hidden" name="force_refresh" value="1" />
+          <input type="hidden" name="trip_type" id="resultsTripType" value="{{ trip_mode }}" />
+
+          <div class="results-mobile-editor">
+            <div class="results-mobile-editor-head">
+              <div class="results-mobile-editor-copy">
+                <div class="results-mobile-editor-kicker">Quick Refine</div>
+                <h2>Edit search</h2>
+              </div>
+              <button class="results-mobile-editor-close" type="button" data-mobile-close aria-label="Close edit search">Close</button>
+            </div>
+
+            <div class="results-mobile-summary-list">
+              <div class="results-mobile-summary-group">Search criteria</div>
+
+              <button type="button" class="results-mobile-summary-row" data-mobile-editor-target="route" aria-expanded="false">
+                <span class="results-mobile-summary-copy">
+                  <span class="results-mobile-summary-label">Route</span>
+                  <span class="results-mobile-summary-value" data-mobile-summary="route">{{ airport_header_label_local(query.get('origin')) or 'Origin' }} {{ '↔' if trip_mode == 'roundtrip' else '→' }} {{ airport_header_label_local(query.get('destination')) or 'Destination' }}</span>
+                </span>
+                <span class="results-mobile-summary-chevron" aria-hidden="true">></span>
+              </button>
+
+              <button type="button" class="results-mobile-summary-row" data-mobile-editor-target="trip" aria-expanded="false">
+                <span class="results-mobile-summary-copy">
+                  <span class="results-mobile-summary-label">Trip</span>
+                  <span class="results-mobile-summary-value" data-mobile-summary="trip">{{ "Round trip" if trip_mode == "roundtrip" else "One way" }}</span>
+                </span>
+                <span class="results-mobile-summary-chevron" aria-hidden="true">></span>
+              </button>
+
+              <button type="button" class="results-mobile-summary-row" data-mobile-editor-target="dates" aria-expanded="false">
+                <span class="results-mobile-summary-copy">
+                  <span class="results-mobile-summary-label">Dates</span>
+                  <span class="results-mobile-summary-value" data-mobile-summary="dates">Choose dates</span>
+                </span>
+                <span class="results-mobile-summary-chevron" aria-hidden="true">></span>
+              </button>
+
+              <button type="button" class="results-mobile-summary-row" data-mobile-editor-target="travelers" aria-expanded="false">
+                <span class="results-mobile-summary-copy">
+                  <span class="results-mobile-summary-label">Travelers and cabin</span>
+                  <span class="results-mobile-summary-value" data-mobile-summary="travelers">{{ passenger_count }} traveler{{ '' if passenger_count == 1 else 's' }} · {{ cabin_label }}</span>
+                </span>
+                <span class="results-mobile-summary-chevron" aria-hidden="true">></span>
+              </button>
+
+              <div class="results-mobile-summary-group">Result filters</div>
+
+              <button type="button" class="results-mobile-summary-row" data-mobile-editor-target="filters" aria-expanded="false">
+                <span class="results-mobile-summary-copy">
+                  <span class="results-mobile-summary-label">Filters</span>
+                  <span class="results-mobile-summary-value" data-mobile-summary="filters">{{ query.get('sort', 'recommended')|capitalize }} · Nonstop {{ 'on' if query.nonstop else 'off' }}</span>
+                </span>
+                <span class="results-mobile-summary-chevron" aria-hidden="true">></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="results-query-toolbar">
+            <div class="results-query-control results-query-control--trip" data-mobile-editor-panel="trip">
+              <span class="results-query-control-label">
+                {{ results_icon('trip', 'results-query-control-label-icon') }}
+                <span>Trip</span>
+              </span>
+              <div
+                class="results-query-toggle"
+                role="tablist"
+                aria-label="Trip type"
+              >
+                <button
+                  type="button"
+                  class="results-query-toggle-btn{{ ' is-active' if trip_mode == 'roundtrip' else '' }}"
+                  data-trip="roundtrip"
+                  aria-selected="{{ 'true' if trip_mode == 'roundtrip' else 'false' }}"
+                >
+                  Round trip
+                </button>
+                <button
+                  type="button"
+                  class="results-query-toggle-btn{{ ' is-active' if trip_mode == 'oneway' else '' }}"
+                  data-trip="oneway"
+                  aria-selected="{{ 'true' if trip_mode == 'oneway' else 'false' }}"
+                >
+                  One way
+                </button>
+              </div>
+            </div>
+
+            <div class="results-query-toolbar-meta" data-mobile-editor-panel="travelers">
+              <div class="results-query-control results-query-control--passengers">
+                <label class="results-query-control-label" for="resultsPassengersInput">
+                  {{ results_icon('passengers', 'results-query-control-label-icon') }}
+                  <span>Passengers</span>
+                </label>
+                <div class="results-query-select-wrap results-query-select-wrap-travelers results-query-select-wrap--with-icon">
+                  {{ results_icon('passengers', 'results-query-field-icon') }}
+                  <select name="passengers" id="resultsPassengersInput" class="results-query-select results-query-toolbar-meta-select" aria-label="Number of travelers">
+                    {% for n in range(1, 10) %}
+                      <option value="{{ n }}" {% if passenger_count == n %}selected{% endif %}>{{ n }} traveler{% if n != 1 %}s{% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="results-query-control results-query-control--cabin">
+                <label class="results-query-control-label" for="resultsCabinInput">
+                  {{ results_icon('cabin', 'results-query-control-label-icon') }}
+                  <span>Cabin</span>
+                </label>
+                <div class="results-query-select-wrap results-query-select-wrap-cabin results-query-select-wrap--with-icon">
+                  {{ results_icon('cabin', 'results-query-field-icon') }}
+                  <select name="cabin" id="resultsCabinInput" class="results-query-select results-query-toolbar-meta-select results-query-toolbar-meta-select--cabin" aria-label="Cabin class">
+                    {% for c in ["ECONOMY","PREMIUM_ECONOMY","BUSINESS","FIRST"] %}
+                      <option value="{{ c }}" {% if query.cabin == c %}selected{% endif %}>
+                        {{ c.replace("_"," ") }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="results-query-control results-query-control--sort">
+                <label class="results-query-control-label" for="resultsSortInput">
+                  {{ results_icon('sort', 'results-query-control-label-icon') }}
+                  <span>Sort</span>
+                </label>
+                <div class="results-query-select-wrap results-query-select-wrap-sort results-query-select-wrap--with-icon">
+                  {{ results_icon('sort', 'results-query-field-icon') }}
+                  <select name="sort" id="resultsSortInput" class="results-query-select results-query-toolbar-meta-select" aria-label="Sort results">
+                    {% set sort_labels = {"recommended": "Recommended", "cheapest": "Cheapest", "fastest": "Fastest", "earliest_departure": "Earliest departure", "earliest_arrival": "Earliest arrival", "fewest_stops": "Fewest stops"} %}
+                    {% for s, label in sort_labels.items() %}
+                      <option value="{{ s }}" {% if query.get('sort', 'recommended') == s %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="results-query-main">
+            <section class="results-query-block results-query-block-route" data-mobile-editor-panel="route" aria-label="Origin and destination airports">
+              <div class="results-query-route-grid">
+                <div class="field results-query-field">
+                  <label>From</label>
+                  <input
+                    name="origin"
+                    class="airport-input"
+                    value="{{ query.origin }}"
+                    placeholder="JFK or New York"
+                    maxlength="40"
+                    autocomplete="off"
+                    required
+                  />
+                </div>
+
+                <button class="results-query-swap" type="button" id="resultsSwapBtn" aria-label="Swap origin and destination">⇄</button>
+
+                <div class="field results-query-field">
+                  <label>To</label>
+                  <input
+                    name="destination"
+                    class="airport-input"
+                    value="{{ query.destination }}"
+                    placeholder="LAX or Los Angeles"
+                    maxlength="40"
+                    autocomplete="off"
+                    required
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section class="results-query-block results-query-block-dates" data-mobile-editor-panel="dates" aria-label="Departure and return dates">
+              <div class="results-query-date-grid">
+                <div class="field calendar-field results-query-field">
+                  <label>Depart</label>
+                  <input
+                    class="calendar-input calendar-display-input"
+                    id="refineDepartPickerDisplay"
+                    type="text"
+                    value="{{ query.depart_date or '' }}"
+                    placeholder="Select departure date"
+                    aria-label="Depart"
+                    readonly
+                    required
+                  />
+                  <input id="refineDepartPicker" type="hidden" name="depart_date" value="{{ query.depart_date or '' }}" />
+                </div>
+
+                <div class="field calendar-field results-query-field results-query-field-return">
+                  <label>Return</label>
+                  <input
+                    class="calendar-input calendar-display-input"
+                    id="refineReturnPickerDisplay"
+                    type="text"
+                    value="{{ query.return_date or '' }}"
+                    placeholder="Select return date"
+                    aria-label="Return"
+                    readonly
+                  />
+                  <input id="refineReturnPicker" type="hidden" name="return_date" value="{{ query.return_date or '' }}" />
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+          <div class="results-mobile-filter-panel" data-mobile-editor-panel="filters">
+            <div class="results-mobile-panel-meta">
+              <div class="results-mobile-panel-title">Filters</div>
+              <div class="results-mobile-panel-note">Sort and nonstop.</div>
+            </div>
+
+            <div class="results-mobile-filter-pills" role="group" aria-label="Sort results">
+              {% set sort_labels = {"recommended": "Recommended", "cheapest": "Cheapest", "fastest": "Fastest", "earliest_departure": "Earliest departure", "earliest_arrival": "Earliest arrival", "fewest_stops": "Fewest stops"} %}
+              {% for s, label in sort_labels.items() %}
+                <button
+                  type="button"
+                  class="results-mobile-filter-pill{{ ' is-active' if query.get('sort', 'recommended') == s else '' }}"
+                  data-mobile-filter-sort="{{ s }}"
+                  aria-pressed="{{ 'true' if query.get('sort', 'recommended') == s else 'false' }}"
+                >
+                  {{ label }}
+                </button>
+              {% endfor %}
+            </div>
+
+            <button
+              type="button"
+              class="results-mobile-nonstop-toggle{{ ' is-active' if query.nonstop else '' }}"
+              data-mobile-nonstop-toggle
+              aria-pressed="{{ 'true' if query.nonstop else 'false' }}"
+            >
+              <span class="results-mobile-nonstop-copy">
+                <strong>Nonstop only</strong>
+                <small>Turn this on to hide layovers.</small>
+              </span>
+              <span class="results-mobile-nonstop-switch" aria-hidden="true">
+                <span class="results-mobile-nonstop-knob"></span>
+              </span>
+            </button>
+          </div>
+
+          <div class="results-query-footer">
+            <label class="results-query-nonstop" id="resultsManualComboWrap" {% if trip_mode != 'roundtrip' %}style="display:none;"{% endif %}>
+              <input
+                type="checkbox"
+                id="resultsManualComboInput"
+                name="combination_mode"
+                value="manual"
+                {% if combination_mode == 'manual' and trip_mode == 'roundtrip' %}checked{% endif %}
+              />
+              <span class="results-query-nonstop-copy">
+                <strong>Pick legs separately</strong>
+                <small>Round trip: choose outbound, then return.</small>
+              </span>
+            </label>
+
+            <label class="results-query-nonstop results-query-nonstop--compact">
+              <input type="checkbox" id="resultsNonstopInput" name="nonstop" {% if query.nonstop %}checked{% endif %} />
+              <span class="results-query-nonstop-copy">
+                <strong>Nonstop only</strong>
+                <small>Hide layovers.</small>
+              </span>
+            </label>
+
+            <div class="results-query-footer-actions">
+              <button class="btn primary results-search-submit-btn" type="submit">
+                {{ results_icon('search', 'btn-search-icon') }}
+                <span>Update results</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="results-mobile-sheet-actions">
+            <a class="results-mobile-sheet-link" href="/">Start new search</a>
+            <button class="btn primary results-search-submit-btn" type="submit">
+              {{ results_icon('search', 'btn-search-icon') }}
+              <span>Update results</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </section>
+    </div>{# /srb-region #}
+
+    {% if manual_flow %}
+      <section class="list manual-combo-list">
+        <div class="list-head">
+          <div>
+            <h2 class="section-title">
+              {% if manual_flow.stage == 'outbound' %}
+                Choose your departure flight
+              {% elif manual_flow.stage == 'return' %}
+                Choose your return flight
+              {% else %}
+                Your custom round trip
+              {% endif %}
+            </h2>
+            <p class="list-subtitle">
+              {% if manual_flow.stage == 'outbound' %}
+                Pick the outbound first. Prices here already reflect the full round-trip total for each outbound choice.
+              {% elif manual_flow.stage == 'return' %}
+                Now choose the return. The cheapest matching return stays at this outbound's lowest total, while more expensive returns show only the added cost.
+              {% else %}
+                This is the round-trip combination you built. You can still swap the outbound or try a different return below.
+              {% endif %}
+            </p>
+          </div>
+          <div class="muted small">Fixed-date round trip • Manual pairing</div>
+        </div>
+
+        <div class="results-premium-toolbar">
+          <button type="button" class="btn results-filter-drawer-open" data-results-filter-open aria-label="Open filters">
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <path d="M3.5 5.25h13M6.5 10h7M8.75 14.75h2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.75"/>
+            </svg>
+            <span class="results-filter-drawer-open-label">Filters</span>
+          </button>
+          <div class="results-top-sort-mobile">
+            <label class="sr-only" for="resultsTopSortSelectManual">Sort flight results</label>
+            <select id="resultsTopSortSelectManual" class="results-top-sort-select" data-results-sort-select aria-label="Sort flight results">
+              {% set initial_sort = query.get('sort', 'recommended') %}
+              <option value="cheapest" {% if initial_sort == 'cheapest' %}selected{% endif %}>Cheapest</option>
+              <option value="fastest" {% if initial_sort == 'fastest' %}selected{% endif %}>Fastest</option>
+              <option value="best" {% if initial_sort == 'recommended' %}selected{% endif %}>Best</option>
+              <option value="earliest_departure" {% if initial_sort == 'earliest_departure' %}selected{% endif %}>Earliest departure</option>
+              <option value="earliest_arrival" {% if initial_sort == 'earliest_arrival' %}selected{% endif %}>Earliest arrival</option>
+              <option value="fewest_stops" {% if initial_sort == 'fewest_stops' %}selected{% endif %}>Fewest stops</option>
+            </select>
+          </div>
+          <div class="results-top-sort" role="tablist" aria-label="Sort flight results">
+            {% set initial_sort = query.get('sort', 'recommended') %}
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'cheapest' else '' }}" data-results-sort="cheapest" role="tab" aria-selected="{{ 'true' if initial_sort == 'cheapest' else 'false' }}">Cheapest</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'fastest' else '' }}" data-results-sort="fastest" role="tab" aria-selected="{{ 'true' if initial_sort == 'fastest' else 'false' }}">Fastest</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'recommended' else '' }}" data-results-sort="best" role="tab" aria-selected="{{ 'true' if initial_sort == 'recommended' else 'false' }}">Best</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'earliest_departure' else '' }}" data-results-sort="earliest_departure" role="tab" aria-selected="{{ 'true' if initial_sort == 'earliest_departure' else 'false' }}">Earliest departure</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'earliest_arrival' else '' }}" data-results-sort="earliest_arrival" role="tab" aria-selected="{{ 'true' if initial_sort == 'earliest_arrival' else 'false' }}">Earliest arrival</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'fewest_stops' else '' }}" data-results-sort="fewest_stops" role="tab" aria-selected="{{ 'true' if initial_sort == 'fewest_stops' else 'false' }}">Fewest stops</button>
+          </div>
+        </div>
+
+        <div class="results-explorer">
+          <aside class="results-filter-drawer" id="resultsFilterDrawer" aria-label="Flight filters">
+            <div class="results-filter-head">
+              <h3>Filter results</h3>
+              <button type="button" class="results-filter-close" data-results-filter-close aria-label="Close filters">Close</button>
+            </div>
+
+            {# ── AI Natural Language Filter ── #}
+            <div class="ai-filter-group" id="aiFilterWrap">
+              <div class="ai-filter-pill-bar">
+                <span class="ai-filter-pill-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="14" height="14"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zm6 10l.9 2.7 2.7.9-2.7.9-.9 2.7-.9-2.7-2.7-.9 2.7-.9L18 12zM4.5 16l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9z"/></svg>
+                </span>
+                <input
+                  type="text"
+                  class="ai-filter-input"
+                  placeholder="Ask AI to filter flights…"
+                  maxlength="300"
+                  aria-label="Describe the flights you want"
+                />
+                <button type="button" class="ai-filter-btn" aria-label="Apply AI filter">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+              </div>
+              <div class="ai-filter-status" aria-live="polite" aria-atomic="true"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Price</div>
+              <div class="results-filter-price-summary" id="filterPriceSummary">$0 - $0</div>
+              <div class="results-filter-price-slider" id="filterPriceSlider">
+                <div class="results-filter-price-slider-track"></div>
+                <div class="results-filter-price-slider-active" id="filterPriceActiveTrack"></div>
+                <input type="range" min="0" max="0" step="1" id="filterPriceRangeMin" aria-label="Minimum price" />
+                <input type="range" min="0" max="0" step="1" id="filterPriceRangeMax" aria-label="Maximum price" />
+              </div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Stops</div>
+              <label><input type="checkbox" class="results-filter-stop" value="0" checked /> Nonstop</label>
+              <label><input type="checkbox" class="results-filter-stop" value="1" checked /> 1 stop</label>
+              <label><input type="checkbox" class="results-filter-stop" value="2" checked /> 2+ stops</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Departure time</div>
+              <label><input type="checkbox" class="results-filter-departure" value="morning" checked /> Morning</label>
+              <label><input type="checkbox" class="results-filter-departure" value="afternoon" checked /> Afternoon</label>
+              <label><input type="checkbox" class="results-filter-departure" value="evening" checked /> Evening</label>
+              <label><input type="checkbox" class="results-filter-departure" value="night" checked /> Night</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Arrival time</div>
+              <label><input type="checkbox" class="results-filter-arrival" value="morning" checked /> Morning</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="afternoon" checked /> Afternoon</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="evening" checked /> Evening</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="night" checked /> Night</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Duration</div>
+              <label for="filterDurationMax">Max total trip duration</label>
+              <input type="range" id="filterDurationMax" min="60" max="3000" step="30" />
+              <div class="results-filter-range-label" id="filterDurationMaxLabel"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Airlines</div>
+              <div id="resultsAirlineFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Departure airport</div>
+              <div id="resultsDepAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Arrival airport</div>
+              <div id="resultsArrAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Airport (layover)</div>
+              <div id="resultsAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Baggage included</div>
+              <label class="results-filter-disabled">
+                <input type="checkbox" disabled />
+                Fare-bundle baggage data is not available yet
+              </label>
+            </div>
+
+            <button type="button" class="btn" id="resultsClearFilters">Clear filters</button>
+          </aside>
+          <div class="results-explorer-content">
+
+        {% if error %}
+          <div class="empty-card manual-empty-card">
+            <h2>Need another option</h2>
+            <p class="muted">{{ error }}</p>
+            {% if manual_flow.get('reset_outbound_fields') %}
+              <form method="post" action="{{ url_for('search') }}" class="manual-inline-form">
+                {% for name, value in manual_flow.reset_outbound_fields.items() %}
+                  <input type="hidden" name="{{ name }}" value="{{ value }}" />
+                {% endfor %}
+                <button class="btn primary" type="submit">Choose a different outbound</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {% if manual_flow.stage == 'outbound' and manual_flow.outbound_options %}
+          <div class="cards" id="resultsCards" data-endpoint-airport-leg="outbound">
+            {% for f in manual_flow.outbound_options %}
+              {{ flight_card(
+                f,
+                featured=loop.index <= 3,
+                rank=loop.index,
+                action={'label': 'Choose outbound', 'fields': f.manual_action_fields},
+                price_caption='Total trip',
+                endpoint_airport_mode='outbound'
+              ) }}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if manual_flow.stage == 'return' %}
+          <div class="list-head more-head manual-combo-selected-head">
+            <div>
+              <h2 class="section-title">Selected outbound</h2>
+              <p class="list-subtitle">This departure is locked in while you compare the return options.</p>
+            </div>
+            <form method="post" action="{{ url_for('search') }}" class="manual-inline-form">
+              {% for name, value in manual_flow.reset_outbound_fields.items() %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}" />
+              {% endfor %}
+              <button class="btn" type="submit">Change outbound</button>
+            </form>
+          </div>
+
+          <div class="cards">
+            {{ flight_card(manual_flow.selected_outbound, featured=True, rank=1, price_caption='Current best total', show_booking=False) }}
+          </div>
+
+          {% if manual_flow.return_options %}
+            <div class="list-head more-head">
+              <div>
+                <h2 class="section-title">Return options</h2>
+                <p class="list-subtitle">The cheapest available return for this outbound shows no extra badge. More expensive returns show only the added cost, plus the updated total trip price.</p>
+              </div>
+            </div>
+
+            <div class="cards" id="resultsCards" data-endpoint-airport-leg="return">
+              {% for f in manual_flow.return_options %}
+                {{ flight_card(
+                  f,
+                  featured=loop.index <= 3,
+                  rank=loop.index,
+                  action={'label': 'Choose return', 'fields': f.manual_action_fields},
+                  price_caption='Total trip',
+                  price_badge=f.manual_price_delta_label,
+                  endpoint_airport_mode='return'
+                ) }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endif %}
+
+        {% if manual_flow.stage == 'complete' %}
+          <div class="list-head more-head manual-combo-selected-head">
+            <div>
+              <h2 class="section-title">Selected combination</h2>
+              <p class="list-subtitle">Outbound and return combined into one round-trip summary.</p>
+            </div>
+            <div class="manual-combo-actions">
+              <form method="post" action="{{ url_for('search') }}" class="manual-inline-form">
+                {% for name, value in manual_flow.reset_outbound_fields.items() %}
+                  <input type="hidden" name="{{ name }}" value="{{ value }}" />
+                {% endfor %}
+                <button class="btn" type="submit">Change outbound</button>
+              </form>
+              <form method="post" action="{{ url_for('search') }}" class="manual-inline-form">
+                {% for name, value in manual_flow.reset_return_fields.items() %}
+                  <input type="hidden" name="{{ name }}" value="{{ value }}" />
+                {% endfor %}
+                <button class="btn" type="submit">Choose a different return</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="cards">
+            {{ flight_card(manual_flow.combined_summary, featured=True, rank=1) }}
+          </div>
+
+          {% if manual_flow.return_options %}
+            <div class="list-head more-head">
+              <div>
+                <h2 class="section-title">Try a different return</h2>
+                <p class="list-subtitle">Returns with no badge keep this outbound at its lowest available total.</p>
+              </div>
+            </div>
+
+            <div class="cards" id="resultsCards" data-endpoint-airport-leg="return">
+              {% for f in manual_flow.return_options %}
+                {% set is_selected_return = manual_flow.selected_return and f.selection_token == manual_flow.selected_return.selection_token %}
+                {{ flight_card(
+                  f,
+                  featured=is_selected_return,
+                  rank=loop.index,
+                  action={'label': 'Choose return', 'fields': f.manual_action_fields},
+                  price_caption='Total trip',
+                  price_badge=f.manual_price_delta_label,
+                  endpoint_airport_mode='return'
+                ) }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endif %}
+          <div class="empty-card" id="resultsFilteredEmpty" style="display:none;">
+            <h2>No flights match these filters</h2>
+            <p class="muted">Try widening your price, stops, or time preferences.</p>
+          </div>
+          </div>
+        </div>
+      </section>
+    {% elif error %}
       <section class="empty">
         <div class="empty-card">
           <h2>Nothing to show</h2>
@@ -46,58 +1101,1958 @@
       </section>
     {% else %}
       <section class="list">
-        <h2 class="section-title">Top matches</h2>
-
-        <div class="cards">
-          {% for f in flights[:3] %}
-            <div class="flight-card best">
-              <div class="flight-main">
-                <div class="flight-airline">{{ f.airline }}</div>
-                <div class="flight-route">{{ f.route }}</div>
-                <div class="flight-meta muted">
-                  {{ f.depart }} → {{ f.arrive }} • {{ minutes_to_hm(f.duration_min) }} •
-                  {% if f.stops == 0 %} Nonstop {% else %} {{ f.stops }} stop(s) {% endif %}
-                </div>
-              </div>
-              <div class="flight-side">
-                <div class="price">${{ f.price }}</div>
-                <a class="btn primary" href="{{ f.booking_url }}" target="_blank" rel="noopener">
-                  Continue to Booking
-                </a>
-              </div>
+        <div class="list-head">
+          <div>
+            <h2 class="section-title">Top matches</h2>
+            {% if flex_streaming %}
+            <p class="list-subtitle">We run live price checks across many dates in your window and keep the cheapest totals.</p>
+            <div class="flex-live-topbar" aria-hidden="true"><div class="flex-live-topbar-inner"></div></div>
+            <p class="flex-live-status muted" id="resultsFlexLiveStatus">Looking for the cheapest fares—working through dates in your month…</p>
+            <div class="gf-date-chips" id="resultsFlexDateChips" aria-label="Date checks so far"></div>
+            {% elif search_pending %}
+            <p class="list-subtitle" id="resultsPendingStatus">Preparing your live search…</p>
+            <div class="flex-live-topbar" aria-hidden="true"><div class="flex-live-topbar-inner"></div></div>
+            <p class="flex-live-status muted"><span id="resultsPendingStage">Contacting flight sources</span> · <span id="resultsPendingElapsed">0:00</span></p>
+            <div class="loader-progress-track" aria-hidden="true">
+              <div class="loader-progress-fill" id="resultsPendingProgressFill" style="width: 6%;"></div>
             </div>
-          {% endfor %}
+            {% else %}
+            <p class="list-subtitle">{% if results_trip_mode == 'multicity' %}Ranked by total price, total trip time, and connection quality across all legs.{% else %}Ranked by price, timing, and connection quality.{% endif %}</p>
+            {% endif %}
+          </div>
         </div>
 
-        {% if flights|length > 3 %}
-          <h2 class="section-title">More options</h2>
-          <div class="cards">
-            {% for f in flights[3:] %}
-              <div class="flight-card">
+        <div class="results-premium-toolbar">
+          <button type="button" class="btn results-filter-drawer-open" data-results-filter-open aria-label="Open filters">
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <path d="M3.5 5.25h13M6.5 10h7M8.75 14.75h2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.75"/>
+            </svg>
+            <span class="results-filter-drawer-open-label">Filters</span>
+          </button>
+          <div class="results-top-sort-mobile">
+            <label class="sr-only" for="resultsTopSortSelectStandard">Sort flight results</label>
+            <select id="resultsTopSortSelectStandard" class="results-top-sort-select" data-results-sort-select aria-label="Sort flight results">
+              {% set initial_sort = query.get('sort', 'recommended') %}
+              <option value="cheapest" {% if initial_sort == 'cheapest' %}selected{% endif %}>Cheapest</option>
+              <option value="fastest" {% if initial_sort == 'fastest' %}selected{% endif %}>Fastest</option>
+              <option value="best" {% if initial_sort == 'recommended' %}selected{% endif %}>Best</option>
+              <option value="earliest_departure" {% if initial_sort == 'earliest_departure' %}selected{% endif %}>Earliest departure</option>
+              <option value="earliest_arrival" {% if initial_sort == 'earliest_arrival' %}selected{% endif %}>Earliest arrival</option>
+              <option value="fewest_stops" {% if initial_sort == 'fewest_stops' %}selected{% endif %}>Fewest stops</option>
+            </select>
+          </div>
+          <div class="results-top-sort" role="tablist" aria-label="Sort flight results">
+            {% set initial_sort = query.get('sort', 'recommended') %}
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'cheapest' else '' }}" data-results-sort="cheapest" role="tab" aria-selected="{{ 'true' if initial_sort == 'cheapest' else 'false' }}">Cheapest</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'fastest' else '' }}" data-results-sort="fastest" role="tab" aria-selected="{{ 'true' if initial_sort == 'fastest' else 'false' }}">Fastest</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'recommended' else '' }}" data-results-sort="best" role="tab" aria-selected="{{ 'true' if initial_sort == 'recommended' else 'false' }}">Best</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'earliest_departure' else '' }}" data-results-sort="earliest_departure" role="tab" aria-selected="{{ 'true' if initial_sort == 'earliest_departure' else 'false' }}">Earliest departure</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'earliest_arrival' else '' }}" data-results-sort="earliest_arrival" role="tab" aria-selected="{{ 'true' if initial_sort == 'earliest_arrival' else 'false' }}">Earliest arrival</button>
+            <button type="button" class="results-top-sort-btn{{ ' is-active' if initial_sort == 'fewest_stops' else '' }}" data-results-sort="fewest_stops" role="tab" aria-selected="{{ 'true' if initial_sort == 'fewest_stops' else 'false' }}">Fewest stops</button>
+          </div>
+        </div>
+
+        <div class="results-explorer">
+          <aside class="results-filter-drawer" id="resultsFilterDrawer" aria-label="Flight filters">
+            <div class="results-filter-head">
+              <h3>Filter results</h3>
+              <button type="button" class="results-filter-close" data-results-filter-close aria-label="Close filters">Close</button>
+            </div>
+
+            {# ── AI Natural Language Filter ── #}
+            <div class="ai-filter-group" id="aiFilterWrap">
+              <div class="ai-filter-pill-bar">
+                <span class="ai-filter-pill-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="14" height="14"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zm6 10l.9 2.7 2.7.9-2.7.9-.9 2.7-.9-2.7-2.7-.9 2.7-.9L18 12zM4.5 16l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9z"/></svg>
+                </span>
+                <input
+                  type="text"
+                  class="ai-filter-input"
+                  placeholder="Ask AI to filter flights…"
+                  maxlength="300"
+                  aria-label="Describe the flights you want"
+                />
+                <button type="button" class="ai-filter-btn" aria-label="Apply AI filter">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+              </div>
+              <div class="ai-filter-status" aria-live="polite" aria-atomic="true"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Price</div>
+              <div class="results-filter-price-summary" id="filterPriceSummary">$0 - $0</div>
+              <div class="results-filter-price-slider" id="filterPriceSlider">
+                <div class="results-filter-price-slider-track"></div>
+                <div class="results-filter-price-slider-active" id="filterPriceActiveTrack"></div>
+                <input type="range" min="0" max="0" step="1" id="filterPriceRangeMin" aria-label="Minimum price" />
+                <input type="range" min="0" max="0" step="1" id="filterPriceRangeMax" aria-label="Maximum price" />
+              </div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Stops</div>
+              <label><input type="checkbox" class="results-filter-stop" value="0" checked /> Nonstop</label>
+              <label><input type="checkbox" class="results-filter-stop" value="1" checked /> 1 stop</label>
+              <label><input type="checkbox" class="results-filter-stop" value="2" checked /> 2+ stops</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Departure time</div>
+              <label><input type="checkbox" class="results-filter-departure" value="morning" checked /> Morning</label>
+              <label><input type="checkbox" class="results-filter-departure" value="afternoon" checked /> Afternoon</label>
+              <label><input type="checkbox" class="results-filter-departure" value="evening" checked /> Evening</label>
+              <label><input type="checkbox" class="results-filter-departure" value="night" checked /> Night</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Arrival time</div>
+              <label><input type="checkbox" class="results-filter-arrival" value="morning" checked /> Morning</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="afternoon" checked /> Afternoon</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="evening" checked /> Evening</label>
+              <label><input type="checkbox" class="results-filter-arrival" value="night" checked /> Night</label>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Duration</div>
+              <label for="filterDurationMax">Max total trip duration</label>
+              <input type="range" id="filterDurationMax" min="60" max="3000" step="30" />
+              <div class="results-filter-range-label" id="filterDurationMaxLabel"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Airlines</div>
+              <div id="resultsAirlineFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Departure airport</div>
+              <div id="resultsDepAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Arrival airport</div>
+              <div id="resultsArrAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Airport (layover)</div>
+              <div id="resultsAirportFilterList" class="results-filter-checklist"></div>
+            </div>
+
+            <div class="results-filter-group">
+              <div class="results-filter-group-title">Baggage included</div>
+              <label class="results-filter-disabled">
+                <input type="checkbox" disabled />
+                Fare-bundle baggage data is not available yet
+              </label>
+            </div>
+
+            <button type="button" class="btn" id="resultsClearFilters">Clear filters</button>
+          </aside>
+
+          <div class="results-explorer-content">
+
+            {# ── AI Insight Banner ── #}
+            <div id="aiInsightOuter" class="ai-insight-outer">
+            <div id="aiInsightBanner" class="ai-insight-banner" role="status" aria-live="polite" aria-atomic="true">
+
+              {# Decorative boarding-pass illustration — right side #}
+              <div class="ai-insight-deco" aria-hidden="true">
+                <svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {# Boarding pass card — tilted -11deg around its centre (80,55) #}
+                  <g transform="rotate(-11, 80, 55)">
+                    {# Card body #}
+                    <rect x="18" y="12" width="124" height="86" rx="12" fill="rgba(109,40,217,0.18)" stroke="rgba(139,92,246,0.3)" stroke-width="1"/>
+                    {# Left notch cutout #}
+                    <circle cx="18" cy="57" r="9" class="ai-insight-notch"/>
+                    {# Right notch cutout #}
+                    <circle cx="142" cy="57" r="9" class="ai-insight-notch"/>
+                    {# Perforation dashed line #}
+                    <line x1="27" y1="57" x2="133" y2="57" stroke="rgba(167,139,250,0.55)" stroke-width="1.5" stroke-dasharray="5 3.5"/>
+                    {# Airplane icon — top half, left area #}
+                    <g transform="translate(26,18) scale(1.35)">
+                      <path d="M21 16v-2l-8-5V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="rgba(139,92,246,0.9)"/>
+                    </g>
+                    {# Destination code placeholder — top right of top half #}
+                    <rect x="72" y="22" width="56" height="6" rx="3" fill="rgba(167,139,250,0.28)"/>
+                    <rect x="72" y="33" width="40" height="5" rx="2.5" fill="rgba(167,139,250,0.18)"/>
+                    <rect x="72" y="42" width="48" height="5" rx="2.5" fill="rgba(167,139,250,0.18)"/>
+                    {# Barcode — bottom half #}
+                    <rect x="28"  y="64" width="4"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="35"  y="64" width="2"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="40"  y="64" width="5"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="48"  y="64" width="2"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="53"  y="64" width="4"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="60"  y="64" width="3"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="66"  y="64" width="6"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="75"  y="64" width="2"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="80"  y="64" width="4"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="87"  y="64" width="3"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="93"  y="64" width="5"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="101" y="64" width="2"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="106" y="64" width="4"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="113" y="64" width="3"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                    <rect x="119" y="64" width="5"  height="22" rx="1" fill="rgba(139,92,246,0.4)"/>
+                  </g>
+                  {# Sparkle stars #}
+                  <path d="M148 3 L150 9 L156 11 L150 13 L148 19 L146 13 L140 11 L146 9 Z" fill="#818cf8" opacity="0.9"/>
+                  <path d="M9 82 L10.5 87 L15.5 88.5 L10.5 90 L9 95 L7.5 90 L2.5 88.5 L7.5 87 Z" fill="#a78bfa" opacity="0.55"/>
+                  <path d="M155 80 L156.4 84 L160 85.4 L156.4 86.8 L155 90.8 L153.6 86.8 L150 85.4 L153.6 84 Z" fill="#c4b5fd" opacity="0.7"/>
+                </svg>
+              </div>
+
+              {# Left avatar #}
+              <div class="ai-insight-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+              </div>
+
+              {# Content body #}
+              <div class="ai-insight-body">
+                <div class="ai-insight-label">
+                  <svg class="ai-insight-label-star" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6Z"/></svg>
+                  Skairova AI Insight
+                </div>
+                <p class="ai-insight-text is-loading">
+                  <span class="ai-insight-spinner" aria-hidden="true"></span>
+                  Analyzing your results…
+                </p>
+              </div>
+
+              {# Close button #}
+              <button class="ai-insight-dismiss" aria-label="Dismiss AI insight" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+
+            </div>
+            {# Bottom sparkle badge — outside banner so it isn't clipped by overflow:hidden #}
+            <div class="ai-insight-badge" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6Z"/></svg>
+            </div>
+            </div>{# /ai-insight-outer #}
+
+            {% if flex_streaming %}
+            <div class="cards" id="resultsCards" data-endpoint-airport-leg="outbound" data-flex-live="1">
+              {% for _ in range(12) %}
+              <article class="flight-card flex-live-skeleton" aria-hidden="true">
                 <div class="flight-main">
-                  <div class="flight-airline">{{ f.airline }}</div>
-                  <div class="flight-route">{{ f.route }}</div>
-                  <div class="flight-meta muted">
-                    {{ f.depart }} → {{ f.arrive }} • {{ minutes_to_hm(f.duration_min) }} •
-                    {% if f.stops == 0 %} Nonstop {% else %} {{ f.stops }} stop(s) {% endif %}
+                  <div class="gf-sk-shimmer">
+                    <div class="gf-sk-line w-a"></div>
+                    <div class="gf-sk-line w-b"></div>
                   </div>
                 </div>
-                <div class="flight-side">
-                  <div class="price">${{ f.price }}</div>
-                  <a class="btn" href="{{ f.booking_url }}" target="_blank" rel="noopener">
-                    Booking link
-                  </a>
+                <aside class="flight-side">
+                  <div class="gf-sk-shimmer gf-sk-price" aria-hidden="true"></div>
+                </aside>
+              </article>
+              {% endfor %}
+            </div>
+            {% elif search_pending %}
+            <div class="cards" id="resultsCards" data-endpoint-airport-leg="outbound">
+              {% for _ in range(8) %}
+              <article class="flight-card" aria-hidden="true">
+                <div class="flight-main">
+                  <div class="muted">Searching live prices for this route…</div>
                 </div>
-              </div>
-            {% endfor %}
+                <aside class="flight-side">
+                  <div class="price-panel">
+                    <div class="price-kicker">Checking</div>
+                    <div class="price">--</div>
+                  </div>
+                </aside>
+              </article>
+              {% endfor %}
+            </div>
+            {% else %}
+            {% set best_p = flights[0].price if flights else 0 %}
+            <div class="cards" id="resultsCards" data-endpoint-airport-leg="outbound">
+              {% for f in flights %}
+                {{ flight_card(f, featured=loop.index <= 3, rank=loop.index, best_price=best_p, endpoint_airport_mode='outbound') }}
+              {% endfor %}
+            </div>
+            {% endif %}
+            <div class="empty-card" id="resultsFilteredEmpty" style="display:none;">
+              <h2>No flights match these filters</h2>
+              <p class="muted">Try widening your price, stops, or time preferences.</p>
+            </div>
           </div>
-        {% endif %}
+        </div>
       </section>
     {% endif %}
 
     <footer class="footer">
-      <span class="muted">Prototype UI • Replace mock data with Amadeus + Gemini next.</span>
+      <span class="muted">© Skairova</span>
     </footer>
   </main>
+
+  <script>
+    (function () {
+      const toggleButtons = Array.from(document.querySelectorAll("[data-toggle-refine]"));
+      const mobileCloseButtons = Array.from(document.querySelectorAll("[data-mobile-close]"));
+      const mobileSummaryRows = Array.from(document.querySelectorAll("[data-mobile-editor-target]"));
+      const mobileSummaryValues = Array.from(document.querySelectorAll("[data-mobile-summary]")).reduce((map, node) => {
+        map[node.dataset.mobileSummary] = node;
+        return map;
+      }, {});
+      const mobileFilterSortButtons = Array.from(document.querySelectorAll("[data-mobile-filter-sort]"));
+      const mobileNonstopToggle = document.querySelector("[data-mobile-nonstop-toggle]");
+      const panel = document.getElementById("refine");
+      const form = document.getElementById("resultsQueryForm");
+      const tripInput = document.getElementById("resultsTripType");
+      const sortInput = document.getElementById("resultsSortInput");
+      const tripButtons = document.querySelectorAll("[data-trip]");
+      const sortButtons = document.querySelectorAll("[data-sort]");
+      const swapBtn = document.getElementById("resultsSwapBtn");
+      const originInput = form?.querySelector('input[name="origin"]');
+      const destinationInput = form?.querySelector('input[name="destination"]');
+      const departDisplay = document.getElementById("refineDepartPickerDisplay");
+      const departHidden = document.getElementById("refineDepartPicker");
+      const returnDisplay = document.getElementById("refineReturnPickerDisplay");
+      const returnHidden = document.getElementById("refineReturnPicker");
+      const multiCityWrap = document.getElementById("resultsMultiCityLegs");
+      const addLegBtn = document.getElementById("resultsAddLeg");
+      const passengersSelect = form?.querySelector('select[name="passengers"]');
+      const cabinSelect = form?.querySelector('select[name="cabin"]');
+      const manualComboWrap = document.getElementById("resultsManualComboWrap");
+      const manualComboInput = document.getElementById("resultsManualComboInput");
+      const nonstopInput = document.getElementById("resultsNonstopInput");
+      const mobileMedia = window.matchMedia("(max-width: 760px)");
+      const topbar = document.querySelector(".topbar");
+      const resultsHead = document.querySelector(".results-head");
+      let lastScrollY = window.scrollY;
+      let topbarHidden = false;
+      let scrollTicking = false;
+
+      if (!toggleButtons.length || !panel || !form || !tripInput || !sortInput) return;
+
+      const isMobile = () => mobileMedia.matches;
+
+      /** Size cabin <select> to the selected option label (not the longest option in the list). */
+      const fitToolbarCabinSelectWidth = () => {
+        if (!cabinSelect) return;
+        if (isMobile()) {
+          cabinSelect.style.removeProperty("width");
+          return;
+        }
+        const opt = cabinSelect.options[cabinSelect.selectedIndex];
+        const label = (opt?.textContent || "").trim();
+        if (!label) return;
+        const cs = window.getComputedStyle(cabinSelect);
+        const probe = document.createElement("span");
+        probe.setAttribute("aria-hidden", "true");
+        probe.style.cssText = [
+          "position:fixed",
+          "left:-9999px",
+          "top:0",
+          "white-space:nowrap",
+          "visibility:hidden",
+          "pointer-events:none",
+          `font-family:${cs.fontFamily}`,
+          `font-size:${cs.fontSize}`,
+          `font-weight:${cs.fontWeight}`,
+          `font-style:${cs.fontStyle}`,
+          `letter-spacing:${cs.letterSpacing}`,
+        ].join(";");
+        probe.textContent = label;
+        document.body.appendChild(probe);
+        const textW = probe.getBoundingClientRect().width;
+        probe.remove();
+        const padL = Number.parseFloat(cs.paddingLeft) || 0;
+        const padR = Number.parseFloat(cs.paddingRight) || 0;
+        const borderL = Number.parseFloat(cs.borderLeftWidth) || 0;
+        const borderR = Number.parseFloat(cs.borderRightWidth) || 0;
+        cabinSelect.style.width = `${Math.ceil(textW + padL + padR + borderL + borderR + 2)}px`;
+      };
+
+      const longDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const shortDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+
+      const toTitleCase = (value) => (value || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+
+      const parseIsoDate = (value) => {
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+        const [year, month, day] = value.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      };
+
+      const multiCityLegRows = () => Array.from(multiCityWrap?.querySelectorAll("[data-multicity-leg]") || []);
+
+      const syncMultiCityDateMins = () => {
+        const rows = multiCityLegRows();
+        rows.forEach((row, idx) => {
+          const dateInput = row.querySelector('input[name="leg_date"]');
+          if (!dateInput) return;
+          const prevDate = idx === 0 ? "" : (rows[idx - 1]?.querySelector('input[name="leg_date"]')?.value || "").trim();
+          const minDate = prevDate || "today";
+          if (dateInput._flatpickr) {
+            dateInput._flatpickr.set("minDate", minDate);
+          }
+          const current = (dateInput.value || "").trim();
+          if (prevDate && current && /^\d{4}-\d{2}-\d{2}$/.test(current) && current < prevDate) {
+            dateInput.value = "";
+            dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+            dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        });
+      };
+
+      const formatRouteSummary = () => {
+        if (tripInput.value === "multicity") {
+          const rows = multiCityLegRows();
+          const firstOrigin = rows[0]?.querySelector('input[name="leg_origin"]')?.value?.trim() || "Origin";
+          const lastDest = rows[rows.length - 1]?.querySelector('input[name="leg_destination"]')?.value?.trim() || "Destination";
+          return `${firstOrigin} → ${lastDest}`;
+        }
+        const origin = (originInput?.value || "").trim() || "Origin";
+        const destination = (destinationInput?.value || "").trim() || "Destination";
+        return `${origin} → ${destination}`;
+      };
+
+      const formatTripSummary = () => {
+        const tripLabel = tripInput.value === "roundtrip" ? "Round trip" : "One way";
+        if (tripInput.value === "roundtrip" && manualComboInput?.checked) {
+          return `${tripLabel} · Pick flights separately`;
+        }
+        return tripLabel;
+      };
+
+      const formatDatesSummary = () => {
+        if (tripInput.value === "multicity") {
+          const rows = multiCityLegRows();
+          const first = (rows[0]?.querySelector('input[name="leg_date"]')?.value || "").trim();
+          const last = (rows[rows.length - 1]?.querySelector('input[name="leg_date"]')?.value || "").trim();
+          const d0 = parseIsoDate(first);
+          const d1 = parseIsoDate(last);
+          if (!d0) return "Select dates";
+          if (!d1 || rows.length <= 1) return longDateFormatter.format(d0);
+          return `${shortDateFormatter.format(d0)} - ${longDateFormatter.format(d1)}`;
+        }
+        const departDate = parseIsoDate(departHidden?.value || "");
+        const returnDate = parseIsoDate(returnHidden?.value || "");
+
+        if (!departDate) {
+          return tripInput.value === "oneway" ? "Select date" : "Select dates";
+        }
+
+        if (tripInput.value === "oneway" || !returnDate) {
+          return longDateFormatter.format(departDate);
+        }
+
+        if (departDate.getFullYear() === returnDate.getFullYear()) {
+          return `${shortDateFormatter.format(departDate)} - ${longDateFormatter.format(returnDate)}`;
+        }
+
+        return `${longDateFormatter.format(departDate)} - ${longDateFormatter.format(returnDate)}`;
+      };
+
+      const formatTravelersSummary = () => {
+        const count = Number.parseInt(passengersSelect?.value || "1", 10) || 1;
+        const cabinText = toTitleCase(cabinSelect?.selectedOptions?.[0]?.textContent || cabinSelect?.value?.replace(/_/g, " ") || "Economy");
+        return `${count} traveler${count === 1 ? "" : "s"} · ${cabinText}`;
+      };
+
+      const formatFiltersSummary = () => {
+        const sortLabel = toTitleCase(sortInput.value || "recommended");
+        return `${sortLabel} · Nonstop ${nonstopInput?.checked ? "on" : "off"}`;
+      };
+
+      const syncMobileSummary = () => {
+        if (mobileSummaryValues.route) mobileSummaryValues.route.textContent = formatRouteSummary();
+        if (mobileSummaryValues.trip) mobileSummaryValues.trip.textContent = formatTripSummary();
+        if (mobileSummaryValues.dates) mobileSummaryValues.dates.textContent = formatDatesSummary();
+        if (mobileSummaryValues.travelers) mobileSummaryValues.travelers.textContent = formatTravelersSummary();
+        if (mobileSummaryValues.filters) mobileSummaryValues.filters.textContent = formatFiltersSummary();
+
+        mobileFilterSortButtons.forEach((button) => {
+          const active = button.dataset.mobileFilterSort === sortInput.value;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-pressed", String(active));
+        });
+
+        if (mobileNonstopToggle) {
+          mobileNonstopToggle.classList.toggle("is-active", Boolean(nonstopInput?.checked));
+          mobileNonstopToggle.setAttribute("aria-pressed", String(Boolean(nonstopInput?.checked)));
+        }
+      };
+
+      const setMobileActivePanel = (nextPanel = "") => {
+        form.dataset.mobileActivePanel = nextPanel;
+        mobileSummaryRows.forEach((row) => {
+          const active = row.dataset.mobileEditorTarget === nextPanel;
+          row.classList.toggle("is-active", active);
+          row.setAttribute("aria-expanded", String(active));
+        });
+      };
+
+      const focusMobilePanel = (panelName) => {
+        window.setTimeout(() => {
+          if (panelName === "route") {
+            if (tripInput.value === "multicity") {
+              multiCityLegRows()[0]?.querySelector('input[name="leg_origin"]')?.focus();
+            } else {
+              originInput?.focus();
+            }
+            return;
+          }
+
+          if (panelName === "trip") {
+            form.querySelector(`[data-trip="${tripInput.value || "roundtrip"}"]`)?.focus();
+            return;
+          }
+
+          if (panelName === "dates") {
+            if (tripInput.value === "multicity") {
+              multiCityLegRows()[0]?.querySelector('input[name="leg_date"]')?.click();
+            } else {
+              departDisplay?.click();
+            }
+            return;
+          }
+
+          if (panelName === "travelers") {
+            passengersSelect?.focus();
+            return;
+          }
+
+          if (panelName === "filters") {
+            mobileFilterSortButtons.find((button) => button.classList.contains("is-active"))?.focus();
+          }
+        }, 80);
+      };
+
+      const syncSheetState = () => {
+        const mobileOpen = isMobile() && !panel.classList.contains("collapsed");
+        panel.classList.toggle("is-mobile-open", mobileOpen);
+        document.body.classList.toggle("results-mobile-edit-open", mobileOpen);
+      };
+
+      const openDateEditorAfterTripChange = () => {
+        window.requestAnimationFrame(() => {
+          setMobileActivePanel("dates");
+          window.setTimeout(() => {
+            departDisplay?.click();
+            departDisplay?.focus();
+          }, 40);
+        });
+      };
+
+      const topbarHideThreshold = () => {
+        if (!resultsHead) return 180;
+        const rect = resultsHead.getBoundingClientRect();
+        return Math.max(100, window.scrollY + rect.top + rect.height);
+      };
+
+      const syncTopbarVisibility = () => {
+        if (!topbar) return;
+        const currentY = window.scrollY;
+        const threshold = topbarHideThreshold();
+        const scrollingDown = currentY > lastScrollY;
+
+        if (currentY <= threshold) {
+          if (topbarHidden) {
+            topbar.classList.remove("is-scroll-hidden");
+            topbarHidden = false;
+          }
+        } else if (scrollingDown && !topbarHidden) {
+          topbar.classList.add("is-scroll-hidden");
+          topbarHidden = true;
+        } else if (!scrollingDown && topbarHidden) {
+          topbar.classList.remove("is-scroll-hidden");
+          topbarHidden = false;
+        }
+        lastScrollY = currentY;
+      };
+
+      window.addEventListener("scroll", () => {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        window.requestAnimationFrame(() => {
+          syncTopbarVisibility();
+          scrollTicking = false;
+        });
+      }, { passive: true });
+
+      const setCollapsed = (collapsed) => {
+        panel.classList.toggle("collapsed", collapsed);
+        if (collapsed) {
+          document.dispatchEvent(new CustomEvent("airportSuggestClose", { bubbles: true }));
+        }
+        if (collapsed || isMobile()) {
+          setMobileActivePanel("");
+        }
+
+        toggleButtons.forEach((button) => {
+          if (!button.firstElementChild) {
+            const label = collapsed ? "Edit search" : "Hide editor";
+            button.textContent = isMobile() ? "Edit search" : label;
+          }
+          button.setAttribute("aria-expanded", String(!collapsed));
+        });
+
+        syncSheetState();
+      };
+
+      const setTripMode = (mode, options = {}) => {
+        mode = mode === "oneway" ? "oneway" : "roundtrip";
+        const isOneWay = mode === "oneway";
+        tripInput.value = mode;
+        panel.classList.toggle("is-oneway", isOneWay);
+        panel.classList.remove("is-multicity");
+
+        tripButtons.forEach((button) => {
+          const active = button.dataset.trip === mode;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-selected", String(active));
+        });
+
+        const disableStandardFields = (disabled) => {
+          if (originInput) {
+            originInput.required = !disabled;
+            originInput.disabled = disabled;
+          }
+          if (destinationInput) {
+            destinationInput.required = !disabled;
+            destinationInput.disabled = disabled;
+          }
+          if (swapBtn) swapBtn.disabled = disabled;
+          if (departDisplay) departDisplay.disabled = disabled;
+          if (departHidden) departHidden.disabled = disabled;
+          if (returnDisplay) returnDisplay.disabled = disabled;
+          if (returnHidden) returnHidden.disabled = disabled;
+        };
+
+        const routeBlock = form.querySelector(".results-query-block-route");
+        const datesBlock = form.querySelector(".results-query-block-dates");
+
+        if (routeBlock) routeBlock.style.display = "";
+        if (datesBlock) datesBlock.style.display = "";
+        disableStandardFields(false);
+
+        if (returnDisplay) {
+          returnDisplay.placeholder = isOneWay ? "No return date" : "Select return date";
+        }
+
+        if (isOneWay && returnDisplay) {
+          returnDisplay.value = "";
+        }
+
+        if (isOneWay && returnHidden) {
+          returnHidden.value = "";
+        }
+
+        if (manualComboWrap) {
+          manualComboWrap.style.display = isOneWay ? "none" : "";
+        }
+
+        if (manualComboInput) {
+          manualComboInput.disabled = isOneWay;
+        }
+
+        tripInput.dispatchEvent(new Event("change", { bubbles: true }));
+        syncMobileSummary();
+        if (options.openDates) {
+          openDateEditorAfterTripChange();
+        }
+      };
+
+      const syncMultiCityBindings = (row) => {
+        if (!row) return;
+        const dateInput = row.querySelector('input[name="leg_date"]');
+        if (typeof window.initSingleCalendarInput === "function" && dateInput) {
+          window.initSingleCalendarInput(dateInput);
+        }
+        dateInput?.addEventListener("input", syncMultiCityDateMins);
+        dateInput?.addEventListener("change", syncMultiCityDateMins);
+        row.querySelectorAll('input[name="leg_origin"], input[name="leg_destination"], input[name="leg_date"]').forEach((input) => {
+          input?.addEventListener("input", syncMobileSummary);
+          input?.addEventListener("change", syncMobileSummary);
+        });
+        const removeBtn = row.querySelector("[data-remove-leg]");
+        removeBtn?.addEventListener("click", () => {
+          const rows = multiCityLegRows();
+          if (rows.length <= 2) return;
+          row.remove();
+          syncMobileSummary();
+          syncMultiCityDateMins();
+          // keep remove buttons consistent
+          multiCityLegRows().forEach((r) => {
+            const btn = r.querySelector("[data-remove-leg]");
+            if (btn) btn.disabled = multiCityLegRows().length <= 2;
+          });
+        });
+      };
+
+      multiCityLegRows().forEach((row) => syncMultiCityBindings(row));
+      // Disable remove if only two legs
+      multiCityLegRows().forEach((r) => {
+        const btn = r.querySelector("[data-remove-leg]");
+        if (btn) btn.disabled = multiCityLegRows().length <= 2;
+      });
+
+      addLegBtn?.addEventListener("click", () => {
+        if (!multiCityWrap) return;
+        const rows = multiCityLegRows();
+        if (rows.length >= 6) return;
+        const template = rows[rows.length - 1];
+        if (!template) return;
+        const clone = template.cloneNode(true);
+        clone.querySelectorAll("input").forEach((input) => {
+          input.value = "";
+          if (input.name === "leg_date") {
+            input.removeAttribute("data-calendar-bound");
+            if (input._flatpickr) {
+              try { input._flatpickr.destroy(); } catch (e) {}
+              input._flatpickr = null;
+            }
+          }
+        });
+        multiCityWrap.appendChild(clone);
+        syncMultiCityBindings(clone);
+        multiCityLegRows().forEach((r) => {
+          const btn = r.querySelector("[data-remove-leg]");
+          if (btn) btn.disabled = multiCityLegRows().length <= 2;
+        });
+        syncMultiCityDateMins();
+        syncMobileSummary();
+      });
+
+      const setSortMode = (mode) => {
+        sortInput.value = mode;
+        sortButtons.forEach((button) => {
+          const active = button.dataset.sort === mode;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-selected", String(active));
+        });
+
+        sortInput.dispatchEvent(new Event("change", { bubbles: true }));
+        syncMobileSummary();
+      };
+
+      tripButtons.forEach((button) => {
+        button.addEventListener("click", () => setTripMode(button.dataset.trip, { openDates: true }));
+      });
+
+      sortButtons.forEach((button) => {
+        button.addEventListener("click", () => setSortMode(button.dataset.sort));
+      });
+
+      if (swapBtn && originInput && destinationInput) {
+        swapBtn.addEventListener("click", () => {
+          const currentOrigin = originInput.value;
+          originInput.value = destinationInput.value;
+          destinationInput.value = currentOrigin;
+          syncMobileSummary();
+          originInput.focus();
+        });
+      }
+
+      toggleButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setCollapsed(!panel.classList.contains("collapsed"));
+        });
+      });
+
+      mobileCloseButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setCollapsed(true);
+        });
+      });
+
+      mobileSummaryRows.forEach((row) => {
+        row.addEventListener("click", () => {
+          const target = row.dataset.mobileEditorTarget || "";
+          const nextTarget = form.dataset.mobileActivePanel === target ? "" : target;
+          setMobileActivePanel(nextTarget);
+          if (nextTarget) {
+            focusMobilePanel(nextTarget);
+          }
+        });
+      });
+
+      mobileFilterSortButtons.forEach((button) => {
+        button.addEventListener("click", () => setSortMode(button.dataset.mobileFilterSort));
+      });
+
+      mobileNonstopToggle?.addEventListener("click", () => {
+        if (!nonstopInput) return;
+        nonstopInput.checked = !nonstopInput.checked;
+        nonstopInput.dispatchEvent(new Event("change", { bubbles: true }));
+        syncMobileSummary();
+      });
+
+      [
+        originInput,
+        destinationInput,
+        departDisplay,
+        departHidden,
+        returnDisplay,
+        returnHidden,
+        passengersSelect,
+        cabinSelect,
+        manualComboInput,
+        nonstopInput,
+        tripInput,
+        sortInput,
+      ].forEach((field) => {
+        field?.addEventListener("input", syncMobileSummary);
+        field?.addEventListener("change", syncMobileSummary);
+      });
+
+      cabinSelect?.addEventListener("change", fitToolbarCabinSelectWidth);
+
+      const handleViewportShift = () => {
+        if (!isMobile()) {
+          setMobileActivePanel("");
+        }
+        syncSheetState();
+        fitToolbarCabinSelectWidth();
+      };
+
+      if (typeof mobileMedia.addEventListener === "function") {
+        mobileMedia.addEventListener("change", handleViewportShift);
+      } else if (typeof mobileMedia.addListener === "function") {
+        mobileMedia.addListener(handleViewportShift);
+      }
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !panel.classList.contains("collapsed")) {
+          setCollapsed(true);
+        }
+      });
+
+      // Close desktop popover when clicking outside
+      document.addEventListener("click", (event) => {
+        if (!panel.classList.contains("collapsed") && !isMobile()) {
+          const insidePanel = panel.contains(event.target);
+          const onToggleBtn = !!event.target.closest("[data-toggle-refine]");
+          if (!insidePanel && !onToggleBtn) {
+            setCollapsed(true);
+          }
+        }
+      });
+
+      syncMobileSummary();
+      setTripMode(tripInput.value || "roundtrip");
+      syncMultiCityDateMins();
+      setSortMode(sortInput.value || "recommended");
+      setCollapsed(true);
+      syncTopbarVisibility();
+      fitToolbarCabinSelectWidth();
+      window.requestAnimationFrame(() => fitToolbarCabinSelectWidth());
+    })();
+  </script>
+  <script>
+    (function () {
+      const toggles = Array.from(document.querySelectorAll("[data-layover-toggle]"));
+      if (!toggles.length) return;
+
+      const closeAll = () => {
+        toggles.forEach((toggle) => {
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.closest(".flight-mobile-layover")?.classList.remove("is-open");
+        });
+      };
+
+      toggles.forEach((toggle) => {
+        toggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const wrap = toggle.closest(".flight-mobile-layover");
+          const willOpen = !wrap?.classList.contains("is-open");
+          closeAll();
+          if (wrap && willOpen) {
+            wrap.classList.add("is-open");
+            toggle.setAttribute("aria-expanded", "true");
+          }
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".flight-mobile-layover")) {
+          closeAll();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeAll();
+        }
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const cards = Array.from(document.querySelectorAll(".flight-card[data-checkout-template]"));
+      if (!cards.length) return;
+
+      cards.forEach((card) => {
+        const panel = card.querySelector("[data-fare-tier-panel]");
+        if (!panel) return;
+
+        const checkoutTemplate = card.dataset.checkoutTemplate || "";
+        const tierButtons = Array.from(panel.querySelectorAll("[data-tier-option]"));
+        const tierDetails = Array.from(panel.querySelectorAll("[data-tier-detail]"));
+        const ctaLinks = Array.from(card.querySelectorAll("[data-tier-cta]"));
+        const desktopPrice = card.querySelector("[data-tier-price-desktop]");
+        const mobilePrice = card.querySelector("[data-tier-price-mobile]");
+
+        const setActiveTier = (tierId, offerId, priceLabel) => {
+          tierButtons.forEach((button) => {
+            const active = button.dataset.tierOption === tierId;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-checked", String(active));
+          });
+          tierDetails.forEach((detail) => {
+            detail.classList.toggle("is-active", detail.dataset.tierDetail === tierId);
+          });
+
+          if (priceLabel) {
+            if (desktopPrice) desktopPrice.textContent = priceLabel;
+            if (mobilePrice) mobilePrice.textContent = priceLabel;
+          }
+
+          if (offerId && checkoutTemplate.includes("__OFFER_ID__")) {
+            const href = checkoutTemplate.replace("__OFFER_ID__", encodeURIComponent(offerId));
+            ctaLinks.forEach((link) => {
+              link.setAttribute("href", href);
+            });
+          }
+        };
+
+        tierButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            setActiveTier(
+              button.dataset.tierOption || "",
+              button.dataset.offerId || "",
+              button.dataset.priceLabel || "",
+            );
+          });
+        });
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      const cardsWrap = document.getElementById("resultsCards");
+      if (!cardsWrap) return;
+      if (cardsWrap.getAttribute("data-flex-live") === "1") return;
+      const cards = Array.from(cardsWrap.querySelectorAll(".flight-card"));
+      if (!cards.length) return;
+
+      const endpointLeg = (cardsWrap.getAttribute("data-endpoint-airport-leg") || "outbound").toLowerCase();
+
+      const filterRoot = cardsWrap.closest(".results-explorer");
+      if (!filterRoot) return;
+
+      const resultsSection = cardsWrap.closest("section");
+
+      const drawer = filterRoot.querySelector("#resultsFilterDrawer");
+      const openDrawerBtn = resultsSection?.querySelector("[data-results-filter-open]") || null;
+      const closeDrawerBtn = filterRoot.querySelector("[data-results-filter-close]");
+      const clearFiltersBtn = filterRoot.querySelector("#resultsClearFilters");
+      const emptyState = cardsWrap.parentElement?.querySelector("#resultsFilteredEmpty") || null;
+      const sortButtons = Array.from(resultsSection?.querySelectorAll("[data-results-sort]") || []);
+      const sortSelect = resultsSection?.querySelector("[data-results-sort-select]") || null;
+
+      const priceRangeMin = filterRoot.querySelector("#filterPriceRangeMin");
+      const priceRangeMax = filterRoot.querySelector("#filterPriceRangeMax");
+      const priceSummary = filterRoot.querySelector("#filterPriceSummary");
+      const priceActiveTrack = filterRoot.querySelector("#filterPriceActiveTrack");
+      const durationMax = filterRoot.querySelector("#filterDurationMax");
+      const durationMaxLabel = filterRoot.querySelector("#filterDurationMaxLabel");
+      const stopFilters = Array.from(filterRoot.querySelectorAll(".results-filter-stop"));
+      const departureFilters = Array.from(filterRoot.querySelectorAll(".results-filter-departure"));
+      const arrivalFilters = Array.from(filterRoot.querySelectorAll(".results-filter-arrival"));
+      const airlineFilterList = filterRoot.querySelector("#resultsAirlineFilterList");
+      const depAirportFilterList = filterRoot.querySelector("#resultsDepAirportFilterList");
+      const arrAirportFilterList = filterRoot.querySelector("#resultsArrAirportFilterList");
+      const airportFilterList = filterRoot.querySelector("#resultsAirportFilterList");
+
+      if (!priceRangeMin || !priceRangeMax || !durationMax || !durationMaxLabel) return;
+
+      const allPrices = cards.map((c) => Number.parseFloat(c.dataset.price || "0")).filter((v) => Number.isFinite(v) && v > 0);
+      const allDurations = cards.map((c) => Number.parseInt(c.dataset.durationMin || "0", 10)).filter((v) => Number.isFinite(v) && v > 0);
+      const minPrice = allPrices.length ? Math.floor(Math.min(...allPrices)) : 0;
+      const maxPrice = allPrices.length ? Math.ceil(Math.max(...allPrices)) : 0;
+      const maxDuration = allDurations.length ? Math.ceil(Math.max(...allDurations) / 30) * 30 : 1800;
+
+      priceRangeMin.min = String(minPrice);
+      priceRangeMin.max = String(maxPrice);
+      priceRangeMin.value = String(minPrice);
+      priceRangeMax.min = String(minPrice);
+      priceRangeMax.max = String(maxPrice);
+      priceRangeMax.value = String(maxPrice);
+
+      durationMax.min = "60";
+      durationMax.max = String(maxDuration);
+      durationMax.value = String(maxDuration);
+
+      const toBucket = (hour) => {
+        if (!Number.isFinite(hour)) return "night";
+        if (hour >= 5 && hour < 12) return "morning";
+        if (hour >= 12 && hour < 17) return "afternoon";
+        if (hour >= 17 && hour < 22) return "evening";
+        return "night";
+      };
+
+      const toHour = (iso) => {
+        if (!iso || typeof iso !== "string") return NaN;
+        const parsed = Date.parse(iso);
+        if (Number.isFinite(parsed)) return new Date(parsed).getHours();
+        if (iso.length >= 13) return Number.parseInt(iso.slice(11, 13), 10);
+        return NaN;
+      };
+
+      const formatDuration = (totalMinutes) => {
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `${h}h ${m}m`;
+      };
+
+      const toTitleCase = (value) => String(value || "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+
+      const compactAirportLabel = (value) => {
+        const titled = toTitleCase(value || "");
+        return titled
+          .replace(/\s*\(([A-Za-z]{3})\)\s*$/g, "")
+          .replace(/\bInternational\b/g, "Intl.")
+          .replace(/\bSaint\b/g, "St.")
+          .replace(/\bMount\b/g, "Mt.")
+          .replace(/\bFort\b/g, "Ft.")
+          .replace(/\bAirport\b/g, "Arpt.")
+          .replace(/\bRegional\b/g, "Rgnl.");
+      };
+
+      const buildChecklist = (target, items, className, checkedByDefault = true) => {
+        if (!target) return;
+        target.innerHTML = items.map((item) => (
+          `<label><input type="checkbox" class="${className}" value="${item.value}" ${checkedByDefault ? "checked" : ""} /> ${item.label}</label>`
+        )).join("");
+      };
+
+      const airlineMap = new Map();
+      cards.forEach((card) => {
+        (card.dataset.airlineNames || "")
+          .split("|")
+          .map((name) => name.trim())
+          .filter(Boolean)
+          .forEach((name) => {
+            if (!airlineMap.has(name)) airlineMap.set(name, toTitleCase(name));
+          });
+      });
+      const airlineItems = Array.from(airlineMap.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      const collectEndpointAirportItems = (attrName) => {
+        const map = new Map();
+        cards.forEach((card) => {
+          (card.getAttribute(attrName) || "")
+            .split("||")
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .forEach((item) => {
+              const [codeRaw, nameRaw] = item.split("::");
+              const code = (codeRaw || "").trim().toUpperCase();
+              const name = compactAirportLabel((nameRaw || codeRaw || "").trim());
+              if (!code) return;
+              if (!map.has(code)) map.set(code.toLowerCase(), `${name} (${code})`);
+            });
+        });
+        return Array.from(map.entries())
+          .map(([value, label]) => ({ value, label }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      };
+
+      const airportMap = new Map();
+      cards.forEach((card) => {
+        (card.dataset.layoverAirportOptions || "")
+          .split("||")
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .forEach((item) => {
+            const [codeRaw, nameRaw] = item.split("::");
+            const code = (codeRaw || "").trim().toUpperCase();
+            const name = compactAirportLabel((nameRaw || codeRaw || "").trim());
+            if (!code) return;
+            if (!airportMap.has(code)) airportMap.set(code.toLowerCase(), `${name} (${code})`);
+          });
+      });
+      const airportItems = Array.from(airportMap.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      const depEndpointItems = collectEndpointAirportItems("data-dep-airport-options");
+      const arrEndpointItems = collectEndpointAirportItems("data-arr-airport-options");
+
+      buildChecklist(airlineFilterList, airlineItems, "results-filter-airline", true);
+      buildChecklist(depAirportFilterList, depEndpointItems, "results-filter-dep-airport", true);
+      buildChecklist(arrAirportFilterList, arrEndpointItems, "results-filter-arr-airport", true);
+      buildChecklist(airportFilterList, airportItems, "results-filter-airport", false);
+
+      const depEndpointBoxCount = filterRoot.querySelectorAll(".results-filter-dep-airport").length;
+      const arrEndpointBoxCount = filterRoot.querySelectorAll(".results-filter-arr-airport").length;
+
+      let sortMode = resultsSection?.querySelector(".results-top-sort-btn.is-active")?.dataset.resultsSort || "best";
+      const defaultOrder = cards.map((card, idx) => ({ card, idx }));
+
+      const updateDurationLabel = () => {
+        const value = Number.parseInt(durationMax.value || "0", 10);
+        durationMaxLabel.textContent = `Up to ${formatDuration(value)}`;
+      };
+
+      const parsePriceBounds = () => {
+        const selectedMin = Number.parseFloat(priceRangeMin.value || "0");
+        const selectedMax = Number.parseFloat(priceRangeMax.value || "0");
+        return {
+          min: Math.min(selectedMin, selectedMax),
+          max: Math.max(selectedMin, selectedMax),
+        };
+      };
+
+      const updatePriceSliderUI = () => {
+        const { min, max } = parsePriceBounds();
+        if (priceSummary) {
+          priceSummary.textContent = `$${Math.round(min)} - $${Math.round(max)}`;
+        }
+        if (!priceActiveTrack || maxPrice <= minPrice) return;
+        const left = ((min - minPrice) / (maxPrice - minPrice)) * 100;
+        const right = ((max - minPrice) / (maxPrice - minPrice)) * 100;
+        priceActiveTrack.style.left = `${Math.max(0, left)}%`;
+        priceActiveTrack.style.width = `${Math.max(0, right - left)}%`;
+      };
+
+      const selectedSet = (selector) => new Set(
+        Array.from(filterRoot.querySelectorAll(selector)).filter((node) => node.checked).map((node) => node.value),
+      );
+
+      const updateVisibleCount = (visibleCount) => {
+        if (!emptyState) return;
+        emptyState.style.display = visibleCount ? "none" : "";
+      };
+
+      const matchesFilters = (card) => {
+        const price = Number.parseFloat(card.dataset.price || "0");
+        const duration = Number.parseInt(card.dataset.durationMin || "0", 10);
+        const totalStops = Number.parseInt(card.dataset.totalStops || "0", 10);
+        const outDepartHour = toHour(card.getAttribute("data-out-depart-iso") || card.dataset.outDepartIso || "");
+        const outArriveHour = toHour(card.getAttribute("data-out-arrive-iso") || card.dataset.outArriveIso || "");
+        const cardAirlines = new Set((card.dataset.airlineNames || "").split("|").map((x) => x.trim()).filter(Boolean));
+        const cardAirports = new Set((card.dataset.layoverAirports || "").split(/\s+/).map((x) => x.trim()).filter(Boolean));
+
+        const { min, max } = parsePriceBounds();
+        if (Number.isFinite(min) && price < min) return false;
+        if (Number.isFinite(max) && max > 0 && price > max) return false;
+        if (duration > Number.parseInt(durationMax.value || "0", 10)) return false;
+
+        const stopsAllowed = selectedSet(".results-filter-stop");
+        const stopBucket = totalStops >= 2 ? "2" : String(totalStops);
+        if (!stopsAllowed.has(stopBucket)) return false;
+
+        const departAllowed = selectedSet(".results-filter-departure");
+        if (!departAllowed.has(toBucket(outDepartHour))) return false;
+
+        const arrivalAllowed = selectedSet(".results-filter-arrival");
+        if (!arrivalAllowed.has(toBucket(outArriveHour))) return false;
+
+        const airlineAllowed = selectedSet(".results-filter-airline");
+        if (airlineAllowed.size && !Array.from(airlineAllowed).some((code) => cardAirlines.has(code))) return false;
+
+        const depEndpointAllowed = selectedSet(".results-filter-dep-airport");
+        if (depEndpointBoxCount) {
+          if (!depEndpointAllowed.size) return false;
+          const depCode = (endpointLeg === "return"
+            ? card.getAttribute("data-in-origin")
+            : card.getAttribute("data-out-origin") || "").trim().toLowerCase();
+          if (!depCode || !depEndpointAllowed.has(depCode)) return false;
+        }
+
+        const arrEndpointAllowed = selectedSet(".results-filter-arr-airport");
+        if (arrEndpointBoxCount) {
+          if (!arrEndpointAllowed.size) return false;
+          const arrCode = (endpointLeg === "return"
+            ? card.getAttribute("data-in-dest")
+            : card.getAttribute("data-out-dest") || "").trim().toLowerCase();
+          if (!arrCode || !arrEndpointAllowed.has(arrCode)) return false;
+        }
+
+        const airportAllowed = new Set(Array.from(selectedSet(".results-filter-airport")).map((code) => code.toLowerCase()));
+        if (airportAllowed.size && !Array.from(airportAllowed).some((code) => cardAirports.has(code))) return false;
+
+        return true;
+      };
+
+      const isoOutDepart = (el) => el.getAttribute("data-out-depart-iso") || el.dataset.outDepartIso || "";
+      const isoOutArrive = (el) => el.getAttribute("data-out-arrive-iso") || el.dataset.outArriveIso || "";
+
+      const compareIsoEarliest = (isoA, isoB) => {
+        const ta = Date.parse(isoA);
+        const tb = Date.parse(isoB);
+        if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return ta - tb;
+        return String(isoA).localeCompare(String(isoB));
+      };
+
+      const comparator = (a, b) => {
+        const pA = Number.parseFloat(a.dataset.price || "0");
+        const pB = Number.parseFloat(b.dataset.price || "0");
+        const dA = Number.parseInt(a.dataset.durationMin || "0", 10);
+        const dB = Number.parseInt(b.dataset.durationMin || "0", 10);
+        if (sortMode === "cheapest") return pA - pB || dA - dB;
+        if (sortMode === "fastest") return dA - dB || pA - pB;
+        if (sortMode === "earliest_departure") return compareIsoEarliest(isoOutDepart(a), isoOutDepart(b)) || pA - pB;
+        if (sortMode === "earliest_arrival") return compareIsoEarliest(isoOutArrive(a), isoOutArrive(b)) || pA - pB;
+        if (sortMode === "fewest_stops") {
+          const stopsA = Number.parseInt(a.dataset.totalStops || "99", 10);
+          const stopsB = Number.parseInt(b.dataset.totalStops || "99", 10);
+          return stopsA - stopsB || pA - pB || dA - dB;
+        }
+        const idxA = defaultOrder.find((entry) => entry.card === a)?.idx || 0;
+        const idxB = defaultOrder.find((entry) => entry.card === b)?.idx || 0;
+        return idxA - idxB;
+      };
+
+      const updatePriceCompareCues = (visibleCards) => {
+        const prices = visibleCards
+          .map((c) => Number.parseFloat(c.dataset.price || "0"))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        const minP = prices.length ? Math.min(...prices) : 0;
+        visibleCards.forEach((card) => {
+          const el = card.querySelector("[data-price-compare-cue]");
+          if (!el) return;
+          const p = Number.parseFloat(card.dataset.price || "0");
+          if (!Number.isFinite(p)) return;
+          const delta = p - minP;
+          if (delta > 0.5) {
+            el.textContent = `+$${Math.round(delta)} more than cheapest in filtered results`;
+            el.classList.remove("fc-price-cue--low");
+          } else {
+            el.textContent = "Cheapest in filtered results";
+            el.classList.add("fc-price-cue--low");
+          }
+        });
+      };
+
+      const render = () => {
+        const visible = cards.filter((card) => matchesFilters(card));
+        const sorted = visible.slice().sort(comparator);
+        cards.forEach((card) => { card.classList.add("fc-hidden"); });
+        sorted.forEach((card) => {
+          card.classList.remove("fc-hidden");
+          cardsWrap.appendChild(card);
+        });
+        updatePriceCompareCues(sorted);
+        updateVisibleCount(sorted.length);
+      };
+
+      const openDrawer = () => {
+        drawer?.classList.add("is-open");
+        document.body.classList.add("results-filter-open");
+      };
+      const closeDrawer = () => {
+        drawer?.classList.remove("is-open");
+        document.body.classList.remove("results-filter-open");
+      };
+
+      const clampPriceHandles = (source) => {
+        if (source === "min" && Number(priceRangeMin.value) > Number(priceRangeMax.value)) {
+          priceRangeMax.value = priceRangeMin.value;
+        }
+        if (source === "max" && Number(priceRangeMax.value) < Number(priceRangeMin.value)) {
+          priceRangeMin.value = priceRangeMax.value;
+        }
+        updatePriceSliderUI();
+      };
+
+      updateDurationLabel();
+      updatePriceSliderUI();
+      render();
+
+      [durationMax, ...stopFilters, ...departureFilters, ...arrivalFilters].forEach((input) => {
+        input?.addEventListener("input", () => {
+          updateDurationLabel();
+          render();
+        });
+        input?.addEventListener("change", () => {
+          updateDurationLabel();
+          render();
+        });
+      });
+
+      priceRangeMin?.addEventListener("input", () => {
+        clampPriceHandles("min");
+        render();
+      });
+      priceRangeMax?.addEventListener("input", () => {
+        clampPriceHandles("max");
+        render();
+      });
+      priceRangeMin?.addEventListener("change", () => {
+        clampPriceHandles("min");
+        render();
+      });
+      priceRangeMax?.addEventListener("change", () => {
+        clampPriceHandles("max");
+        render();
+      });
+
+      airlineFilterList?.addEventListener("change", render);
+      depAirportFilterList?.addEventListener("change", render);
+      arrAirportFilterList?.addEventListener("change", render);
+      airportFilterList?.addEventListener("change", render);
+
+      const setResultsSortMode = (mode) => {
+        sortMode = mode || "best";
+        sortButtons.forEach((node) => {
+          const active = (node.dataset.resultsSort || "best") === sortMode;
+          node.classList.toggle("is-active", active);
+          node.setAttribute("aria-selected", String(active));
+        });
+        if (sortSelect) {
+          sortSelect.value = sortMode;
+        }
+        render();
+      };
+
+      sortButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setResultsSortMode(button.dataset.resultsSort || "best");
+        });
+      });
+
+      sortSelect?.addEventListener("change", () => {
+        setResultsSortMode(sortSelect.value || "best");
+      });
+
+      clearFiltersBtn?.addEventListener("click", () => {
+        priceRangeMin.value = String(minPrice);
+        priceRangeMax.value = String(maxPrice);
+        durationMax.value = String(maxDuration);
+        [...stopFilters, ...departureFilters, ...arrivalFilters].forEach((node) => { node.checked = true; });
+        filterRoot.querySelectorAll(".results-filter-airline, .results-filter-airport, .results-filter-dep-airport, .results-filter-arr-airport").forEach((node) => { node.checked = true; });
+        updatePriceSliderUI();
+        updateDurationLabel();
+        render();
+      });
+
+      openDrawerBtn?.addEventListener("click", openDrawer);
+      closeDrawerBtn?.addEventListener("click", closeDrawer);
+
+      setResultsSortMode(sortMode);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeDrawer();
+      });
+      document.addEventListener("click", (event) => {
+        if (drawer?.classList.contains("is-open") && !drawer.contains(event.target) && !openDrawerBtn?.contains(event.target)) {
+          closeDrawer();
+        }
+      });
+    })();
+  </script>
+  
+  <div class="loader-overlay" id="loader" aria-hidden="true">
+    <div class="loader-card" role="status" aria-live="polite" aria-busy="true">
+      <div class="loader-visual" aria-hidden="true">
+        <div class="loader-glyph">
+          <div class="loader-glyph-ring"></div>
+          <div class="loader-glyph-sweep"></div>
+          <div class="loader-glyph-core"></div>
+        </div>
+      </div>
+      <div class="loader-text">
+        <div class="loader-eyebrow" id="loaderEyebrow">Refreshing results</div>
+        <div class="loader-title" id="loaderTitle">Updating your results</div>
+        <div class="loader-sub muted" id="loaderSub">Re-running your search against live fares. Most refreshes finish in a few seconds; heavy filters can take longer.</div>
+        <div class="loader-progress-track" aria-hidden="true">
+          <div class="loader-progress-fill" id="loaderProgressFill" style="width: 4%;"></div>
+        </div>
+        <div class="loader-meta">
+          <span class="loader-stage" id="loaderStage">Refreshing route context</span>
+          <span class="loader-elapsed" id="loaderElapsed">0:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const inputs = document.querySelectorAll(".airport-input");
+      if (!inputs.length) return;
+    
+      // Create a shared dropdown
+      const box = document.createElement("div");
+      box.className = "airport-suggest";
+      box.style.display = "none";
+      document.body.appendChild(box);
+    
+      let activeInput = null;
+      let abortCtrl = null;
+      let debounceTimer = null;
+    
+      const closeBox = () => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+        try {
+          abortCtrl?.abort();
+        } catch (e) {}
+        abortCtrl = null;
+        box.style.display = "none";
+        box.innerHTML = "";
+        activeInput = null;
+      };
+
+      document.addEventListener("airportSuggestClose", closeBox);
+    
+      const positionBox = (inp) => {
+        const r = inp.getBoundingClientRect();
+        const pad = 12;
+        const minSuggest = 360;
+        const maxSuggest = 600;
+        const vw = document.documentElement.clientWidth;
+        const sx = window.scrollX;
+        const avail = Math.max(200, vw - pad * 2);
+
+        let w = Math.max(r.width, minSuggest);
+        w = Math.min(w, maxSuggest, avail);
+
+        let left = sx + r.left;
+        const maxLeft = sx + vw - pad - w;
+        if (left > maxLeft) left = Math.max(sx + pad, maxLeft);
+
+        box.style.left = `${Math.round(left)}px`;
+        box.style.top = `${Math.round(window.scrollY + r.bottom + 8)}px`;
+        box.style.width = `${Math.round(w)}px`;
+      };
+    
+      const render = (items) => {
+        box.innerHTML = items.map((it, idx) => `
+          <button type="button" class="airport-item" data-code="${it.code}" data-label="${it.label}">
+            <span class="airport-code">${it.code}</span>
+            <span class="airport-label">${it.label.replace(it.code + " — ", "")}</span>
+          </button>
+        `).join("");
+    
+        box.style.display = items.length ? "block" : "none";
+      };
+    
+      const fetchSuggestions = async (q) => {
+        if (abortCtrl) abortCtrl.abort();
+        abortCtrl = new AbortController();
+    
+        const res = await fetch(`/airports?q=${encodeURIComponent(q)}`, { signal: abortCtrl.signal });
+        if (!res.ok) return [];
+        return await res.json();
+      };
+    
+      // When user types: debounce and query backend
+      inputs.forEach(inp => {
+        inp.addEventListener("input", () => {
+          const q = (inp.value || "").trim();
+          activeInput = inp;
+    
+          // show only after 3 chars
+          if (q.length < 3) { closeBox(); return; }
+    
+          positionBox(inp);
+    
+          // debounce
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
+            try {
+              const items = await fetchSuggestions(q);
+              // If focus moved, don't render
+              if (document.activeElement !== inp) return;
+              render(items);
+              positionBox(inp);
+            } catch (e) {
+              // aborted or failed
+            }
+          }, 180);
+        });
+    
+        inp.addEventListener("focus", () => {
+          activeInput = inp;
+          if (box.innerHTML.trim()) {
+            positionBox(inp);
+            box.style.display = "block";
+          }
+        });
+    
+        inp.addEventListener("blur", () => {
+          // allow click selection before closing
+          setTimeout(() => {
+            if (!box.matches(":hover")) closeBox();
+          }, 120);
+        });
+      });
+    
+      // Click selection
+      box.addEventListener("click", (e) => {
+        const btn = e.target.closest(".airport-item");
+        if (!btn || !activeInput) return;
+    
+        const targetInput = activeInput;
+        const code = btn.getAttribute("data-code");
+        // Put only the IATA code in the input (best for your backend)
+        targetInput.value = code;
+    
+        closeBox();
+        targetInput.focus();
+      });
+    
+      // Reposition on scroll/resize; close if edit panel is hidden while dropdown was open
+      window.addEventListener("scroll", () => {
+        if (!activeInput) return;
+        const refine = document.getElementById("refine");
+        if (refine?.classList.contains("collapsed") && refine.contains(activeInput)) {
+          closeBox();
+          return;
+        }
+        positionBox(activeInput);
+      }, { passive: true });
+      window.addEventListener("resize", () => { if (activeInput) positionBox(activeInput); });
+    
+      // Escape closes
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeBox();
+      });
+    })();
+    </script>
+  <script>
+    (function () {
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".fc-dtl-btn");
+        if (!btn) return;
+        var card = btn.closest(".flight-card");
+        var panel = card && card.querySelector(".fc-details");
+        if (!panel) return;
+        var open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", open ? "false" : "true");
+        if (open) {
+          panel.setAttribute("hidden", "");
+          card.classList.remove("fc-expanded");
+        } else {
+          panel.removeAttribute("hidden");
+          card.classList.add("fc-expanded");
+        }
+      });
+    })();
+  </script>
+  <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/flatpickr/monthSelect.js', v='4.6.13') }}"></script>
+  <script src="{{ url_for('static', filename='search-validation.js') }}"></script>
+  <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
+  <script src="{{ url_for('static', filename='calendar.js', v='20260513-local-positioned-calendar') }}"></script>
+  <script>
+  /* ── SRB inline-edit panel controller ── */
+  (function () {
+    const form    = document.getElementById("srbEditForm");
+    const bar     = document.getElementById("srbBar");
+    if (!form || !bar) return;
+
+    const mq      = window.matchMedia("(max-width: 760px)");
+    const mobile  = () => mq.matches;
+
+    const tripType    = document.getElementById("srbTripType");
+    const originIn    = document.getElementById("srbOriginInput");
+    const destIn      = document.getElementById("srbDestInput");
+    const swapBtn     = document.getElementById("srbSwapBtn");
+    const departDisp  = document.getElementById("srbDepartDisplay");
+    const departHid   = document.getElementById("srbDepartHidden");
+    const returnDisp  = document.getElementById("srbReturnDisplay");
+    const returnHid   = document.getElementById("srbReturnHidden");
+    const returnWrap  = document.getElementById("srbReturnWrap");
+    const passSel     = document.getElementById("srbPassengers");
+    const cabinSel    = document.getElementById("srbCabin");
+    const nonstopChk  = document.getElementById("srbNonstop");
+
+    const routeLabel  = document.getElementById("srbRouteLabel");
+    const datesLabel  = document.getElementById("srbDatesLabel");
+    const paxLabel    = document.getElementById("srbPaxLabel");
+
+    const panels = {
+      route: document.getElementById("srbPanelRoute"),
+      dates: document.getElementById("srbPanelDates"),
+      pax:   document.getElementById("srbPanelPax"),
+    };
+    const segBtns = {
+      route: bar.querySelector('[data-srb-seg="route"]'),
+      dates: bar.querySelector('[data-srb-seg="dates"]'),
+      pax:   bar.querySelector('[data-srb-seg="pax"]'),
+    };
+
+    let active = null;
+
+    const datesPanelNeedsReturnDate = () => (
+      active === "dates"
+      && (tripType?.value || "roundtrip") === "roundtrip"
+      && Boolean(departHid?.value)
+      && !returnHid?.value
+    );
+
+    const closeAll = (force = false) => {
+      if (!active) return;
+      if (!force && datesPanelNeedsReturnDate()) return;
+      Object.values(panels).forEach(p => { if (p) p.hidden = true; });
+      Object.values(segBtns).forEach(b => {
+        if (b) { b.classList.remove("srb-seg--active"); b.setAttribute("aria-expanded", "false"); }
+      });
+      active = null;
+      document.dispatchEvent(new CustomEvent("airportSuggestClose", { bubbles: true }));
+    };
+
+    const positionPanel = (panel, btn, name) => {
+      if (!panel || !btn) return;
+      /* Reset so offsetWidth measurement is based on CSS max-width, not a stale value */
+      panel.style.left  = '';
+      panel.style.right = '';
+      requestAnimationFrame(() => {
+        const btnRect  = btn.getBoundingClientRect();
+        const wrapRect = form.getBoundingClientRect();
+        const panelW   = panel.offsetWidth;
+        const viewportMargin = 12;
+        const maxLeftByWrap = Math.max(0, wrapRect.width - panelW);
+        const maxLeftByViewport = Math.max(
+          0,
+          window.innerWidth - wrapRect.left - panelW - viewportMargin
+        );
+        let leftPx;
+        if (name === "dates") {
+          /* Keep the calendar visually tied to the dates segment. */
+          leftPx = (btnRect.left - wrapRect.left) + ((btnRect.width - panelW) / 2);
+        } else {
+          leftPx = btnRect.left - wrapRect.left;
+        }
+        /* Clamp inside the form and within the viewport edge. */
+        leftPx = Math.min(leftPx, maxLeftByWrap, maxLeftByViewport);
+        /* Clamp: never negative */
+        leftPx = Math.max(0, leftPx);
+        panel.style.left  = leftPx + 'px';
+        panel.style.right = 'auto';
+      });
+    };
+
+    const openPanel = (name) => {
+      if (mobile()) {
+        /* On mobile, fire the hidden data-toggle-refine button to open existing sheet */
+        document.querySelector("[data-toggle-refine]")?.click();
+        return;
+      }
+      if (active === name) { closeAll(); return; }
+      closeAll();
+      const panel = panels[name];
+      const btn   = segBtns[name];
+      if (!panel || !btn) return;
+      panel.hidden = false;
+      positionPanel(panel, btn, name);
+      btn.classList.add("srb-seg--active");
+      btn.setAttribute("aria-expanded", "true");
+      active = name;
+      setTimeout(() => {
+        const first = panel.querySelector("input:not([type='hidden']), select");
+        first?.focus();
+      }, 50);
+    };
+
+    Object.entries(segBtns).forEach(([n, b]) => b?.addEventListener("click", () => openPanel(n)));
+    form.querySelectorAll("[data-srb-next]").forEach(b =>
+      b.addEventListener("click", () => openPanel(b.dataset.srbNext)));
+
+    /* Trip-type buttons */
+    form.querySelectorAll("[data-srb-trip]").forEach(b => {
+      b.addEventListener("click", () => {
+        const mode = b.dataset.srbTrip === "oneway" ? "oneway" : "roundtrip";
+        if (tripType) {
+          tripType.value = mode;
+          tripType.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        form.querySelectorAll("[data-srb-trip]").forEach(x =>
+          x.classList.toggle("is-active", x.dataset.srbTrip === mode));
+        if (mode === "oneway" && returnHid) {
+          returnHid.value = "";
+          returnHid.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        /* keep refine form in sync (needed for mobile sheet submission) */
+        const refTripInput = document.getElementById("resultsTripType");
+        if (refTripInput) { refTripInput.value = mode; refTripInput.dispatchEvent(new Event("change", { bubbles: true })); }
+        document.querySelectorAll("[data-trip]").forEach(x => {
+          const activeMode = x.dataset.trip === mode;
+          x.classList.toggle("is-active", activeMode);
+          x.setAttribute("aria-selected", String(activeMode));
+        });
+        syncLabels();
+        openPanel("dates");
+      });
+    });
+
+    /* Swap */
+    swapBtn?.addEventListener("click", () => {
+      const t = originIn.value;
+      originIn.value  = destIn.value;
+      destIn.value    = t;
+      syncRouteLabel();
+      originIn.focus();
+    });
+
+    /* Label sync helpers */
+    const fmtDate = (iso) => {
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+      const [y, m, d] = iso.split("-").map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
+
+    const syncRouteLabel = () => {
+      if (!routeLabel) return;
+      const o    = (originIn?.value || "").trim();
+      const d    = (destIn?.value   || "").trim();
+      const mode = tripType?.value || "roundtrip";
+      const arr  = mode === "roundtrip" ? "↔" : "→";
+      routeLabel.textContent = (o && d) ? `${o} ${arr} ${d}` : (o || d || "Flight search");
+    };
+
+    const syncDatesLabel = () => {
+      if (!datesLabel) return;
+      const dep = departHid?.value  || "";
+      const ret = returnHid?.value  || "";
+      const mode = tripType?.value  || "roundtrip";
+      const ds   = fmtDate(dep);
+      const rs   = fmtDate(ret);
+      if (!ds)                         { datesLabel.textContent = "Add dates"; return; }
+      if (mode === "oneway" || !rs)    { datesLabel.textContent = ds; return; }
+      datesLabel.textContent = `${ds} – ${rs}`;
+    };
+
+    const syncPaxLabel = () => {
+      if (!paxLabel) return;
+      const n     = parseInt(passSel?.value || "1", 10) || 1;
+      const cabin = (cabinSel?.selectedOptions?.[0]?.textContent || cabinSel?.value || "Economy").trim();
+      const mode  = tripType?.value || "roundtrip";
+      const trip  = mode === "roundtrip" ? "Round trip" : "One way";
+      paxLabel.textContent = `${trip} · ${n} traveler${n === 1 ? "" : "s"} · ${cabin}`;
+    };
+
+    const syncLabels = () => { syncRouteLabel(); syncDatesLabel(); syncPaxLabel(); };
+
+    originIn?.addEventListener("input",  syncRouteLabel);
+    destIn?.addEventListener("input",    syncRouteLabel);
+    departHid?.addEventListener("change", syncDatesLabel);
+    returnHid?.addEventListener("change", syncDatesLabel);
+    passSel?.addEventListener("change",  syncPaxLabel);
+    cabinSel?.addEventListener("change", syncPaxLabel);
+
+    /* Calendar — inline inside the dates panel */
+    const initSrbCalendars = () => {
+      if (typeof window.flatpickr !== "function") return;
+      const container = document.getElementById("srbInlineCalendar");
+      if (!container || container.dataset.srbCalBound === "1") return;
+      container.dataset.srbCalBound = "1";
+
+      const isoFmt = "Y-m-d";
+      const parseDates = [departHid?.value, returnHid?.value]
+        .filter(Boolean)
+        .map(v => window.flatpickr.parseDate(v, isoFmt))
+        .filter(Boolean);
+
+      const syncFillerWeek = (fp) => {
+        const containers = Array.from(fp?.days?.querySelectorAll(".dayContainer") || []);
+        containers.forEach((dayContainer) => {
+          const cells = Array.from(dayContainer.querySelectorAll(".flatpickr-day"));
+          const lastWeek = cells.slice(-7);
+          const isOnlyNextMonth = lastWeek.length === 7 && lastWeek.every((cell) => cell.classList.contains("nextMonthDay"));
+          dayContainer.classList.toggle("srb-hide-final-week", isOnlyNextMonth);
+        });
+      };
+
+      const picker = window.flatpickr(container, {
+        inline: true,
+        mode: (tripType?.value === "oneway") ? "single" : "range",
+        dateFormat: isoFmt,
+        disableMobile: true,
+        allowInput: false,
+        monthSelectorType: "static",
+        minDate: "today",
+        showMonths: 1,
+        defaultDate: parseDates.length ? parseDates : undefined,
+        onReady(_sel, _str, fp) {
+          if (fp.calendarContainer) fp.calendarContainer.classList.add("nx-calendar");
+          syncFillerWeek(fp);
+        },
+        onMonthChange(_sel, _str, fp) {
+          syncFillerWeek(fp);
+        },
+        onYearChange(_sel, _str, fp) {
+          syncFillerWeek(fp);
+        },
+        onChange(selected, _str, fp) {
+          syncFillerWeek(fp);
+          const dep = selected[0] ? fp.formatDate(selected[0], isoFmt) : "";
+          const ret = selected[1] ? fp.formatDate(selected[1], isoFmt) : "";
+          if (departHid) { departHid.value = dep; departHid.dispatchEvent(new Event("change", { bubbles: true })); }
+          if (returnHid) { returnHid.value = ret; returnHid.dispatchEvent(new Event("change", { bubbles: true })); }
+          syncDatesLabel();
+          if (fp.config.mode === "single" || selected.length === 2) {
+            setTimeout(() => closeAll(true), 400);
+          }
+        },
+      });
+
+      tripType?.addEventListener("change", () => {
+        const ow = tripType.value === "oneway";
+        picker.set("mode", ow ? "single" : "range");
+        if (ow && picker.selectedDates.length > 1) picker.setDate([picker.selectedDates[0]], false);
+        if (ow && returnHid) {
+          returnHid.value = "";
+          returnHid.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        syncDatesLabel();
+      });
+    };
+
+    /* Run after calendar.js (which comes right after this script tag) */
+    document.addEventListener("DOMContentLoaded", initSrbCalendars, { once: true });
+
+    /* Close on outside click or Escape */
+    document.addEventListener("click", e => {
+      if (active && !form.contains(e.target)) closeAll();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && active) closeAll();
+    });
+
+    window.addEventListener("resize", () => {
+      if (!active) return;
+      const panel = panels[active];
+      const btn = segBtns[active];
+      if (panel && btn) positionPanel(panel, btn, active);
+    });
+
+    /* Initial label sync */
+    syncLabels();
+  })();
+  </script>
+  {% if flex_streaming or search_pending %}
+  <script src="{{ url_for('static', filename='flex-results-stream.js', v='20260513-reload-url') }}"></script>
+  {% endif %}
+  {% include "partials/theme_scripts.html" %}
+
+  {# ── AI Chatbot Bubble ── #}
+  <div id="aiChatBubbleWrap" class="ai-chat-bubble-wrap" aria-label="AI flight assistant">
+    <div class="ai-chat-panel" role="dialog" aria-label="Skairova AI flight assistant" aria-modal="false">
+      <header class="ai-chat-header">
+        <div class="ai-chat-header-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+        </div>
+        <div class="ai-chat-header-info">
+          <div class="ai-chat-header-name">Skairova AI</div>
+          <div class="ai-chat-header-status">
+            <span class="ai-chat-status-dot" aria-hidden="true"></span>
+            Flight expert · Online
+          </div>
+        </div>
+        <button class="ai-chat-header-close" type="button" aria-label="Close chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="ai-chat-focus-bar" aria-live="polite" aria-atomic="true">
+        <span class="ai-chat-focus-label"></span>
+        <button class="ai-chat-focus-clear" type="button" aria-label="Clear flight focus">Clear</button>
+      </div>
+
+      <div class="ai-chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+        <div class="ai-chat-greeting">
+          <div class="ai-chat-greeting-title">Hi, I'm your flight expert</div>
+          <div class="ai-chat-greeting-sub">Ask me anything about this trip — or click <strong>Details</strong> on any flight and I'll answer questions specifically about that one.</div>
+        </div>
+        <div class="ai-msg ai-msg--ai">
+          <div class="ai-msg-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+          </div>
+          <div class="ai-msg-bubble">
+            {% if query.get('origin') and query.get('destination') %}
+              I can see you're looking at flights from {{ query.get('origin') }} to {{ query.get('destination') }}{% if query.get('depart_date') %} on {{ query.get('depart_date') }}{% endif %}. What would you like to know?
+            {% elif flex_streaming and query.get('flex_month') %}
+              I can see you're doing a flex search for {{ query.get('flex_month') }}. I'll analyze the results for you. Got questions?
+            {% else %}
+              I'm here to help with your flight search. Ask me anything!
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-quick-replies" aria-label="Quick questions"></div>
+
+      <footer class="ai-chat-footer">
+        <div class="ai-chat-input-wrap">
+          <textarea
+            class="ai-chat-input"
+            placeholder="Ask about this flight…"
+            rows="1"
+            maxlength="400"
+            aria-label="Type your question (max 400 characters)"
+          ></textarea>
+          <span class="ai-chat-char-count" aria-live="polite" aria-atomic="true">0/400</span>
+        </div>
+        <button class="ai-chat-send" type="button" aria-label="Send message" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+        </button>
+      </footer>
+      <div class="ai-chat-footer-note">Flight expert only · Max 400 chars per message</div>
+    </div>
+
+    <button class="ai-chat-trigger" type="button" aria-label="Open AI flight assistant" aria-expanded="false">
+      <svg class="ai-chat-trigger-icon-chat" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l4.93-1.37A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zM7.5 14a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+      <svg class="ai-chat-trigger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <span class="ai-chat-badge" style="display:none;" aria-label="1 new message">1</span>
+    </button>
+  </div>
+
+  {% set _skair_page = {"page_type": "results", "origin": query.get("origin") or "", "destination": query.get("destination") or "", "depart_date": query.get("depart_date") or "", "return_date": query.get("return_date") or "", "cabin": query.get("cabin") or "ECONOMY", "passengers": query.get("passengers") or 1, "trip_type": query.get("trip_type") or "roundtrip", "flex_month": query.get("flex_month") or "", "nonstop": "on" if query.get("nonstop") else "", "raw_text": query.get("raw_text") or ""} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  <script>
+    /* Persist search so the homepage can restore it on back navigation or after an error/expiry.
+       Reads from the embedded JSON to avoid Jinja2 syntax inside script tags. */
+    (function () {
+      try {
+        var el = document.getElementById("skairPageCtx");
+        if (!el) return;
+        var q = JSON.parse(el.textContent || "{}");
+        var saveData;
+        if (q.raw_text) {
+          saveData = { mode: "ai", ai_text: q.raw_text, ts: Date.now() };
+        } else {
+          saveData = {
+            mode:        "manual",
+            ts:          Date.now(),
+            origin:      q.origin      || "",
+            destination: q.destination || "",
+            depart_date: q.depart_date || "",
+            return_date: q.return_date || "",
+            cabin:       q.cabin       || "ECONOMY",
+            passengers:  String(q.passengers || 1),
+            trip_type:   q.trip_type   || "roundtrip",
+            flex_month:  q.flex_month  || "",
+            nonstop:     q.nonstop     || "",
+          };
+        }
+        sessionStorage.setItem("skair_last_search", JSON.stringify(saveData));
+      } catch (e) {}
+    })();
+  </script>
+  <script src="{{ url_for('static', filename='ai-assistant.js', v='20260526-next-level') }}"></script>
+  <script>
+    window.addEventListener("pageshow", function () {
+      document.documentElement.style.opacity = "";
+      document.documentElement.style.transition = "";
+    });
+  </script>
 </body>
 </html>

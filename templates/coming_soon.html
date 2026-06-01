@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ feature_name }} Coming Soon • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='coming-soon.css', v='20260513-descender-fix') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="coming-soon-page">
+  {% include "partials/platform_header.html" %}
+
+  <main class="coming-soon-shell" aria-labelledby="comingSoonTitle">
+    <section class="coming-soon-card">
+      <div class="coming-soon-orb coming-soon-orb--one" aria-hidden="true"></div>
+      <div class="coming-soon-orb coming-soon-orb--two" aria-hidden="true"></div>
+      <div class="coming-soon-grid" aria-hidden="true"></div>
+
+      <p class="coming-soon-kicker">{{ feature_label }}</p>
+      <h1 id="comingSoonTitle">
+        <span>{{ feature_name }}</span>
+        <strong>coming soon</strong>
+      </h1>
+      <p class="coming-soon-copy">{{ feature_description }}</p>
+
+      <div class="coming-soon-actions">
+        <a href="{{ url_for('index') }}">Search flights</a>
+        <span>Skairova is warming this up.</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

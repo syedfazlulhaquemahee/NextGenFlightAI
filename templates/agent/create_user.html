@@ -1,0 +1,69 @@
+{% extends "agent/layout.html" %}
+{% block title %}Create User Login{% endblock %}
+{% block heading %}Create user login{% endblock %}
+{% block subheading %}Provision a new account and let the user complete two-factor setup on first sign-in.{% endblock %}
+
+{% block content %}
+<section class="panel dashboard-panel panel-narrow">
+  <div class="panel-header dashboard-panel-header">
+    <div>
+      <span class="dashboard-eyebrow">Provisioning</span>
+      <h2>New account</h2>
+      <p>Create an agent or admin login without crowding the dashboard.</p>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('agent.create_user') }}" class="agent-admin-form agent-admin-form-compact" autocomplete="off">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="agent-admin-grid agent-admin-grid-compact agent-admin-grid-two">
+      <label>
+        <span>First name</span>
+        <input type="text" name="first_name" autocomplete="given-name" placeholder="Jane" required autofocus>
+      </label>
+      <label>
+        <span>Last name</span>
+        <input type="text" name="last_name" autocomplete="family-name" placeholder="Smith" required>
+      </label>
+      <label class="field-span-2">
+        <span>Email address</span>
+        <input type="email" name="email" autocomplete="off" placeholder="jane@agency.com" required>
+      </label>
+      <label>
+        <span>Role</span>
+        <select name="role">
+          <option value="agent_user">Agent user</option>
+          <option value="agency_admin">Agency admin</option>
+          {% if agent_effective_role in ['skairova_admin', 'super_admin'] %}
+          <option value="skairova_admin">Skairova admin</option>
+          {% endif %}
+        </select>
+      </label>
+      <label>
+        <span>Agency</span>
+        <select name="agency_id">
+          <option value="">Select existing</option>
+          {% for agency in agencies %}
+          <option value="{{ agency.id }}">{{ agency.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field-span-2">
+        <span>Or new agency name</span>
+        <input type="text" name="new_agency_name" placeholder="Leave blank if selecting above">
+      </label>
+      <label>
+        <span>Temporary password</span>
+        <input type="password" name="password" autocomplete="new-password" placeholder="Minimum 8 characters" required>
+      </label>
+      <label>
+        <span>Confirm password</span>
+        <input type="password" name="password_confirm" autocomplete="new-password" placeholder="Repeat password" required>
+      </label>
+    </div>
+    <div class="agent-admin-actions agent-admin-actions-compact">
+      <a href="{{ url_for('agent.dashboard') }}" class="button button-secondary button-compact">Back</a>
+      <button type="submit" class="button button-primary button-compact">Create login</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

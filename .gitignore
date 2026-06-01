@@ -1,0 +1,11 @@
+.env
+venv/
+__pycache__/
+*.pyc
+node_modules/
+Data/accounts.db
+Data/analytics.db
+Data/agent_portal.db
+.DS_Store
+emails/
+*.pdf

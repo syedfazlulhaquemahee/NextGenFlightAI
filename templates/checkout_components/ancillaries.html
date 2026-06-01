@@ -1,0 +1,106 @@
+<section class="checkout-section checkout-surface">
+  <div class="checkout-section-head">
+    <div>
+      <p class="checkout-eyebrow">Extras</p>
+      <h2>{{ model.ancillaries.headline }}</h2>
+      <p>{{ model.ancillaries.supporting_copy }}</p>
+    </div>
+    {% if model.ancillaries.highlights %}
+      <div class="flight-top-meta">
+        {% for highlight in model.ancillaries.highlights %}
+          <span>{{ highlight }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if model.ancillaries.has_services %}
+    <div class="ancillaries-grid">
+      <div class="ancillary-column">
+        <div class="ancillary-column-head">
+          <h3>Seats</h3>
+          <div class="ancillary-toolbar">
+            <span class="checkout-quiet">Pick from the live seat map</span>
+          </div>
+        </div>
+        {% if model.ancillaries.seat_map %}
+          <div class="seat-map-stack">
+            {% for map in model.ancillaries.seat_map %}
+              <section class="seat-map-panel">
+                <div class="seat-map-head">
+                  <div>
+                    <strong>{{ map.segment_title }}</strong>
+                    <small>{{ map.segment_subtitle }}</small>
+                  </div>
+                </div>
+                {% for cabin in map.cabins %}
+                  <div class="seat-cabin">
+                    <div class="seat-cabin-label">{{ cabin.cabin_class }}</div>
+                    <div class="seat-grid">
+                      {% for row in cabin.rows %}
+                        <div class="seat-row">
+                          <span class="seat-row-label">{{ row.row_number }}</span>
+                          <div class="seat-row-cells">
+                            {% for cell in row.cells %}
+                              {% if cell.kind == 'gap' %}
+                                <span class="seat-gap" aria-hidden="true"></span>
+                              {% else %}
+                                {% if cell.passenger_services and cell.passenger_services|length > 1 %}
+                                <div class="seat-tile seat-tile--preview {% if not cell.available %}is-unavailable{% endif %}" title="Choose seats on the seat map before checkout">
+                                  <span class="seat-tile-code">{{ cell.designator }}</span>
+                                  <span class="seat-tile-price">{{ cell.price_label or "Unavailable" }}</span>
+                                </div>
+                                {% else %}
+                                <label class="seat-tile {% if not cell.available %}is-unavailable{% endif %}">
+                                  <input
+                                    type="checkbox"
+                                    class="ancillary-checkbox seat-checkbox"
+                                    data-service-id="{{ cell.service_id }}"
+                                    {% if not cell.available %}disabled{% endif %}
+                                  />
+                                  <span class="seat-tile-code">{{ cell.designator }}</span>
+                                  <span class="seat-tile-price">{{ cell.price_label or "Unavailable" }}</span>
+                                </label>
+                                {% endif %}
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </section>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="ancillary-empty">Seat selection is not available for this offer.</div>
+        {% endif %}
+      </div>
+
+      <div class="ancillary-column">
+        <div class="ancillary-column-head">
+          <h3>Bags</h3>
+          <span class="checkout-quiet">Included and optional baggage</span>
+        </div>
+        <div class="ancillary-card-list">
+          {% for service in model.ancillaries.bags %}
+            <label class="ancillary-card {% if service.included %}is-included{% endif %} {% if service.recommended %}is-recommended{% endif %}">
+              <input type="checkbox" class="ancillary-checkbox" data-service-id="{{ service.id }}" {% if service.included %}checked disabled{% endif %} />
+              <span>
+                <strong>{{ service.label }}</strong>
+                <small>{{ service.description or ("Included with this fare." if service.included else "Additional baggage allowance.") }}</small>
+              </span>
+              <em>{{ service.currency }} {{ service.amount if not service.included else "Included" }}</em>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="ancillary-fallback">
+      <p>{{ model.ancillaries.fallback_message }}</p>
+      <small>We still refresh the offer and fare rules before you pay.</small>
+    </div>
+  {% endif %}
+</section>

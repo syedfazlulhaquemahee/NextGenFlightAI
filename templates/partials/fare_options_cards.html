@@ -1,0 +1,99 @@
+{% set fare_options_count = fare_options | length %}
+{% if fare_options %}
+<div class="review-fare-cards review-fare-cards--showcase{{ ' review-fare-cards--single' if fare_options_count == 1 else '' }}" role="radiogroup" aria-label="Fare options">
+  {% for fare in fare_options %}
+    {% set fare_select_url = url_for('checkout_offer', offer_id=fare.offer_id) %}
+    <article
+      class="fare-choice-card{{ ' is-selected' if fare.is_selected else '' }}{{ '' if fare.is_selected else ' is-clickable' }}"
+      role="radio"
+      aria-checked="{{ 'true' if fare.is_selected else 'false' }}"
+      tabindex="0"
+      {% if not fare.is_selected %}
+        data-fare-url="{{ fare_select_url }}"
+        aria-label="Select {{ fare.tier_name }} fare"
+      {% endif %}
+    >
+      <header class="fare-choice-head">
+        <div>
+          <p class="fare-choice-cabin">{{ fare.cabin_label or cabin_label or "Fare" }}</p>
+          <h3>{{ fare.tier_name }}</h3>
+          {% if fare.tier_variant_label %}
+            <p class="fare-choice-variant">{{ fare.tier_variant_label }}</p>
+          {% endif %}
+        </div>
+        {% if fare.is_selected %}
+          <span class="fare-choice-check" aria-label="Selected">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 13.5 10 18l9-11" />
+            </svg>
+          </span>
+        {% endif %}
+      </header>
+      <ul class="fare-choice-features" role="list">
+        {% for feature in fare.feature_rows or [] %}
+          <li class="fare-choice-feature is-{{ feature.state or 'muted' }}">
+            <span class="fare-choice-feature-icon" aria-hidden="true">
+              {% if feature.icon == "changes" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 4v5h-5" />
+                  <path d="M4 20v-5h5" />
+                  <path d="M5.6 9a8 8 0 0 1 13.4-1" />
+                  <path d="M18.4 15a8 8 0 0 1-13.4 1" />
+                </svg>
+              {% elif feature.icon == "refunds" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3v18" />
+                  <path d="M16.5 7.5c0-1.9-2-3.5-4.5-3.5S7.5 5.6 7.5 7.5 9.5 11 12 11s4.5 1.6 4.5 3.5S14.5 18 12 18s-4.5-1.6-4.5-3.5" />
+                </svg>
+              {% elif feature.icon == "xmark" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              {% elif feature.icon == "hold" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="8" />
+                  <path d="M12 8v4l3 2" />
+                </svg>
+              {% elif feature.icon == "carry_on" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="8" width="12" height="11" rx="2" />
+                  <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+                </svg>
+              {% elif feature.icon == "checked_bag" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="7" y="5" width="10" height="3" rx="1.5" />
+                  <rect x="5.5" y="8" width="13" height="12" rx="2" />
+                  <path d="M12 11v6" />
+                </svg>
+              {% elif feature.icon == "bags" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="7" width="16" height="12" rx="2" />
+                  <path d="M9 7V5a3 3 0 0 1 6 0v2" />
+                </svg>
+              {% elif feature.icon == "seats" %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 12V9a2 2 0 0 1 4 0v3" />
+                  <path d="M6 14h10a2 2 0 0 1 2 2v2H4v-2a2 2 0 0 1 2-2Z" />
+                </svg>
+              {% else %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="8" />
+                  <path d="M12 8v4l2.8 2.8" />
+                </svg>
+              {% endif %}
+            </span>
+            <span>{% if feature.title %}{{ feature.title }}: {% endif %}{{ feature.value }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <footer class="fare-choice-footer">
+        <div class="fare-choice-price-line">
+          <span>total amount from</span>
+          <strong>{{ fare.price_label }}</strong>
+        </div>
+      </footer>
+    </article>
+  {% endfor %}
+</div>
+{% endif %}

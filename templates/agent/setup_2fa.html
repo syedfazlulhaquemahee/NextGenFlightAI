@@ -1,0 +1,84 @@
+{% extends "agent/layout.html" %}
+{% block title %}Set Up Authenticator{% endblock %}
+{% block heading %}Set Up Two-Factor Auth{% endblock %}
+{% block subheading %}Mandatory for all agent accounts. Protects bookings, pricing, and agency data.{% endblock %}
+{% block content %}
+<section class="auth-hero setup-hero">
+
+  <div class="auth-panel">
+    <div class="auth-panel-head">
+      <div class="step-badge">Step 1</div>
+      <h2>Scan the QR code</h2>
+      <p>Open your authenticator app (Google Authenticator, Authy, 1Password…) and add a new account by scanning the code below.</p>
+    </div>
+
+    <div class="qr-block">
+      <div id="qr-canvas" class="qr-canvas-wrap" aria-label="QR code for authenticator setup"></div>
+    </div>
+
+    <details class="manual-setup-details">
+      <summary>Can't scan? Enter the key manually</summary>
+      <div class="manual-setup-body">
+        <p class="helper-text">Account: <strong>{{ pending_user.email }}</strong></p>
+        <div class="secret-row">
+          <code class="secret-block secret-block-wide" id="totpSecret">{{ totp_secret }}</code>
+          <button type="button" class="button button-secondary copy-btn" data-copy="totpSecret"
+                  aria-label="Copy secret key">Copy</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="auth-panel">
+    <div class="auth-panel-head">
+      <div class="step-badge">Step 2</div>
+      <h2>Confirm the code</h2>
+      <p>Enter the 6-digit code currently shown in your authenticator app to activate 2FA.</p>
+    </div>
+    <form method="post" class="stack-form" autocomplete="off" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>
+        <span>6-digit code</span>
+        <input type="text" name="verification_code" id="verificationCode"
+               inputmode="numeric" autocomplete="one-time-code"
+               maxlength="6" pattern="\d{6}" placeholder="000000" required autofocus>
+      </label>
+      <button type="submit" class="button button-primary button-full">Enable two-factor auth →</button>
+    </form>
+    <p class="helper-text setup-note">
+      After verifying you'll receive 8 one-time backup codes — store them somewhere safe before leaving the page.
+    </p>
+  </div>
+
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+  (function () {
+    var canvas = document.getElementById('qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+      new QRCode(canvas, {
+        text: {{ otpauth_url | tojson }},
+        width: 192,
+        height: 192,
+        colorDark: '#0f1720',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    document.querySelectorAll('.copy-btn[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = document.getElementById(btn.dataset.copy);
+        if (!target) return;
+        navigator.clipboard.writeText(target.textContent.trim()).then(function () {
+          var orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          btn.disabled = true;
+          setTimeout(function () { btn.textContent = orig; btn.disabled = false; }, 2000);
+        });
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends "agent/layout.html" %}
+{% block title %}Review & Book{% endblock %}
+{% block heading %}Review & Book{% endblock %}
+{% block subheading %}Confirm traveler details and complete the booking.{% endblock %}
+{% block page_class %}agent-page-checkout{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260411-airline-logo-contrast') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='agent-checkout.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set model = checkout_model or {} %}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ url_for('agent.search') }}">Book flights</a>
+  <span>/</span>
+  <span>Review &amp; book</span>
+</nav>
+
+{% if booking_error %}
+<div class="banner banner-error" role="alert">
+  <span>{{ booking_error }}</span>
+  <button class="banner-close" aria-label="Dismiss">×</button>
+</div>
+{% endif %}
+
+{% if offer_summary and checkout_model %}
+{% set all_slices   = offer_summary.slices or [] %}
+{% set is_roundtrip = all_slices|length > 1 %}
+{% set margin_est   = (offer_summary.total_amount | float * 0.179) if offer_summary.total_amount else 0 %}
+{% set comm_est     = (offer_summary.total_amount | float * 0.115) if offer_summary.total_amount else 0 %}
+{% set mark_fb      = (all_slices[0].airline_mark_fallback if all_slices else 'FL') %}
+
+<!-- Progress -->
+<div class="ck-progress">
+  <div class="ck-ps ck-ps--done">
+    <span class="ck-ps-num">✓</span> Search
+  </div>
+  <div class="ck-ps-sep"></div>
+  <div class="ck-ps ck-ps--done">
+    <span class="ck-ps-num">✓</span> Select flight
+  </div>
+  <div class="ck-ps-sep"></div>
+  <div class="ck-ps ck-ps--active">
+    <span class="ck-ps-num">3</span> Passenger &amp; payment
+  </div>
+  <div class="ck-ps-sep"></div>
+  <div class="ck-ps">
+    <span class="ck-ps-num">4</span> Confirmed
+  </div>
+</div>
+
+<!-- Flight summary card -->
+<div class="ck-flight-card">
+  <!-- Header -->
+  <div class="ck-fcard-header">
+    <div class="ck-airline-row">
+      {% if offer_summary.airline_logo_url %}
+      <img class="ck-logo"
+           src="{{ offer_summary.airline_logo_url }}"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';"
+           alt="{{ offer_summary.airline_name or '' }}">
+      <span class="ck-logo-fb" style="display:none">{{ mark_fb }}</span>
+      {% else %}
+      <span class="ck-logo-fb">{{ mark_fb }}</span>
+      {% endif %}
+      <span class="ck-airline-name">{{ offer_summary.airline_name or "Selected fare" }}</span>
+      <span class="ck-dot-sep"></span>
+      <span class="ck-airline-meta">{{ offer_summary.cabin_label or 'Economy' }}</span>
+      <span class="ck-dot-sep"></span>
+      <span class="ck-airline-meta">{{ travelers|length }} traveler{{ 's' if travelers|length != 1 else '' }}</span>
+    </div>
+    <div class="ck-badge-row">
+      {% if is_roundtrip %}
+      <span class="ck-bdg ck-bdg--trip">Round trip</span>
+      {% else %}
+      <span class="ck-bdg ck-bdg--trip">One way</span>
+      {% endif %}
+      {% if offer_summary.cabin_label %}
+      <span class="ck-bdg ck-bdg--cabin">{{ offer_summary.cabin_label }}</span>
+      {% endif %}
+      {% if offer_summary.expires_at_label %}
+      <span class="ck-bdg ck-bdg--expiry">
+        <span class="ck-expiry-pulse"></span>
+        Expires {{ offer_summary.expires_at_label }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Per-leg route rows — compact 2-line format -->
+  {% for sl in all_slices %}
+  {% set fseg = sl.segments[0] if sl.segments else None %}
+  {% set lseg = sl.segments[-1] if sl.segments else None %}
+  <div class="ck-leg">
+    {% if is_roundtrip %}
+    <div class="ck-leg-tag">{{ sl.label or ('Outbound' if loop.first else 'Return') }}</div>
+    {% endif %}
+    <div class="ck-leg-main">
+      <div class="ck-airport">
+        <div class="ck-iata-row">
+          <span class="ck-iata">{{ fseg.origin_code if fseg else '—' }}</span>
+          <span class="ck-leg-time">{{ fseg.depart_time if fseg else '' }}</span>
+        </div>
+        <span class="ck-leg-sub">{{ fseg.origin_city if fseg else '' }}{% if sl.date_short_label %} · {{ sl.date_short_label }}{% endif %}</span>
+      </div>
+      <div class="ck-mid">
+        <span class="ck-mid-dur">{{ sl.duration_label }}</span>
+        <div class="ck-mid-line">
+          <svg class="ck-mid-plane" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+          </svg>
+        </div>
+        <span class="ck-mid-stops">
+          {{ sl.stops_label }}{% if sl.segment_count > 1 and sl.segments and sl.segments[0].destination_code %} · {{ sl.segments[0].destination_code }}{% endif %}
+        </span>
+      </div>
+      <div class="ck-airport ck-airport--right">
+        <div class="ck-iata-row">
+          <span class="ck-leg-time">{{ lseg.arrive_time if lseg else '' }}</span>
+          <span class="ck-iata">{{ lseg.destination_code if lseg else '—' }}</span>
+        </div>
+        <span class="ck-leg-sub">{{ lseg.destination_city if lseg else '' }}</span>
+      </div>
+    </div>
+  </div>
+  {% if not loop.last %}
+  <div class="ck-leg-sep"></div>
+  {% endif %}
+  {% endfor %}
+
+  <!-- Metrics footer -->
+  <div class="ck-fcard-metrics">
+    <div class="ck-fm ck-fm--accent">
+      <span class="ck-fm-label">Total fare</span>
+      <span class="ck-fm-value">{{ offer_summary.currency }} {{ offer_summary.total_amount }}</span>
+    </div>
+    <div class="ck-fm ck-fm--green">
+      <span class="ck-fm-label">Your margin</span>
+      <span class="ck-fm-value">${{ '%.2f'|format(margin_est) }}</span>
+    </div>
+    <div class="ck-fm">
+      <span class="ck-fm-label">Commission</span>
+      <span class="ck-fm-value">${{ '%.2f'|format(comm_est) }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout form -->
+<form method="post" class="ck-layout" id="agentCheckoutForm">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+  <div class="ck-main">
+    {% include "checkout_components/travelers.html" %}
+    {% include "checkout_components/payment.html" %}
+  </div>
+
+  <aside class="ck-rail">
+    <div class="ck-summary-card">
+      <div class="ck-sum-head">
+        <h3>Order summary</h3>
+        <span>{{ travelers|length }} traveler{{ 's' if travelers|length != 1 else '' }}</span>
+      </div>
+
+      {% for sl in all_slices %}
+      {% set fseg = sl.segments[0] if sl.segments else None %}
+      {% set lseg = sl.segments[-1] if sl.segments else None %}
+      <div class="ck-rail-leg">
+        {% if is_roundtrip %}
+        <div class="ck-rail-leg-tag">{{ sl.label or ('Outbound' if loop.first else 'Return') }}</div>
+        {% endif %}
+        <div class="ck-rail-route">
+          <div class="ck-rl-end">
+            <span class="ck-rl-iata">{{ fseg.origin_code if fseg else '—' }}</span>
+            <span class="ck-rl-time">{{ fseg.depart_time if fseg else '—' }}</span>
+            <span class="ck-rl-date">{{ sl.date_short_label or '' }}</span>
+          </div>
+          <div class="ck-rl-mid">
+            <span class="ck-rl-dur">{{ sl.duration_label }}</span>
+            <div class="ck-rl-line"></div>
+            <span class="ck-rl-stops">{{ sl.stops_label }}</span>
+          </div>
+          <div class="ck-rl-end">
+            <span class="ck-rl-iata">{{ lseg.destination_code if lseg else '—' }}</span>
+            <span class="ck-rl-time">{{ lseg.arrive_time if lseg else '—' }}</span>
+            <span class="ck-rl-date">&nbsp;</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="ck-breakdown">
+        <div class="ck-bd-row">
+          <span class="ck-bd-label">Cabin class</span>
+          <span class="ck-bd-val">{{ offer_summary.cabin_label or '—' }}</span>
+        </div>
+        <div class="ck-bd-row">
+          <span class="ck-bd-label">Travelers</span>
+          <span class="ck-bd-val">{{ travelers|length }}</span>
+        </div>
+        <div class="ck-bd-divider"></div>
+        <div class="ck-bd-row">
+          <span class="ck-bd-label">Base fare</span>
+          <span class="ck-bd-val">${{ '%.2f'|format((offer_summary.total_amount | float) * 0.763) }}</span>
+        </div>
+        <div class="ck-bd-row">
+          <span class="ck-bd-label">Taxes &amp; fees</span>
+          <span class="ck-bd-val">${{ '%.2f'|format((offer_summary.total_amount | float) * 0.237) }}</span>
+        </div>
+      </div>
+
+      <div class="ck-total-row">
+        <span class="ck-total-label">Total</span>
+        <span class="ck-total-val">{{ offer_summary.currency }} {{ offer_summary.total_amount }}</span>
+      </div>
+
+      <div class="ck-margin-row">
+        <span class="ck-margin-label">Agency margin</span>
+        <span class="ck-margin-val">${{ '%.2f'|format(margin_est) }}</span>
+      </div>
+    </div>
+
+    {% if offer_summary.flexibility %}
+    <div class="ck-rules">
+      <div class="ck-rules-head">Fare rules</div>
+      <ul class="ck-rules-list">
+        <li>
+          <span>Changes</span>
+          <strong>{{ offer_summary.flexibility.change_label or offer_summary.flexibility.changes or 'See airline policy' }}</strong>
+        </li>
+        <li>
+          <span>Cancellation</span>
+          <strong>{{ offer_summary.flexibility.cancellation_label or offer_summary.flexibility.refunds or 'See airline policy' }}</strong>
+        </li>
+        <li>
+          <span>Refund</span>
+          <strong>{{ offer_summary.flexibility.refund_label or 'See airline policy' }}</strong>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="ck-trust">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      Secured by Duffel · PCI DSS compliant
+    </div>
+  </aside>
+</form>
+
+<script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+<script
+  src="{{ url_for('static', filename='checkout-travelers-widgets.js', v='20260410-dob-month-selected-only') }}"
+  data-dial-codes="{{ url_for('static', filename='dial-codes.json', v='20260410-price-expires') }}"
+></script>
+
+{% else %}
+<section class="panel panel-narrow">
+  <div class="panel-header">
+    <div>
+      <h2>Checkout unavailable</h2>
+      <p>We couldn't prepare this fare. Go back to search and select a fresh offer.</p>
+    </div>
+  </div>
+  <a href="{{ url_for('agent.search') }}" class="button button-primary">Back to search</a>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ account.first_name or "My" }} {{ account.last_name or "Account" }} • Skairova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='user-portal.css', v='20260516-v4') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="portal-page">
+
+  {% include "partials/platform_header.html" %}
+
+  {% if account %}
+  <div class="prtl-root">
+
+    <!-- ══ SIDEBAR (desktop) ══ -->
+    <aside class="prtl-sidebar" aria-label="Portal navigation">
+      <div class="prtl-sid-inner">
+
+        <!-- Profile card -->
+        <div class="prtl-sid-profile">
+          <div class="prtl-avatar" aria-hidden="true">
+            {{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}
+          </div>
+          <div class="prtl-sid-info">
+            <div class="prtl-sid-name">{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</div>
+            <div class="prtl-sid-email">{{ account.email }}</div>
+          </div>
+        </div>
+
+        <!-- Quick stats -->
+        <div class="prtl-sid-stats">
+          <div class="prtl-sid-stat">
+            <span class="prtl-sid-stat-num">{{ account.linked_booking_references|length }}</span>
+            <span class="prtl-sid-stat-lbl">Booking{{ 's' if account.linked_booking_references|length != 1 }}</span>
+          </div>
+          <div class="prtl-sid-stat-div"></div>
+          <div class="prtl-sid-stat">
+            <span class="prtl-sid-stat-num">{{ saved_searches|length }}</span>
+            <span class="prtl-sid-stat-lbl">Search{{ 'es' if saved_searches|length != 1 }}</span>
+          </div>
+          {% if account.created_at %}
+          <div class="prtl-sid-stat-div"></div>
+          <div class="prtl-sid-stat">
+            <span class="prtl-sid-stat-num">{{ account.created_at[:4] }}</span>
+            <span class="prtl-sid-stat-lbl">Member</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Nav -->
+        <nav class="prtl-nav" aria-label="Portal sections">
+          <button class="prtl-nav-item is-active" type="button" data-tab="profile">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
+            <span>Profile</span>
+          </button>
+          <button class="prtl-nav-item" type="button" data-tab="security">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Security</span>
+          </button>
+          <button class="prtl-nav-item" type="button" data-tab="preferences">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+            <span>Preferences</span>
+          </button>
+          <button class="prtl-nav-item" type="button" data-tab="bookings">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+            <span>Bookings</span>
+            {% if account.linked_booking_references %}<span class="prtl-nav-badge">{{ account.linked_booking_references|length }}</span>{% endif %}
+          </button>
+          <button class="prtl-nav-item" type="button" data-tab="searches">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>Searches</span>
+            {% if saved_searches %}<span class="prtl-nav-badge">{{ saved_searches|length }}</span>{% endif %}
+          </button>
+        </nav>
+
+        <div class="prtl-sid-spacer"></div>
+
+        <div class="prtl-sid-foot">
+          <form method="post" action="{{ url_for('user_portal_logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+            <button class="prtl-signout-btn" type="submit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              Sign out
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ══ MAIN ══ -->
+    <main class="prtl-main" id="prtlMain">
+
+      <!-- Mobile hero (hidden on desktop) -->
+      <div class="prtl-mobile-hero">
+        <div class="prtl-mhero-left">
+          <div class="prtl-avatar prtl-avatar--lg" aria-hidden="true">
+            {{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}
+          </div>
+          <div class="prtl-mhero-info">
+            <div class="prtl-mhero-name">{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</div>
+            <div class="prtl-mhero-email">{{ account.email }}</div>
+            <div class="prtl-mhero-stats">
+              <span>{{ account.linked_booking_references|length }} booking{{ 's' if account.linked_booking_references|length != 1 }}</span>
+              <span class="prtl-mhero-dot">·</span>
+              <span>{{ saved_searches|length }} search{{ 'es' if saved_searches|length != 1 }}</span>
+            </div>
+          </div>
+        </div>
+        <form method="post" action="{{ url_for('user_portal_logout') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <button class="prtl-mhero-signout" type="submit" aria-label="Sign out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- ── PROFILE TAB ── -->
+      <section class="prtl-tab is-active" data-tab="profile" aria-label="Profile">
+        <div class="prtl-tab-head">
+          <h1 class="prtl-tab-title">Personal Info</h1>
+          <p class="prtl-tab-sub">Your traveler identity used across all bookings.</p>
+        </div>
+
+        {% if request.args.get('tab') == 'profile' and request.args.get('saved') %}
+        <div class="prtl-alert prtl-alert--success" role="status">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Profile saved successfully.
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('user_portal_update_profile') }}" class="prtl-form" novalidate>
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <div class="prtl-card">
+            <div class="prtl-card-head">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
+              Basic information
+            </div>
+            <div class="prtl-field-grid">
+              <div class="prtl-field">
+                <label class="prtl-label" for="pFirstName">First name</label>
+                <input class="prtl-input" type="text" id="pFirstName" name="first_name"
+                       value="{{ account.first_name or '' }}" maxlength="80"
+                       autocomplete="given-name" placeholder="Given name" />
+              </div>
+              <div class="prtl-field">
+                <label class="prtl-label" for="pLastName">Last name</label>
+                <input class="prtl-input" type="text" id="pLastName" name="last_name"
+                       value="{{ account.last_name or '' }}" maxlength="80"
+                       autocomplete="family-name" placeholder="Family name" />
+              </div>
+              <div class="prtl-field">
+                <label class="prtl-label" for="pDob">Date of birth</label>
+                <input class="prtl-input" type="date" id="pDob" name="dob"
+                       value="{{ account.dob or '' }}" autocomplete="bday" />
+                <span class="prtl-hint">Required for booking verification</span>
+              </div>
+              <div class="prtl-field">
+                <label class="prtl-label" for="pGender">Gender</label>
+                <select class="prtl-input prtl-select" id="pGender" name="gender">
+                  <option value="" {% if not account.gender %}selected{% endif %}>Prefer not to say</option>
+                  <option value="male" {% if account.gender == 'male' %}selected{% endif %}>Male</option>
+                  <option value="female" {% if account.gender == 'female' %}selected{% endif %}>Female</option>
+                  <option value="non_binary" {% if account.gender == 'non_binary' %}selected{% endif %}>Non-binary</option>
+                  <option value="prefer_not_to_say" {% if account.gender == 'prefer_not_to_say' %}selected{% endif %}>Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="prtl-card">
+            <div class="prtl-card-head">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.9 11.8a19.79 19.79 0 01-3.07-8.67A2 2 0 013.81 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 8.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+              Contact &amp; travel documents
+            </div>
+            <div class="prtl-field-grid">
+              <div class="prtl-field">
+                <label class="prtl-label" for="pPhone">Phone number</label>
+                <input class="prtl-input" type="tel" id="pPhone" name="phone_number"
+                       value="{{ account.phone_number or '' }}" maxlength="32"
+                       autocomplete="tel" placeholder="+1 555 000 0000" />
+              </div>
+              <div class="prtl-field">
+                <label class="prtl-label" for="pNationality">Nationality</label>
+                <input class="prtl-input" type="text" id="pNationality" name="nationality"
+                       value="{{ account.nationality or '' }}" maxlength="64"
+                       autocomplete="country-name" placeholder="e.g. British, American" />
+              </div>
+              <div class="prtl-field prtl-field--full">
+                <label class="prtl-label" for="pPassport">Passport / ID number</label>
+                <input class="prtl-input" type="text" id="pPassport" name="passport_number"
+                       value="{{ account.passport_number or '' }}" maxlength="32"
+                       autocomplete="off" placeholder="Document number" />
+                <span class="prtl-hint">Stored securely — only used to pre-fill booking forms</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prtl-form-foot">
+            <button class="prtl-btn prtl-btn--primary" type="submit">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Save profile
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ── SECURITY TAB ── -->
+      <section class="prtl-tab" data-tab="security" aria-label="Security">
+        <div class="prtl-tab-head">
+          <h1 class="prtl-tab-title">Account &amp; Security</h1>
+          <p class="prtl-tab-sub">Sign-in credentials, email address, and session controls.</p>
+        </div>
+
+        <div class="prtl-info-stack">
+          <div class="prtl-info-row">
+            <div class="prtl-info-icon prtl-info-icon--blue">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="prtl-info-body">
+              <div class="prtl-info-lbl">Email address</div>
+              <div class="prtl-info-val">{{ account.email }}</div>
+              <div class="prtl-info-note">Primary sign-in address — cannot be changed</div>
+            </div>
+          </div>
+
+          <div class="prtl-info-row">
+            <div class="prtl-info-icon prtl-info-icon--purple">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <div class="prtl-info-body">
+              <div class="prtl-info-lbl">Password</div>
+              <div class="prtl-info-val">••••••••••••</div>
+              {% if account.get('oauth_provider') %}
+              <div class="prtl-info-note">Signed in via {{ account.oauth_provider | capitalize }} — no password set</div>
+              {% else %}
+              <div class="prtl-info-note">Use a strong, unique password</div>
+              {% endif %}
+            </div>
+            <a class="prtl-btn prtl-btn--ghost prtl-btn--sm"
+               href="{{ url_for('auth_page', mode='reset_request', reset_email=account.email) }}">
+              Change
+            </a>
+          </div>
+
+          <div class="prtl-info-row">
+            <div class="prtl-info-icon prtl-info-icon--green">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="prtl-info-body">
+              <div class="prtl-info-lbl">Member since</div>
+              <div class="prtl-info-val">{{ account.created_at[:10] if account.created_at else "—" }}</div>
+              <div class="prtl-info-note">Account creation date</div>
+            </div>
+          </div>
+
+          {% if active_sessions %}
+          <div class="prtl-info-row">
+            <div class="prtl-info-icon prtl-info-icon--amber">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <div class="prtl-info-body">
+              <div class="prtl-info-lbl">Active session</div>
+              {% for s in active_sessions %}
+              <div class="prtl-info-val">{{ s.label }}</div>
+              <div class="prtl-info-note">{{ s.ip }} · Last seen {{ s.last_seen or "—" }}</div>
+              {% endfor %}
+            </div>
+            <form method="post" action="{{ url_for('user_portal_revoke_sessions') }}">
+              <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+              <button class="prtl-btn prtl-btn--danger-ghost prtl-btn--sm" type="submit">Revoke</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- ── PREFERENCES TAB ── -->
+      <section class="prtl-tab" data-tab="preferences" aria-label="Preferences">
+        <div class="prtl-tab-head">
+          <h1 class="prtl-tab-title">Preferences</h1>
+          <p class="prtl-tab-sub">Notification settings and route monitoring controls.</p>
+        </div>
+
+        <form method="post" action="{{ url_for('user_portal_update_preferences') }}" class="prtl-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+          <div class="prtl-pref-stack">
+            <label class="prtl-pref-row">
+              <div class="prtl-pref-left">
+                <div class="prtl-pref-icon prtl-pref-icon--blue">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <div>
+                  <div class="prtl-pref-title">Price drop alerts</div>
+                  <div class="prtl-pref-desc">Notify me when tracked routes become cheaper</div>
+                </div>
+              </div>
+              <span class="prtl-toggle">
+                <input type="checkbox" name="price_alerts_enabled" role="switch"
+                       {% if account.price_alerts_enabled %}checked{% endif %} />
+                <span class="prtl-toggle-track"><span class="prtl-toggle-thumb"></span></span>
+              </span>
+            </label>
+
+            <label class="prtl-pref-row">
+              <div class="prtl-pref-left">
+                <div class="prtl-pref-icon prtl-pref-icon--purple">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                </div>
+                <div>
+                  <div class="prtl-pref-title">Route tracking</div>
+                  <div class="prtl-pref-desc">Keep selected routes monitored automatically</div>
+                </div>
+              </div>
+              <span class="prtl-toggle">
+                <input type="checkbox" name="route_tracking_enabled" role="switch"
+                       {% if account.route_tracking_enabled %}checked{% endif %} />
+                <span class="prtl-toggle-track"><span class="prtl-toggle-thumb"></span></span>
+              </span>
+            </label>
+          </div>
+
+          <div class="prtl-form-foot">
+            <button class="prtl-btn prtl-btn--primary" type="submit">Save preferences</button>
+          </div>
+        </form>
+
+        {% if top_routes %}
+        <div class="prtl-divider"></div>
+        <div class="prtl-tab-head">
+          <h2 class="prtl-tab-title prtl-tab-title--sm">Quick routes</h2>
+          <p class="prtl-tab-sub">Launch your most-searched routes instantly.</p>
+        </div>
+        <div class="prtl-routes-grid">
+          {% for route in top_routes %}
+          {% set route_parts = route.split('→') %}
+          <a class="prtl-route-card"
+             href="{{ url_for('index') }}?origin={{ route_parts[0]|trim }}&destination={{ (route_parts[1]|trim) if route_parts|length > 1 else '' }}">
+            <div class="prtl-route-row">
+              <span class="prtl-route-code">{{ route_parts[0]|trim }}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <span class="prtl-route-code">{{ (route_parts[1]|trim) if route_parts|length > 1 else '?' }}</span>
+            </div>
+            <span class="prtl-route-lbl">Search now</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- ── BOOKINGS TAB ── -->
+      <section class="prtl-tab" data-tab="bookings" aria-label="Bookings">
+        <div class="prtl-tab-head">
+          <h1 class="prtl-tab-title">Linked Bookings</h1>
+          <p class="prtl-tab-sub">Booking references tied to this account.</p>
+        </div>
+
+        {% if account.linked_booking_references %}
+        <div class="prtl-booking-list">
+          {% for ref in account.linked_booking_references %}
+          <div class="prtl-booking-row">
+            <div class="prtl-booking-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+            </div>
+            <div class="prtl-booking-body">
+              <div class="prtl-booking-ref">{{ ref }}</div>
+              <div class="prtl-booking-note">Booking reference</div>
+            </div>
+            <a class="prtl-btn prtl-btn--ghost prtl-btn--sm"
+               href="{{ url_for('manage_booking') }}?booking_reference={{ ref }}">
+              View
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="prtl-empty">
+          <div class="prtl-empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          </div>
+          <p class="prtl-empty-title">No bookings linked yet</p>
+          <p class="prtl-empty-sub">Bookings made while signed in appear here automatically.</p>
+          <a class="prtl-btn prtl-btn--primary" href="{{ url_for('manage_booking') }}">Manage a booking</a>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- ── SEARCHES TAB ── -->
+      <section class="prtl-tab" data-tab="searches" aria-label="Saved searches">
+        <div class="prtl-tab-head">
+          <h1 class="prtl-tab-title">Saved Searches</h1>
+          <p class="prtl-tab-sub">Replay or edit past searches instantly.</p>
+          {% if saved_searches %}
+          <form method="post" action="{{ url_for('user_portal_clear_searches') }}" style="margin-top:14px">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+            <button class="prtl-btn prtl-btn--danger-ghost prtl-btn--sm" type="submit">Clear all searches</button>
+          </form>
+          {% endif %}
+        </div>
+
+        {% if saved_search_cards %}
+        <div class="prtl-search-list">
+          {% for item in saved_search_cards %}
+          <article class="prtl-search-card">
+            <div class="prtl-search-top">
+              <span class="prtl-search-mode-badge">{{ item.mode_label }}</span>
+              <span class="prtl-search-date">{{ item.date_label }}</span>
+            </div>
+            <h3 class="prtl-search-title">{{ item.summary }}</h3>
+            <p class="prtl-search-meta">{{ item.route }}{% if item.cabin %} · {{ item.cabin }}{% endif %}{% if item.budget %} · {{ item.budget }}{% endif %}</p>
+            <div class="prtl-search-actions">
+              <form method="post" action="{{ url_for('search_edit') }}" style="display:contents">
+                {% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}
+                <button class="prtl-btn prtl-btn--ghost prtl-btn--sm" type="submit">Edit</button>
+              </form>
+              <form method="post" action="{{ url_for('search_shell') }}" style="display:contents">
+                {% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}
+                <button class="prtl-btn prtl-btn--primary prtl-btn--sm" type="submit">Search again</button>
+              </form>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="prtl-empty">
+          <div class="prtl-empty-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <p class="prtl-empty-title">No saved searches</p>
+          <p class="prtl-empty-sub">Run a search while signed in and it'll appear here for quick replay.</p>
+          <a class="prtl-btn prtl-btn--primary" href="{{ url_for('index') }}">Search flights</a>
+        </div>
+        {% endif %}
+      </section>
+
+    </main>
+  </div><!-- /.prtl-root -->
+
+  <!-- Mobile bottom nav -->
+  <nav class="prtl-bnav" aria-label="Portal navigation">
+    <button class="prtl-bnav-item is-active" type="button" data-tab="profile">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
+      <span>Profile</span>
+    </button>
+    <button class="prtl-bnav-item" type="button" data-tab="security">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Security</span>
+    </button>
+    <button class="prtl-bnav-item" type="button" data-tab="preferences">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+      <span>Prefs</span>
+    </button>
+    <button class="prtl-bnav-item" type="button" data-tab="bookings">
+      <div class="prtl-bnav-badge-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        {% if account.linked_booking_references %}<span class="prtl-bnav-dot"></span>{% endif %}
+      </div>
+      <span>Bookings</span>
+    </button>
+    <button class="prtl-bnav-item" type="button" data-tab="searches">
+      <div class="prtl-bnav-badge-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        {% if saved_searches %}<span class="prtl-bnav-dot"></span>{% endif %}
+      </div>
+      <span>Searches</span>
+    </button>
+  </nav>
+
+  {% else %}
+  <!-- Not signed in -->
+  <div class="prtl-gate">
+    <div class="prtl-gate-card">
+      <div class="prtl-gate-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
+      </div>
+      <h1 class="prtl-gate-title">Sign in to your account</h1>
+      <p class="prtl-gate-sub">{{ page_notice or "Access your profile, saved searches, bookings, and personalized alerts." }}</p>
+      <div class="prtl-gate-btns">
+        <a class="prtl-btn prtl-btn--primary" href="{{ url_for('auth_page', mode='signup') }}">Create account</a>
+        <a class="prtl-btn prtl-btn--ghost" href="{{ url_for('auth_page', mode='login') }}">Sign in</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+  (function () {
+    var navItems = Array.from(document.querySelectorAll('.prtl-nav-item[data-tab], .prtl-bnav-item[data-tab]'));
+    var panels   = Array.from(document.querySelectorAll('.prtl-tab[data-tab]'));
+    if (!navItems.length || !panels.length) return;
+
+    function activate(target) {
+      navItems.forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.dataset.tab === target);
+        btn.setAttribute('aria-selected', btn.dataset.tab === target ? 'true' : 'false');
+      });
+      panels.forEach(function (p) {
+        p.classList.toggle('is-active', p.dataset.tab === target);
+      });
+      try { history.replaceState(null, '', '?tab=' + target); } catch (_) {}
+      /* Scroll main to top on mobile */
+      var main = document.getElementById('prtlMain');
+      if (main && window.innerWidth < 960) main.scrollTop = 0;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    navItems.forEach(function (btn) {
+      btn.addEventListener('click', function () { activate(btn.dataset.tab); });
+    });
+
+    var urlTab = new URLSearchParams(location.search).get('tab');
+    if (urlTab && panels.some(function (p) { return p.dataset.tab === urlTab; })) {
+      activate(urlTab);
+    }
+  })();
+  </script>
+  {% include "partials/theme_scripts.html" %}
+</body>
+</html>

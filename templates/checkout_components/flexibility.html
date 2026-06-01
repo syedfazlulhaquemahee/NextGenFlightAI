@@ -1,0 +1,20 @@
+<div class="flexibility-panel">
+  <div class="checkout-section-head compact">
+    <div>
+      <p class="checkout-eyebrow">Fare rules</p>
+      <h3>{{ offer_summary.flexibility.headline }}</h3>
+    </div>
+    <span class="checkout-quiet">{{ offer_summary.flexibility.rail_summary }}</span>
+  </div>
+
+  <div class="flexibility-grid">
+    <div class="flexibility-card">
+      <span>Changes</span>
+      <strong class="status-{{ offer_summary.flexibility.changes.status }}">{{ offer_summary.flexibility.changes.label }}</strong>
+    </div>
+    <div class="flexibility-card">
+      <span>Refunds</span>
+      <strong class="status-{{ offer_summary.flexibility.refunds.status }}">{{ offer_summary.flexibility.refunds.label }}</strong>
+    </div>
+  </div>
+</div>

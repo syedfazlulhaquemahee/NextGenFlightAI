@@ -1,0 +1,11 @@
+{# Expects: logo_url, fallback_text; optional: modifier_class #}
+<div
+  class="flight-brand-mark{% if logo_url %} flight-brand-mark--logo{% endif %} {{ modifier_class|default('', true) }}"
+  aria-hidden="true"
+>
+  {% if logo_url %}
+    <img src="{{ logo_url }}" alt="" width="40" height="40" loading="lazy" decoding="async" />
+  {% else %}
+    <span class="flight-brand-fallback">{{ fallback_text }}</span>
+  {% endif %}
+</div>

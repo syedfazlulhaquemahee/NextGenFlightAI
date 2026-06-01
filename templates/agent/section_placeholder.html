@@ -1,0 +1,25 @@
+{% extends "agent/layout.html" %}
+{% block title %}{{ section_title }}{% endblock %}
+{% block heading %}{{ section_title }}{% endblock %}
+{% block subheading %}{{ section_copy }}{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>{{ section_kicker }}</h2>
+      <p>{{ section_copy }}</p>
+    </div>
+  </div>
+  <div class="security-grid">
+    <article class="mini-card">
+      <h3>Workspace Connected</h3>
+      <p>This section is linked in the portal navigation so the shell behaves like a real product surface.</p>
+    </article>
+    <article class="mini-card">
+      <h3>Next Build Stage</h3>
+      <p>Search &amp; Book is the most advanced workflow right now. The remaining sections are ready to be expanded with real agency data.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

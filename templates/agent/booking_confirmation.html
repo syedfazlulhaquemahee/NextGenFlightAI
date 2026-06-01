@@ -1,0 +1,287 @@
+{% extends "agent/layout.html" %}
+{% block title %}Booking Confirmed{% endblock %}
+{% block heading %}Booking Confirmed{% endblock %}
+{% block subheading %}The trip is ticketed and synced into the agent platform.{% endblock %}
+{% block page_class %}agent-page-confirmation{% endblock %}
+
+{% block content %}
+{% if booking_error %}
+<section class="panel panel-narrow">
+  <div class="panel-header">
+    <div>
+      <h2>Confirmation unavailable</h2>
+      <p>{{ booking_error }}</p>
+    </div>
+  </div>
+  <a href="{{ url_for('agent.search') }}" class="button button-primary">Back to search</a>
+</section>
+
+{% elif order_summary %}
+{% set all_slices   = order_summary.slices or [] %}
+{% set out_slice    = all_slices[0] if all_slices else None %}
+{% set out_fseg     = out_slice.segments[0] if out_slice and out_slice.segments else None %}
+{% set out_lseg     = out_slice.segments[-1] if out_slice and out_slice.segments else None %}
+{% set is_roundtrip = all_slices|length > 1 %}
+{% set margin_est   = (order_summary.total_amount | float * 0.179) if order_summary.total_amount else 0 %}
+{% set comm_est     = (order_summary.total_amount | float * 0.115) if order_summary.total_amount else 0 %}
+{% set ref_code     = order_summary.booking_reference or order_summary.order_id or '—' %}
+
+<!-- Success banner -->
+<div class="conf-banner">
+  <div class="conf-check" aria-hidden="true">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+  <div class="conf-banner-body">
+    <span class="conf-eyebrow">Order created successfully</span>
+    <h2 class="conf-title">{{ order_summary.airline_name or "Booking confirmed" }}</h2>
+    <p class="conf-sub">
+      {% if out_fseg and out_lseg %}
+        {{ out_fseg.origin_code }} → {{ out_lseg.destination_code }}
+        {% if is_roundtrip %} · Round trip{% endif %}
+        · {{ travelers|length if travelers is defined else order_summary.passenger_names|length if order_summary.passenger_names else 1 }} passenger{{ 's' if (travelers|length if travelers is defined else order_summary.passenger_names|length if order_summary.passenger_names else 1) != 1 else '' }}
+      {% else %}
+        Booking is confirmed and available in your portal.
+      {% endif %}
+    </p>
+  </div>
+  <div class="conf-ref-block">
+    <span class="conf-ref-label">Booking reference</span>
+    <span class="conf-ref-code" id="confRefCode">{{ ref_code }}</span>
+    <button type="button" class="conf-copy-btn" id="confCopyBtn"
+      onclick="(function(b){navigator.clipboard.writeText(document.getElementById('confRefCode').textContent.trim()).then(function(){b.textContent='Copied!';setTimeout(function(){b.innerHTML='<svg width=&quot;11&quot; height=&quot;11&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2.5&quot;><rect x=&quot;9&quot; y=&quot;9&quot; width=&quot;13&quot; height=&quot;13&quot; rx=&quot;2&quot;/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copy ref'},1800)})})(this)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copy ref
+    </button>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="conf-stats">
+  <div class="conf-stat">
+    <span class="conf-stat-label">Status</span>
+    <span class="conf-stat-value">{{ order_summary.status_label or 'Confirmed' }}</span>
+  </div>
+  <div class="conf-stat">
+    <span class="conf-stat-label">Total paid</span>
+    <span class="conf-stat-value">{{ order_summary.currency }} {{ order_summary.total_amount }}</span>
+  </div>
+  <div class="conf-stat">
+    <span class="conf-stat-label">Passengers</span>
+    <span class="conf-stat-value">{{ order_summary.passenger_names|length if order_summary.passenger_names else 1 }}</span>
+  </div>
+  <div class="conf-stat conf-stat--green">
+    <span class="conf-stat-label">Agency margin</span>
+    <span class="conf-stat-value">${{ '%.2f'|format(margin_est) }}</span>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="conf-grid">
+
+  <!-- Left column -->
+  <div class="conf-col">
+
+    <!-- Itinerary card -->
+    <div class="conf-card">
+      <div class="conf-card-head">
+        <h2>Itinerary</h2>
+        <p>
+          {% if out_fseg and out_lseg %}
+            {{ out_fseg.origin_code }} → {{ out_lseg.destination_code }}
+            {% if is_roundtrip %} · Round trip{% endif %}
+          {% else %}
+            Flight details
+          {% endif %}
+        </p>
+      </div>
+      <div class="conf-card-body">
+        <div class="conf-timeline">
+          {% for sl in all_slices %}
+          {% set fseg = sl.segments[0] if sl.segments else None %}
+          {% set lseg = sl.segments[-1] if sl.segments else None %}
+
+          {% if is_roundtrip and loop.index > 1 %}
+          <!-- Return leg connector -->
+          <div class="conf-tl-item">
+            <div class="conf-tl-spine">
+              <div class="conf-tl-dot" style="border-color:#94a3b8"></div>
+              <div class="conf-tl-line"></div>
+            </div>
+            <div class="conf-tl-content">
+              <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--ct-text3);padding:2px 0 8px;">Return leg</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Departure -->
+          <div class="conf-tl-item">
+            <div class="conf-tl-spine">
+              <div class="conf-tl-dot"></div>
+              <div class="conf-tl-line"></div>
+            </div>
+            <div class="conf-tl-content">
+              <div class="conf-tl-iata">{{ fseg.origin_code if fseg else '—' }}</div>
+              <div class="conf-tl-time">{{ fseg.depart_time if fseg else '—' }}</div>
+              <div class="conf-tl-date">{{ sl.date_short_label or 'Departure' }}</div>
+            </div>
+          </div>
+
+          <!-- In-flight -->
+          <div class="conf-tl-item">
+            <div class="conf-tl-spine">
+              <div style="width:2px;height:100%;min-height:36px;background:repeating-linear-gradient(to bottom,#94a3b8 0,#94a3b8 3px,transparent 3px,transparent 7px);margin:0 5px;"></div>
+            </div>
+            <div class="conf-tl-content">
+              <div class="conf-tl-flight-info">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                </svg>
+                {{ sl.duration_label }} · {{ sl.stops_label }}
+                {% if order_summary.airline_name %} · {{ order_summary.airline_name }}{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Arrival -->
+          <div class="conf-tl-item">
+            <div class="conf-tl-spine">
+              <div class="conf-tl-dot conf-tl-dot--dest"></div>
+              {% if not loop.last %}<div class="conf-tl-line"></div>{% endif %}
+            </div>
+            <div class="conf-tl-content">
+              <div class="conf-tl-iata">{{ lseg.destination_code if lseg else '—' }}</div>
+              <div class="conf-tl-time">{{ lseg.arrive_time if lseg else '—' }}</div>
+              <div class="conf-tl-date">Arrival</div>
+            </div>
+          </div>
+
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Passengers card -->
+    {% if order_summary.passenger_names %}
+    <div class="conf-card">
+      <div class="conf-card-head">
+        <h2>Passengers</h2>
+        <p>{{ order_summary.passenger_names|length }} traveler{{ 's' if order_summary.passenger_names|length != 1 else '' }}</p>
+      </div>
+      <div class="conf-card-body">
+        <div class="conf-pax">
+          {% for name in order_summary.passenger_names %}
+          <div class="conf-pax-item">
+            <div class="conf-pax-avatar">{{ name[:1].upper() if name else '?' }}</div>
+            <div>
+              <div class="conf-pax-name">{{ name }}</div>
+              <div class="conf-pax-type">Adult passenger</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Right column -->
+  <div class="conf-col">
+
+    <!-- Earnings card -->
+    <div class="conf-card">
+      <div class="conf-card-head">
+        <h2>Agency earnings</h2>
+        <p>Breakdown for this booking</p>
+      </div>
+      <div class="conf-card-body">
+        <div class="conf-earnings" style="margin-bottom:14px;">
+          <div class="conf-earnings-label">Your margin</div>
+          <div class="conf-earnings-val">${{ '%.2f'|format(margin_est) }}</div>
+          <div class="conf-earnings-sub">From ${{ '%.2f'|format(comm_est) }} commission earned</div>
+        </div>
+        <div class="conf-details">
+          <div class="conf-detail-row">
+            <span class="conf-detail-key">Total paid</span>
+            <span class="conf-detail-val">{{ order_summary.currency }} {{ order_summary.total_amount }}</span>
+          </div>
+          <div class="conf-detail-row">
+            <span class="conf-detail-key">Commission</span>
+            <span class="conf-detail-val">${{ '%.2f'|format(comm_est) }}</span>
+          </div>
+          <div class="conf-detail-row">
+            <span class="conf-detail-key">Airline</span>
+            <span class="conf-detail-val">{{ order_summary.airline_name or '—' }}</span>
+          </div>
+          <div class="conf-detail-row">
+            <span class="conf-detail-key">Status</span>
+            <span class="conf-detail-val">{{ order_summary.status_label or 'Confirmed' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next actions card -->
+    <div class="conf-card">
+      <div class="conf-card-head">
+        <h2>Next actions</h2>
+        <p>Manage this booking from the portal</p>
+      </div>
+      <div class="conf-card-body">
+        <div class="conf-actions">
+          {% if selected_booking %}
+          <a href="{{ url_for('agent.booking_detail', booking_id=selected_booking.id) }}" class="conf-btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Open booking record
+          </a>
+          {% endif %}
+          <a href="{{ url_for('agent.bookings_list') }}" class="conf-btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            View all bookings
+          </a>
+          <a href="{{ url_for('agent.search') }}" class="conf-btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Book another trip
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% else %}
+<section class="panel panel-narrow">
+  <div class="panel-header">
+    <div>
+      <h2>No confirmation found</h2>
+      <p>We couldn't load that order. Start a new search or revisit bookings.</p>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin-top:18px;">
+    <a href="{{ url_for('agent.search') }}" class="conf-btn-primary">Back to search</a>
+    <a href="{{ url_for('agent.bookings_list') }}" class="conf-btn-secondary">Bookings</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

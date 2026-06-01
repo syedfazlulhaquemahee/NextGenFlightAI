@@ -1,0 +1,85 @@
+{% extends "agent/layout.html" %}
+{% block title %}Agencies{% endblock %}
+{% block heading %}Agencies{% endblock %}
+{% block subheading %}All registered agencies — users, bookings, and balance at a glance.{% endblock %}
+{% block content %}
+
+<section class="stats-grid" aria-label="Platform totals">
+  <article class="stat-card">
+    <span class="stat-label">Agencies</span>
+    <strong class="stat-value">{{ agencies | length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Total users</span>
+    <strong class="stat-value">{{ agencies | sum(attribute='user_count') }}</strong>
+  </article>
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">Total bookings</span>
+    <strong class="stat-value">{{ agencies | sum(attribute='booking_count') }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Total agency earnings</span>
+    <strong class="stat-value">${{ '%.2f' | format(agencies | sum(attribute='total_earned_usd')) }}</strong>
+  </article>
+  <article class="stat-card {% if agencies | sum(attribute='balance_owed_usd') > 0 %}stat-card-warn{% endif %}">
+    <span class="stat-label">Total balance owed</span>
+    <strong class="stat-value">${{ '%.2f' | format(agencies | sum(attribute='balance_owed_usd')) }}</strong>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Agency directory</h2>
+      <p>Click any agency to drill into users, bookings, and financials.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Agency</th>
+          <th>Status</th>
+          <th>Users</th>
+          <th>Bookings</th>
+          <th>Gross revenue</th>
+          <th>Agency earned</th>
+          <th>Disbursed</th>
+          <th>Balance owed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for agency in agencies %}
+        <tr>
+          <td>
+            <strong>{{ agency.name }}</strong>
+            <span class="td-mono td-muted">{{ agency.code }}</span>
+          </td>
+          <td>
+            <span class="status-pill {% if agency.status == 'active' %}status-active{% else %}status-disabled{% endif %}">
+              {{ agency.status.title() }}
+            </span>
+          </td>
+          <td class="td-num">{{ agency.user_count }}</td>
+          <td class="td-num">{{ agency.booking_count }}</td>
+          <td class="td-num">${{ '%.2f' | format(agency.gross_revenue_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(agency.total_earned_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(agency.total_disbursed_usd) }}</td>
+          <td class="td-num {% if agency.balance_owed_usd > 0 %}td-warn{% endif %}">
+            ${{ '%.2f' | format(agency.balance_owed_usd) }}
+          </td>
+          <td>
+            <a href="{{ url_for('agent.agency_detail', agency_id=agency.id) }}"
+               class="button button-secondary btn-sm">View →</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty-cell">No agencies yet. Create one from the dashboard.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

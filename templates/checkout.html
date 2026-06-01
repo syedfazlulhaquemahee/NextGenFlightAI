@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Secure Checkout • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260527-duffel-masked-fields') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout-card-payment.css', v='20260528-clip-v4') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="results-page booking-page premium-checkout-page checkout-details-page">
+  {% set model = checkout_model or {} %}
+  {% include "partials/platform_header.html" %}
+  {% include "checkout_components/header.html" %}
+
+  <main class="checkout-shell">
+    {% if booking_error %}
+      <div class="checkout-alert" role="alert">{{ booking_error }}</div>
+    {% endif %}
+
+    {% if offer_summary and model %}
+      <form method="post" class="checkout-workspace" id="premiumCheckoutForm">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <div class="checkout-main">
+          {% include "checkout_components/travelers.html" %}
+          {% include "checkout_components/payment.html" %}
+        </div>
+
+        <aside class="checkout-rail">
+          {% include "checkout_components/summary_rail.html" %}
+        </aside>
+
+        <div class="checkout-mobile-price-pin" aria-label="Sticky total due" data-mobile-price-pin hidden>
+          <div class="checkout-mobile-price-pin-copy">
+            <span>Total due</span>
+            <strong>
+              <span class="checkout-mobile-price-pin-currency">{{ offer_summary.currency }}</span>
+              <span data-total-display>{{ offer_summary.total_amount }}</span>
+            </strong>
+          </div>
+          {% set payment_collection_ready = model.payment.mode != 'card' or model.payment.component_client_key_available %}
+          <button class="checkout-mobile-price-pin-cta" type="submit" data-final-submit="true" {% if not booking_enabled or not payment_collection_ready %}disabled{% endif %}>
+            Pay
+          </button>
+        </div>
+
+        <input type="hidden" name="ancillaries_payload" id="ancillariesPayload" value='{{ (model.ancillaries.selected_services and {"selected_services": model.ancillaries.selected_services} or {})|tojson }}' />
+      </form>
+
+      {% include "checkout_components/progress_modal.html" %}
+      <script id="checkoutClientState" type="application/json">{{ model.client_state|tojson }}</script>
+      <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+      {% if model.payment.mode == 'card' and model.payment.component_client_key_available %}
+        <script defer src="https://assets.duffel.com/components/{{ duffel_components_version or '3.16.1' }}/duffel-card-form.js"></script>
+        <script type="module" src="{{ url_for('static', filename='checkout-card-payment.js', v='20260527-duffel-masked-fields') }}"></script>
+      {% endif %}
+      <script src="{{ url_for('static', filename='checkout.js', v='20260513-mobile-price-reveal') }}"></script>
+      <script
+        src="{{ url_for('static', filename='checkout-travelers-widgets.js', v='20260410-dob-month-selected-only') }}"
+        data-dial-codes="{{ url_for('static', filename='dial-codes.json', v='20260410-price-expires') }}"
+      ></script>
+    {% else %}
+      <section class="checkout-empty-state">
+        <div class="checkout-surface">
+          <p class="checkout-eyebrow">Checkout unavailable</p>
+          <h1>We couldn't prepare this trip.</h1>
+          <p>Try a fresh search and choose another offer.</p>
+          <div class="checkout-inline-actions">
+            <a class="checkout-text-link" href="{{ url_for('index') }}">Start a new search</a>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </main>
+  {% include "partials/theme_scripts.html" %}
+  {% if offer_summary %}
+  {% set _skair_page = {"page_type": "checkout", "airline_name": offer_summary.airline_name or "", "route_summary": offer_summary.route_summary or "", "cabin_label": offer_summary.cabin_label or "Economy", "traveler_count": offer_summary.traveler_count or 1, "currency": offer_summary.currency or "USD", "total_amount": offer_summary.total_amount or "", "slices": offer_summary.slices or []} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  {% endif %}
+  {% include "partials/ai_chatbot.html" %}
+</body>
+</html>

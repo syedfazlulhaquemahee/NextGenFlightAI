@@ -1,0 +1,221 @@
+/* Local bridge for the downloaded Flatpickr dark theme asset. */
+.flatpickr-calendar.standard-calendar-asset{
+  width:307.875px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:5px !important;
+  background:#3f4458 !important;
+  box-shadow:
+    1px 0 0 #20222c,
+    -1px 0 0 #20222c,
+    0 1px 0 #20222c,
+    0 -1px 0 #20222c,
+    0 3px 13px rgba(0,0,0,0.08) !important;
+  color:rgba(255,255,255,0.95) !important;
+  font-size:14px !important;
+  line-height:24px !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset.nx-calendar-positioned{
+  position:absolute !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-innerContainer{
+  display:flex !important;
+  overflow:hidden !important;
+  padding:0 !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-rContainer{
+  display:inline-block !important;
+  padding:0 !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-months{
+  display:flex !important;
+  height:auto !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:0 !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-month{
+  flex:1 !important;
+  height:34px !important;
+  padding:0 !important;
+  background:#3f4458 !important;
+  color:#fff !important;
+  fill:#fff !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-current-month{
+  position:absolute !important;
+  left:12.5% !important;
+  top:0 !important;
+  width:75% !important;
+  height:34px !important;
+  padding:7.48px 0 0 !important;
+  color:inherit !important;
+  font-size:135% !important;
+  font-weight:300 !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-current-month input.cur-year{
+  width:auto !important;
+  height:auto !important;
+  margin:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:inherit !important;
+  box-shadow:none !important;
+  font:inherit !important;
+  line-height:inherit !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-current-month .flatpickr-monthDropdown-months{
+  appearance:menulist !important;
+  -webkit-appearance:menulist !important;
+  margin:-1px 0 0 !important;
+  background:#3f4458 !important;
+  padding:0 0 0 .5ch !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-current-month input.cur-year{
+  padding:0 0 0 .5ch !important;
+  font-weight:300 !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-next-month{
+  top:0 !important;
+  width:auto !important;
+  height:34px !important;
+  padding:10px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:#fff !important;
+  fill:#fff !important;
+  box-shadow:none !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month svg,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-next-month svg{
+  width:14px !important;
+  height:14px !important;
+  color:inherit !important;
+  fill:inherit !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-weekdays{
+  display:flex !important;
+  align-items:center !important;
+  width:100% !important;
+  height:28px !important;
+  padding:0 !important;
+  background:transparent !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset span.flatpickr-weekday{
+  display:block !important;
+  flex:1 !important;
+  height:auto !important;
+  margin:0 !important;
+  background:#3f4458 !important;
+  color:#fff !important;
+  font-size:90% !important;
+  font-weight:bolder !important;
+  letter-spacing:0 !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-days,
+.flatpickr-calendar.standard-calendar-asset .dayContainer{
+  width:307.875px !important;
+  min-width:307.875px !important;
+  max-width:307.875px !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-days{
+  display:flex !important;
+  align-items:flex-start !important;
+  overflow:hidden !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .dayContainer{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  justify-content:space-around !important;
+  padding:0 !important;
+  text-align:left !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day{
+  width:14.2857143% !important;
+  max-width:39px !important;
+  height:39px !important;
+  margin:0 !important;
+  border:1px solid transparent !important;
+  border-radius:150px !important;
+  background:none !important;
+  color:rgba(255,255,255,0.95) !important;
+  box-shadow:none !important;
+  font-size:14px !important;
+  font-weight:400 !important;
+  line-height:39px !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day:hover,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day:focus,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.inRange{
+  background:#646c8c !important;
+  border-color:#646c8c !important;
+  color:rgba(255,255,255,0.95) !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.today{
+  border-color:#eee !important;
+  background:none !important;
+  color:rgba(255,255,255,0.95) !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.today:hover,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.today:focus{
+  background:#eee !important;
+  border-color:#eee !important;
+  color:#3f4458 !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.selected,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.startRange,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.endRange,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.selected:hover,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.startRange:hover,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.endRange:hover{
+  background:#80cbc4 !important;
+  border-color:#80cbc4 !important;
+  color:#fff !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.flatpickr-disabled,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.prevMonthDay,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.nextMonthDay{
+  background:transparent !important;
+  border-color:transparent !important;
+  color:rgba(255,255,255,0.3) !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day.flatpickr-disabled{
+  color:rgba(255,255,255,0.1) !important;
+}
+
+.flatpickr-calendar.standard-calendar-asset.standard-calendar-asset-month{
+  width:307.875px !important;
+}

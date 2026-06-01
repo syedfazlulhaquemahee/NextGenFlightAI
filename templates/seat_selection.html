@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en" class="ngf-duffel-ancillaries-doc">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Bags, seats &amp; protection • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <script defer src="https://assets.duffel.com/components/3.14.0/duffel-ancillaries.js"></script>
+</head>
+<body class="results-page review-page seat-page seat-page--duffel">
+  {% set model = checkout_model or {} %}
+  {% set da = model.duffel_ancillaries_embed or {} %}
+  {% set seat_policy = model.seat_policy or {} %}
+  {% include "partials/platform_header.html" %}
+  <main class="review-shell seat-shell">
+    <header class="review-header seat-page-review-header">
+      <div>
+        <a class="review-back" href="{{ url_for('checkout_offer', offer_id=offer_summary.offer_id) if offer_summary else 'javascript:history.back()' }}">Back to review</a>
+        <h1>Bags, seats &amp; protection</h1>
+        <p class="seat-page-lead">Duffel’s checkout components for this offer, styled to match Skairova.</p>
+      </div>
+    </header>
+
+    {% if booking_error %}
+      <div class="checkout-alert" role="alert">{{ booking_error }}</div>
+    {% endif %}
+
+    {% if offer_summary and model and da.offer %}
+      <form method="post" action="{{ url_for('checkout_ancillaries_to_session', offer_id=offer_summary.offer_id) }}" class="seat-page-layout seat-page-layout--duffel" id="duffelAncillariesForm">
+        <aside class="seat-page-side">
+          <section class="review-card seat-panel seat-panel-traveler">
+            <p class="checkout-eyebrow seat-panel-eyebrow">Travelers</p>
+            <p class="seat-traveler-sync-hint muted">Seat assignments appear here after you confirm in Duffel’s seat map (not only when a seat is highlighted).</p>
+            <div class="seat-traveler-status-list" aria-label="Travelers for this booking">
+              {% for t in travelers %}
+              <div class="seat-traveler-status" data-passenger-id="{{ t.passenger_id }}">
+                <div class="seat-traveler-status-row">
+                  <strong>{{ t.label }}</strong>
+                  <span class="seat-traveler-tag">{{ t.type_label }}</span>
+                </div>
+                <span class="seat-traveler-hint muted" data-traveler-name-hint>{{ t.given_name or '—' }} {{ t.family_name or '' }}</span>
+                <span class="seat-traveler-seat-line muted" data-traveler-seat-line></span>
+              </div>
+              {% endfor %}
+            </div>
+          </section>
+
+          <section class="review-card seat-panel">
+            <p class="checkout-eyebrow seat-panel-eyebrow">What’s included</p>
+            <ul class="seat-policy-bullets">
+              {% if seat_policy.is_offered %}
+                <li>Seats: {{ seat_policy.availability_label }}</li>
+              {% else %}
+                <li>Seats: not offered on this fare</li>
+              {% endif %}
+              <li>Baggage and cancel-for-any-reason appear when the airline or Duffel offers them.</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="review-card seat-map-shell duffel-ancillaries-card">
+          <div id="duffelAncillariesSlot" class="duffel-ancillaries-slot">
+            <div class="duffel-ancillaries-surface">
+              <duffel-ancillaries></duffel-ancillaries>
+            </div>
+          </div>
+        </section>
+
+        <aside class="seat-summary-rail">
+          <section class="review-card review-price-card seat-summary-card">
+            <h2>Price details</h2>
+            <div class="review-price-line review-price-line--meta">
+              <span>{{ offer_summary.traveler_count }} traveler{{ 's' if offer_summary.traveler_count != 1 else '' }} · {{ offer_summary.cabin_label or 'Economy' }}</span>
+            </div>
+            <div class="review-price-line">
+              <span>Flight total</span>
+              <strong>{{ offer_summary.currency }} {{ offer_summary.price_breakdown.base_total_amount }}</strong>
+            </div>
+            <div class="review-price-line">
+              <span>Extras (bags, seats, protection)</span>
+              <strong>{{ offer_summary.currency }} <span data-ancillary-total>{{ offer_summary.price_breakdown.ancillaries_amount }}</span></strong>
+            </div>
+            <hr />
+            <div class="review-price-total">
+              <div>
+                <h3>Trip total</h3>
+                <p>Updates as you pick options in the panel</p>
+              </div>
+              <strong>{{ offer_summary.currency }} <span data-total-display>{{ offer_summary.total_amount }}</span></strong>
+            </div>
+            <button class="review-primary-cta" type="submit">Next: Traveler checkout</button>
+          </section>
+        </aside>
+
+        <input type="hidden" name="ancillaries_payload" id="ancillariesPayload" value='{{ (model.ancillaries.selected_services and {"selected_services": model.ancillaries.selected_services} or {})|tojson }}' />
+      </form>
+
+      <script id="duffelAncillariesEmbed" type="application/json">{{ da|tojson }}</script>
+      <script id="checkoutClientState" type="application/json">{{ model.client_state|tojson }}</script>
+      <script defer src="{{ url_for('static', filename='duffel-ancillaries-booking.js', v='20260422-duffel-portal') }}"></script>
+    {% elif offer_summary %}
+      <div class="checkout-alert" role="status">We couldn’t load Duffel ancillaries for this offer. You can still continue to checkout.</div>
+      <p class="seat-fallback-actions">
+        <a class="review-primary-cta checkout-btn" href="{{ url_for('checkout_details', offer_id=offer_summary.offer_id) }}">Continue to checkout</a>
+      </p>
+    {% endif %}
+  </main>
+  {% include "partials/theme_scripts.html" %}
+  {% if offer_summary %}
+  {% set _skair_page = {"page_type": "seat_selection", "airline_name": offer_summary.airline_name or "", "route_summary": offer_summary.route_summary or "", "cabin_label": offer_summary.cabin_label or "Economy", "traveler_count": offer_summary.traveler_count or 1, "currency": offer_summary.currency or "USD", "total_amount": offer_summary.total_amount or ""} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  {% endif %}
+  {% include "partials/ai_chatbot.html" %}
+</body>
+</html>

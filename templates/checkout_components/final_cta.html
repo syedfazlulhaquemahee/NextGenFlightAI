@@ -1,0 +1,17 @@
+<section class="checkout-section checkout-cta-surface">
+  <div>
+    <p class="checkout-eyebrow">Final confirmation</p>
+    <h2>Everything ready?</h2>
+    <p class="checkout-muted">We'll validate the traveler details, recheck the fare, and create the order with Duffel.</p>
+  </div>
+  <div class="checkout-cta-actions">
+    <button class="checkout-primary-cta" type="submit" data-final-submit="true" {% if not booking_enabled %}disabled{% endif %}>
+      <span>Complete booking</span>
+      <strong>{{ offer_summary.currency }} <span data-total-display>{{ offer_summary.total_amount }}</span></strong>
+    </button>
+    <div class="checkout-inline-actions">
+      <a class="checkout-text-link" href="{{ url_for('index') }}">Start over</a>
+      <span class="checkout-quiet">Hold and pay later can slot into this step when enabled for the fare.</span>
+    </div>
+  </div>
+</section>

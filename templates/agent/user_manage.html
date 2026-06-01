@@ -1,0 +1,162 @@
+{% extends "agent/layout.html" %}
+{% block title %}{{ target.first_name }} {{ target.last_name }}{% endblock %}
+{% block heading %}{{ target.first_name }} {{ target.last_name }}{% endblock %}
+{% block subheading %}{{ target.email }}{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb">
+  <a href="{{ url_for('agent.users_list') }}">Users</a>
+  <span>{{ target.first_name }} {{ target.last_name }}</span>
+</nav>
+
+<div class="detail-grid" style="margin-top:1.5rem">
+  <!-- Profile card -->
+  <section class="panel">
+    <div class="panel-header"><h2>Account details</h2></div>
+    <dl class="detail-list">
+      <dt>Name</dt>
+      <dd>{{ target.first_name }} {{ target.last_name }}</dd>
+      <dt>Email</dt>
+      <dd>{{ target.email }}</dd>
+      <dt>Role</dt>
+      <dd><span class="badge badge-{{ target.global_role }}">{{ target.global_role | replace('_', ' ') | title }}</span></dd>
+      <dt>Agency</dt>
+      <dd>{{ target.agency_name or '—' }}</dd>
+      <dt>Status</dt>
+      <dd>
+        {% if target.is_active %}
+          <span class="td-good">Active</span>
+        {% else %}
+          <span class="td-warn">Disabled</span>
+        {% endif %}
+      </dd>
+      <dt>Last seen</dt>
+      <dd class="td-muted">{{ target.last_seen_at[:19] if target.last_seen_at else 'Never' }}</dd>
+      <dt>Joined</dt>
+      <dd class="td-muted">{{ target.created_at[:10] if target.created_at else '—' }}</dd>
+      {% if not target.is_active and target.disabled_reason %}
+      <dt>Disabled reason</dt>
+      <dd class="td-warn">{{ target.disabled_reason }}</dd>
+      {% endif %}
+    </dl>
+
+    {% if can_disable and target.is_active and target.id != agent_user.id %}
+    <div class="panel-footer">
+      <details class="create-agent-details">
+        <summary class="create-agent-summary">
+          <span>Disable this account</span>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6 8l4 4 4-4"/></svg>
+        </summary>
+        <form method="post" action="{{ url_for('agent.disable_user', user_id=target.id) }}" class="agent-admin-form" autocomplete="off" style="padding:1.25rem 0 0">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <label>
+            <span>Reason (shown in audit log)</span>
+            <input type="text" name="reason" placeholder="e.g. Left the agency" maxlength="240">
+          </label>
+          <div class="agent-admin-actions">
+            <button type="submit" class="button btn-sm" style="background:var(--color-error);color:#fff;border-color:var(--color-error)">Disable account</button>
+          </div>
+        </form>
+      </details>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Password reset -->
+  {% if can_reset_password %}
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Reset password</h2>
+        <p>Force a new password for this user. They will need to use it on next sign-in.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('agent.reset_password', user_id=target.id) }}" class="agent-admin-form" autocomplete="off">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div class="agent-admin-grid">
+        <label>
+          <span>New password</span>
+          <input type="password" name="new_password" minlength="8" required autocomplete="new-password">
+        </label>
+        <label>
+          <span>Confirm password</span>
+          <input type="password" name="confirm_password" minlength="8" required autocomplete="new-password">
+        </label>
+      </div>
+      <p class="helper-text admin-hint">Minimum 8 characters, must include letters and numbers.</p>
+      <div class="agent-admin-actions">
+        <button type="submit" class="button button-primary btn-sm">Reset password →</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</div>
+
+<!-- Bookings -->
+{% if bookings %}
+<section class="panel" style="margin-top:1.5rem">
+  <div class="panel-header"><h2>Recent bookings</h2><span class="badge">{{ bookings | length }}</span></div>
+  <div class="table-scroll">
+    <table class="agent-table">
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Route</th>
+          <th>Date</th>
+          <th>Airline</th>
+          <th class="td-num">Base fare</th>
+          <th class="td-num">Markup</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td><a href="{{ url_for('agent.booking_detail', booking_id=b.id) }}" class="td-id">{{ b.booking_reference or b.duffel_order_id[:8] }}</a></td>
+          <td>{{ b.origin }} → {{ b.destination }}</td>
+          <td class="td-muted">{{ b.depart_date or '—' }}</td>
+          <td>{{ b.airline_name or '—' }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.base_fare_usd or 0) }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.markup_amount_usd or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<!-- Login events -->
+{% if login_events %}
+<section class="panel" style="margin-top:1.5rem">
+  <div class="panel-header"><h2>Recent login activity</h2></div>
+  <div class="table-scroll">
+    <table class="agent-table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>IP address</th>
+          <th>Device</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in login_events %}
+        <tr>
+          <td>
+            {% if ev.success %}
+              <span class="td-good">{{ ev.event_type | replace('_', ' ') | title }}</span>
+            {% else %}
+              <span class="td-warn">{{ ev.event_type | replace('_', ' ') | title }}</span>
+            {% endif %}
+          </td>
+          <td class="td-muted">{{ ev.ip_address or '—' }}</td>
+          <td class="td-muted">{{ ev.user_agent[:40] if ev.user_agent else '—' }}</td>
+          <td class="td-muted">{{ ev.created_at[:19] if ev.created_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

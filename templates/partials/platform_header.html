@@ -1,0 +1,15 @@
+<header class="topbar platform-header">
+  <div class="brand platform-header-inner">
+    <a class="brand-link" href="{{ url_for('index') }}">SKAIROVA</a>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint not in ['hotels', 'deals'] else '' }}" href="{{ url_for('index') }}">Flights</a>
+      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint == 'hotels' else '' }}" href="{{ url_for('hotels') }}">Hotels</a>
+      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint == 'deals' else '' }}" href="{{ url_for('deals') }}">Deals</a>
+    </nav>
+    <div class="topbar-utility">
+      <div class="topbar-links">
+        {% include "partials/user_portal_link.html" %}
+      </div>
+    </div>
+  </div>
+</header>

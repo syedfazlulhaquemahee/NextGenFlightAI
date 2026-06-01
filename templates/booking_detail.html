@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>
+    {% if order_summary %}{{ order_summary.booking_reference }} · Booking{% else %}Booking Detail{% endif %} • Skairova
+  </title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <style>
+    /* Reuse confirmation page variables + layout */
+    .booking-detail-page {
+      --c-green:       #22c55e;
+      --c-green-bg:    rgba(34,197,94,.14);
+      --c-green-bd:    rgba(34,197,94,.30);
+      --c-ind:         #6366f1;
+      --c-ind-bg:      rgba(99,102,241,.14);
+      --c-red:         #ef4444;
+      --c-red-bg:      rgba(239,68,68,.14);
+      --c-red-bd:      rgba(239,68,68,.30);
+    }
+    html:not([data-theme="light"]) .booking-detail-page {
+      --c-page:       #0c1018; --c-card:       #141c2b; --c-card-bd:    rgba(255,255,255,.07);
+      --c-card-sh:    0 1px 10px rgba(0,0,0,.38); --c-text:       #eef2fb; --c-muted:      #8a9ab8;
+      --c-soft:       #54697e; --c-sep:        rgba(255,255,255,.06); --c-sub:        rgba(255,255,255,.04);
+      --c-sub-bd:     rgba(255,255,255,.07); --c-hero-bg:    #111722; --c-hero-title: #ffffff;
+      --c-hero-sub:   rgba(255,255,255,.56); --c-ind-lnk:    #818cf8;
+    }
+    html[data-theme="light"] .booking-detail-page {
+      --c-page:       #f0f3f8; --c-card:       #ffffff; --c-card-bd:    rgba(15,23,42,.08);
+      --c-card-sh:    0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05); --c-text:       #0f172a;
+      --c-muted:      #64748b; --c-soft:       #94a3b8; --c-sep:        rgba(15,23,42,.07);
+      --c-sub:        #f8fafc; --c-sub-bd:     rgba(15,23,42,.07); --c-hero-bg:    #f0f3f8;
+      --c-hero-title: #1e1b4b; --c-hero-sub:   #475569; --c-ind-lnk:    #4f46e5;
+    }
+    .booking-detail-page { background: var(--c-page) !important; }
+    .bd2-shell { max-width: 1100px; margin: 0 auto; padding: 0 20px 80px; }
+
+    /* Hero */
+    .bd2-hero { background: var(--c-hero-bg); padding: 36px 20px 32px; margin-bottom: 0; }
+    .bd2-hero-inner { max-width: 1100px; margin: 0 auto; }
+    .bd2-back { display:inline-flex; align-items:center; gap:6px; font-size:.8rem; color:var(--c-muted); text-decoration:none; margin-bottom:20px; transition:color .15s; }
+    .bd2-back:hover { color:var(--c-ind-lnk); }
+    .bd2-hero-body { display:flex; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+    .bd2-status-icon { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .bd2-status-icon--confirmed { background: rgba(34,197,94,.18); }
+    .bd2-status-icon--cancelled { background: var(--c-red-bg); }
+    .bd2-status-icon--default   { background: rgba(99,102,241,.18); }
+    .bd2-hero-copy { flex:1; min-width:220px; }
+    .bd2-hero-title { font-size:1.55rem; font-weight:800; color:var(--c-hero-title); letter-spacing:-.025em; margin:0 0 6px; }
+    .bd2-hero-sub   { font-size:.88rem; color:var(--c-hero-sub); margin:0 0 18px; line-height:1.5; }
+    .bd2-ref-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .bd2-ref-lbl { font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--c-muted); margin-bottom:3px; }
+    .bd2-ref-code { font-size:1.45rem; font-weight:800; letter-spacing:.04em; color:var(--c-hero-title); font-family:monospace; }
+    .bd2-status-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .bd2-status-pill--confirmed { background:rgba(34,197,94,.14); color:#4ade80; border:1px solid rgba(34,197,94,.28); }
+    .bd2-status-pill--cancelled { background:var(--c-red-bg); color:var(--c-red); border:1px solid var(--c-red-bd); }
+    .bd2-status-pill--default   { background:rgba(99,102,241,.12); color:#818cf8; border:1px solid rgba(99,102,241,.24); }
+    html[data-theme="light"] .bd2-status-pill--confirmed { color:#16a34a; border-color:rgba(22,163,74,.3); }
+    html[data-theme="light"] .bd2-status-pill--cancelled { color:#dc2626; }
+    .bd2-btn-dl { display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#fff; font-size:.82rem; font-weight:600; text-decoration:none; transition:background .15s; }
+    .bd2-btn-dl:hover { background:rgba(255,255,255,.12); }
+    html[data-theme="light"] .bd2-btn-dl { border-color:rgba(79,70,229,.25); background:rgba(79,70,229,.06); color:#4f46e5; }
+    html[data-theme="light"] .bd2-btn-dl:hover { background:rgba(79,70,229,.12); }
+    .bd2-alert { display:flex; align-items:flex-start; gap:9px; padding:10px 14px; border-radius:10px; font-size:.82rem; line-height:1.45; margin-top:14px; }
+    .bd2-alert--success { background:rgba(34,197,94,.10); border:1px solid rgba(34,197,94,.24); color:#4ade80; }
+    .bd2-alert--danger  { background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.24); color:#f87171; }
+    html[data-theme="light"] .bd2-alert--success { color:#15803d; }
+    html[data-theme="light"] .bd2-alert--danger  { color:#dc2626; }
+
+    /* Workspace */
+    .bd2-workspace { display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start; }
+    @media(max-width:860px){ .bd2-workspace { grid-template-columns:1fr; } }
+
+    /* Cards */
+    .bd2-card { background:var(--c-card); border:1px solid var(--c-card-bd); border-radius:16px; box-shadow:var(--c-card-sh,none); margin-bottom:20px; overflow:hidden; }
+    .bd2-card-hd { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 14px; border-bottom:1px solid var(--c-sep); }
+    .bd2-card-title { font-size:.95rem; font-weight:700; color:var(--c-text); margin:0; }
+    .bd2-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .bd2-badge--ok  { background:rgba(34,197,94,.14); color:#4ade80; border:1px solid rgba(34,197,94,.22); }
+    .bd2-badge--dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .bd2-badge--cancelled { background:var(--c-red-bg); color:var(--c-red); border:1px solid var(--c-red-bd); }
+    html[data-theme="light"] .bd2-badge--ok { color:#15803d; }
+    html[data-theme="light"] .bd2-badge--cancelled { color:#dc2626; }
+
+    /* Flight slice */
+    .bd2-airline-row { display:flex; align-items:center; gap:10px; padding:14px 20px 10px; }
+    .bd2-airline-logo { width:28px; height:28px; object-fit:contain; border-radius:6px; }
+    .bd2-airline-name { font-size:.88rem; font-weight:600; color:var(--c-text); }
+    .bd2-flight-chip  { font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:6px; background:var(--c-sub); border:1px solid var(--c-sub-bd); color:var(--c-muted); letter-spacing:.03em; }
+    .bd2-slice-lbl    { margin-left:auto; font-size:.72rem; font-weight:700; color:var(--c-muted); letter-spacing:.06em; text-transform:uppercase; }
+
+    /* Timeline */
+    .bd2-tl { display:flex; align-items:center; gap:12px; padding:12px 20px 16px; }
+    .bd2-tl-end { display:flex; flex-direction:column; align-items:flex-start; min-width:80px; }
+    .bd2-tl-end--r { align-items:flex-end; }
+    .bd2-tl-time { font-size:1.55rem; font-weight:800; letter-spacing:-.02em; color:var(--c-text); }
+    .bd2-tl-code { font-size:.78rem; font-weight:700; letter-spacing:.06em; color:var(--c-ind); }
+    .bd2-tl-city { font-size:.75rem; color:var(--c-muted); }
+    .bd2-tl-date { font-size:.72rem; color:var(--c-soft); margin-top:2px; }
+    .bd2-tl-mid  { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .bd2-tl-dur  { font-size:.75rem; font-weight:600; color:var(--c-muted); }
+    .bd2-tl-line { width:100%; height:1px; background:var(--c-sep); }
+    .bd2-tl-plane{ color:var(--c-ind); }
+    .bd2-tl-stops{ font-size:.7rem; color:var(--c-muted); }
+    .bd2-tl-aircraft { font-size:.68rem; color:var(--c-soft); }
+    .bd2-slice-sep { height:1px; background:var(--c-sep); margin:0 20px; }
+
+    /* Per-segment detail */
+    .bd2-segs { padding:12px 20px 16px; border-top:1px solid var(--c-sep); }
+    .bd2-seg-row { display:flex; align-items:center; gap:12px; padding:8px 0; }
+    .bd2-seg-left { display:flex; align-items:center; gap:8px; min-width:150px; }
+    .bd2-seg-logo { width:20px; height:20px; object-fit:contain; border-radius:4px; }
+    .bd2-seg-carrier { font-size:.78rem; font-weight:600; color:var(--c-text); }
+    .bd2-seg-fn { font-size:.7rem; color:var(--c-muted); font-weight:500; }
+    .bd2-seg-times { display:flex; align-items:center; gap:8px; flex:1; }
+    .bd2-seg-tc { display:flex; flex-direction:column; align-items:flex-start; min-width:70px; }
+    .bd2-seg-tc--r { align-items:flex-end; }
+    .bd2-seg-time { font-size:.88rem; font-weight:700; color:var(--c-text); }
+    .bd2-seg-iata { font-size:.72rem; font-weight:700; color:var(--c-ind); letter-spacing:.04em; }
+    .bd2-seg-city { font-size:.7rem; color:var(--c-muted); }
+    .bd2-seg-terminal { font-size:.66rem; color:var(--c-soft); }
+    .bd2-seg-arrow { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .bd2-seg-line { width:100%; height:1px; background:var(--c-sep); }
+    .bd2-seg-dur { font-size:.68rem; color:var(--c-soft); white-space:nowrap; }
+    .bd2-layover-pill { display:flex; align-items:center; gap:5px; margin:4px 0 4px 160px; padding:5px 10px; background:var(--c-sub); border:1px solid var(--c-sub-bd); border-radius:20px; font-size:.72rem; color:var(--c-muted); width:fit-content; }
+
+    /* Passengers */
+    .bd2-pax-bd { padding:4px 20px 16px; }
+    .bd2-pax-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--c-sep); flex-wrap:wrap; gap:12px; }
+    .bd2-pax-row:last-child { border:0; }
+    .bd2-pax-info { display:flex; align-items:center; gap:10px; }
+    .bd2-pax-avatar { width:32px; height:32px; border-radius:50%; background:var(--c-ind-bg); color:var(--c-ind-lnk); display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:800; flex-shrink:0; }
+    .bd2-pax-name { font-size:.88rem; font-weight:600; color:var(--c-text); }
+    .bd2-pax-meta { display:flex; gap:20px; flex-wrap:wrap; }
+    .bd2-pax-col { display:flex; flex-direction:column; }
+    .bd2-pax-col-lbl { font-size:.66rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-soft); }
+    .bd2-pax-col-val { font-size:.82rem; font-weight:600; color:var(--c-text); }
+
+    /* Fare rules */
+    .bd2-info-bd { padding:16px 20px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    @media(max-width:500px){ .bd2-info-bd { grid-template-columns:1fr; } }
+    .bd2-info-item { display:flex; align-items:flex-start; gap:10px; }
+    .bd2-info-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .bd2-info-icon--ok  { background:rgba(22,163,74,.12); color:#16a34a; }
+    .bd2-info-icon--no  { background:rgba(220,38,38,.12); color:#dc2626; }
+    .bd2-info-icon--bag { background:var(--c-ind-bg); color:var(--c-ind); }
+    .bd2-info-icon--ci  { background:var(--c-ind-bg); color:var(--c-ind); }
+    .bd2-info-lbl { font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--c-soft); margin-bottom:2px; }
+    .bd2-info-val { font-size:.82rem; color:var(--c-text); line-height:1.4; }
+    .bd2-info-link { color:var(--c-ind-lnk); text-decoration:none; }
+    .bd2-info-link:hover { text-decoration:underline; }
+
+    /* Action tiles */
+    .bd2-action-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; padding:16px 20px; }
+    @media(max-width:500px){ .bd2-action-grid { grid-template-columns:1fr; } }
+    .bd2-action-tile { display:flex; flex-direction:column; gap:4px; padding:14px; border-radius:12px; background:var(--c-sub); border:1px solid var(--c-sub-bd); text-decoration:none; color:var(--c-text); transition:border-color .15s,background .15s; cursor:pointer; }
+    .bd2-action-tile:hover { border-color:rgba(99,102,241,.3); background:rgba(99,102,241,.06); }
+    .bd2-action-tile--danger { border-color:var(--c-red-bd); background:var(--c-red-bg); color:var(--c-red); }
+    .bd2-action-tile--danger:hover { background:rgba(239,68,68,.22); }
+    .bd2-action-tile--disabled { opacity:.45; pointer-events:none; cursor:default; }
+    .bd2-action-icon { width:32px; height:32px; border-radius:8px; background:var(--c-ind-bg); display:flex; align-items:center; justify-content:center; color:var(--c-ind-lnk); margin-bottom:4px; }
+    .bd2-action-icon--danger { background:var(--c-red-bg); color:var(--c-red); }
+    .bd2-action-title { font-size:.85rem; font-weight:700; color:inherit; }
+    .bd2-action-desc  { font-size:.75rem; color:var(--c-muted); }
+    .bd2-action-tile--danger .bd2-action-desc { color:inherit; opacity:.7; }
+    .bd2-actions-note { font-size:.75rem; color:var(--c-soft); padding:0 20px 16px; line-height:1.5; }
+    .bd2-actions-note a { color:var(--c-ind-lnk); }
+
+    /* Right rail */
+    .bd2-summary-rows { padding:4px 20px 16px; }
+    .bd2-summary-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--c-sep); font-size:.85rem; }
+    .bd2-summary-row:last-child { border:0; }
+    .bd2-summary-lbl { color:var(--c-muted); }
+    .bd2-summary-val { color:var(--c-text); font-weight:600; }
+    .bd2-summary-val--price { font-size:1rem; font-weight:800; color:var(--c-text); }
+    .bd2-summary-val--mono  { font-family:monospace; }
+    .bd2-travelers { padding:4px 20px 16px; }
+    .bd2-traveler { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--c-sep); }
+    .bd2-traveler:last-child { border:0; }
+    .bd2-traveler-avatar { width:28px; height:28px; border-radius:50%; background:var(--c-ind-bg); color:var(--c-ind-lnk); display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; flex-shrink:0; }
+    .bd2-traveler-name { font-size:.85rem; font-weight:600; color:var(--c-text); }
+
+    /* Cancel modal overlay */
+    .bd2-modal-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.65); align-items:center; justify-content:center; padding:20px; }
+    .bd2-modal-overlay.is-open { display:flex; }
+    .bd2-modal { background:var(--c-card); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:28px 24px; max-width:400px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+    html[data-theme="light"] .bd2-modal { border-color:rgba(15,23,42,.1); }
+    .bd2-modal-icon { width:40px; height:40px; border-radius:50%; background:var(--c-red-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-bottom:12px; }
+    .bd2-modal-title { font-size:1rem; font-weight:700; color:var(--c-text); margin:0 0 8px; }
+    .bd2-modal-body { font-size:.85rem; color:var(--c-muted); margin:0 0 20px; line-height:1.5; }
+    .bd2-modal-actions { display:flex; gap:10px; }
+    .bd2-modal-btn { flex:1; padding:10px 16px; border-radius:10px; font-size:.85rem; font-weight:700; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:background .15s; }
+    .bd2-modal-btn--danger { background:var(--c-red); color:#fff; }
+    .bd2-modal-btn--danger:hover { background:#dc2626; }
+    .bd2-modal-btn--ghost { background:var(--c-sub); color:var(--c-text); border:1px solid var(--c-sub-bd); }
+    .bd2-modal-btn--ghost:hover { background:rgba(255,255,255,.08); }
+  </style>
+</head>
+<body class="booking-detail-page">
+
+  {% include "partials/platform_header.html" %}
+
+  {% set is_cancelled = 'cancel' in (order_summary.status_label or '')|lower if order_summary else false %}
+
+  <!-- ── Hero ──────────────────────────────────────────────────────── -->
+  <div class="bd2-hero">
+    <div class="bd2-hero-inner">
+
+      <a class="bd2-back" href="{{ url_for('manage_booking') }}">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Manage booking
+      </a>
+
+      {% if order_summary %}
+        <div class="bd2-hero-body">
+          <div class="bd2-status-icon {{ 'bd2-status-icon--cancelled' if is_cancelled else 'bd2-status-icon--confirmed' }}">
+            {% if is_cancelled %}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg>
+            {% else %}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {% endif %}
+          </div>
+
+          <div class="bd2-hero-copy">
+            <h1 class="bd2-hero-title">{% if is_cancelled %}Booking cancelled{% else %}Your booking{% endif %}</h1>
+            <p class="bd2-hero-sub">
+              {% if is_cancelled %}
+                This booking has been cancelled. Refunds are processed per your fare rules.
+              {% else %}
+                Manage, change, or cancel your booking below. Use your reference for check-in.
+              {% endif %}
+            </p>
+
+            <div class="bd2-ref-row">
+              <div>
+                <div class="bd2-ref-lbl">Booking reference</div>
+                <div class="bd2-ref-code">{{ order_summary.booking_reference }}</div>
+              </div>
+              <span class="bd2-status-pill {{ 'bd2-status-pill--cancelled' if is_cancelled else 'bd2-status-pill--confirmed' }}">
+                <span style="width:5px;height:5px;border-radius:50%;background:currentColor;"></span>
+                {{ order_summary.status_label }}
+              </span>
+              {% if order_summary.order_id %}
+              <a class="bd2-btn-dl" href="{{ url_for('booking_itinerary', order_id=order_summary.order_id) }}" download>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download itinerary
+              </a>
+              {% endif %}
+            </div>
+
+            {% if change_notice %}
+            <div class="bd2-alert bd2-alert--success" style="margin-top:14px;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8.5 6.5 12 13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {{ change_notice }}
+            </div>
+            {% endif %}
+            {% if change_error %}
+            <div class="bd2-alert bd2-alert--danger" style="margin-top:14px;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              {{ change_error }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      {% else %}
+        <h1 class="bd2-hero-title">Booking not found</h1>
+        <p class="bd2-hero-sub">Return to <a href="{{ url_for('manage_booking') }}" style="color:var(--c-ind-lnk)">manage booking</a> to look up your itinerary.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if order_summary %}
+  <main>
+    <div class="bd2-shell">
+      <div class="bd2-workspace">
+
+        <!-- ── Left column ──────────────────────────────────────────── -->
+        <div>
+
+          <!-- Flight details -->
+          <div class="bd2-card">
+            <div class="bd2-card-hd">
+              <h2 class="bd2-card-title">Flight details</h2>
+              <span class="bd2-badge {{ 'bd2-badge--cancelled' if is_cancelled else 'bd2-badge--ok' }}">
+                <span class="bd2-badge--dot"></span>{{ order_summary.status_label }}
+              </span>
+            </div>
+
+            {% for slice in order_summary.slices %}
+              {% set fs = slice.segments[0] if slice.segments else None %}
+              {% set ls = slice.segments[-1] if slice.segments else None %}
+
+              <div class="bd2-airline-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:var(--c-muted);flex-shrink:0;"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+                {% if slice.airline_logo_url %}
+                  <img class="bd2-airline-logo" src="{{ slice.airline_logo_url }}" alt="{{ slice.airline_label }}" loading="lazy"/>
+                {% endif %}
+                <span class="bd2-airline-name">{{ slice.airline_label }}</span>
+                {% if fs and fs.flight_number %}<span class="bd2-flight-chip">{{ fs.flight_number }}</span>{% endif %}
+                {% if order_summary.slices|length > 1 %}
+                  <span class="bd2-slice-lbl">{{ slice.label }}</span>
+                {% endif %}
+              </div>
+
+              <div class="bd2-tl">
+                <div class="bd2-tl-end">
+                  <span class="bd2-tl-time">{{ fs.depart_time if fs else "—" }}</span>
+                  <span class="bd2-tl-code">{{ fs.origin_code if fs else "" }}</span>
+                  <span class="bd2-tl-city">{{ fs.origin_city if fs else "" }}</span>
+                  <span class="bd2-tl-date">{{ fs.depart_label if fs else "" }}</span>
+                </div>
+                <div class="bd2-tl-mid">
+                  <span class="bd2-tl-dur">{{ slice.duration_label }}</span>
+                  <div class="bd2-tl-line"></div>
+                  <svg class="bd2-tl-plane" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(90deg)"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+                  <div class="bd2-tl-line"></div>
+                  <span class="bd2-tl-stops">{{ slice.stops_label }}</span>
+                  {% if fs and fs.aircraft %}<span class="bd2-tl-aircraft">{{ fs.aircraft }}</span>{% endif %}
+                </div>
+                <div class="bd2-tl-end bd2-tl-end--r">
+                  <span class="bd2-tl-time">{{ ls.arrive_time if ls else "—" }}</span>
+                  <span class="bd2-tl-code">{{ ls.destination_code if ls else "" }}</span>
+                  <span class="bd2-tl-city">{{ ls.destination_city if ls else "" }}</span>
+                  <span class="bd2-tl-date">{{ ls.arrive_label if ls else "" }}</span>
+                </div>
+              </div>
+
+              {# Per-segment breakdown — only for connecting flights with 2+ segments #}
+              {% if slice.segments|length > 1 %}
+              <div class="bd2-segs">
+                {% for seg in slice.segments %}
+                <div class="bd2-seg-row">
+                  <div class="bd2-seg-left">
+                    {% if seg.airline_logo_url %}
+                      <img class="bd2-seg-logo" src="{{ seg.airline_logo_url }}" alt="{{ seg.carrier_name }}" loading="lazy"/>
+                    {% endif %}
+                    <div style="display:flex;flex-direction:column;">
+                      <span class="bd2-seg-carrier">{{ seg.carrier_name }}</span>
+                      {% if seg.flight_number %}<span class="bd2-seg-fn">{{ seg.flight_number }}{% if seg.aircraft %} · {{ seg.aircraft }}{% endif %}</span>{% endif %}
+                    </div>
+                  </div>
+                  <div class="bd2-seg-times">
+                    <div class="bd2-seg-tc">
+                      <span class="bd2-seg-time">{{ seg.depart_time }}</span>
+                      <span class="bd2-seg-iata">{{ seg.origin_code }}</span>
+                      <span class="bd2-seg-city">{{ seg.origin_city }}</span>
+                      {% if seg.departure_terminal %}<span class="bd2-seg-terminal">Terminal {{ seg.departure_terminal }}</span>{% endif %}
+                    </div>
+                    <div class="bd2-seg-arrow">
+                      <div class="bd2-seg-line"></div>
+                      <span class="bd2-seg-dur">{{ seg.duration_label }}</span>
+                    </div>
+                    <div class="bd2-seg-tc bd2-seg-tc--r">
+                      <span class="bd2-seg-time">{{ seg.arrive_time }}</span>
+                      <span class="bd2-seg-iata">{{ seg.destination_code }}</span>
+                      <span class="bd2-seg-city">{{ seg.destination_city }}</span>
+                      {% if seg.arrival_terminal %}<span class="bd2-seg-terminal">Terminal {{ seg.arrival_terminal }}</span>{% endif %}
+                    </div>
+                  </div>
+                </div>
+                {% if not loop.last %}
+                  {% set conn = slice.connections[loop.index0] if slice.connections and loop.index0 < slice.connections|length else none %}
+                  <div class="bd2-layover-pill">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    Layover{% if conn and conn.duration_label %} · {{ conn.duration_label }}{% endif %} at {{ seg.destination_city or seg.destination_code }}
+                  </div>
+                {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if not loop.last %}
+              <div class="bd2-slice-sep"></div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {# Passengers #}
+          {% set pax_detail = order_summary.passengers_detail %}
+          {% if pax_detail or order_summary.passenger_names %}
+          <div class="bd2-card">
+            <div class="bd2-card-hd">
+              <h2 class="bd2-card-title">Passengers</h2>
+            </div>
+            <div class="bd2-pax-bd">
+              {% if pax_detail %}
+                {% for p in pax_detail %}
+                <div class="bd2-pax-row">
+                  <div class="bd2-pax-info">
+                    <div class="bd2-pax-avatar">{{ p.name[:2]|upper }}</div>
+                    <span class="bd2-pax-name">{{ p.name }}</span>
+                  </div>
+                  <div class="bd2-pax-meta">
+                    <div class="bd2-pax-col"><span class="bd2-pax-col-lbl">Cabin</span><span class="bd2-pax-col-val">{{ p.cabin }}</span></div>
+                    <div class="bd2-pax-col"><span class="bd2-pax-col-lbl">Type</span><span class="bd2-pax-col-val">{{ p.type }}</span></div>
+                    {% if p.baggage and p.baggage != '—' %}
+                    <div class="bd2-pax-col"><span class="bd2-pax-col-lbl">Baggage</span><span class="bd2-pax-col-val">{{ p.baggage }}</span></div>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                {% for name in order_summary.passenger_names %}
+                <div class="bd2-pax-row">
+                  <div class="bd2-pax-info">
+                    <div class="bd2-pax-avatar">{{ name[:2]|upper }}</div>
+                    <span class="bd2-pax-name">{{ name }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          {# Fare rules & baggage #}
+          {% set cond = order_summary.conditions or {} %}
+          {% set ch = cond.get('changes') or {} if cond else {} %}
+          {% set rf = cond.get('refunds') or {} if cond else {} %}
+          <div class="bd2-card">
+            <div class="bd2-card-hd">
+              <h2 class="bd2-card-title">Fare rules &amp; baggage</h2>
+            </div>
+            <div class="bd2-info-bd">
+              <div class="bd2-info-item">
+                <div class="bd2-info-icon {{ 'bd2-info-icon--ok' if ch.get('status') == 'allowed' else 'bd2-info-icon--no' }}">
+                  {% if ch.get('status') == 'allowed' %}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {% else %}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  {% endif %}
+                </div>
+                <div><div class="bd2-info-lbl">Changes</div><div class="bd2-info-val">{{ ch.get('label') or 'Contact airline' }}</div></div>
+              </div>
+              <div class="bd2-info-item">
+                <div class="bd2-info-icon {{ 'bd2-info-icon--ok' if rf.get('status') == 'allowed' else 'bd2-info-icon--no' }}">
+                  {% if rf.get('status') == 'allowed' %}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {% else %}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  {% endif %}
+                </div>
+                <div><div class="bd2-info-lbl">Refunds</div><div class="bd2-info-val">{{ rf.get('label') or 'Contact airline' }}</div></div>
+              </div>
+              {% if order_summary.baggage_allowance %}
+              <div class="bd2-info-item">
+                <div class="bd2-info-icon bd2-info-icon--bag">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                </div>
+                <div>
+                  <div class="bd2-info-lbl">Baggage</div>
+                  {% for line in order_summary.baggage_allowance %}
+                  <div class="bd2-info-val">{{ line }}</div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              {% if checkin_url %}
+              <div class="bd2-info-item">
+                <div class="bd2-info-icon bd2-info-icon--ci">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <div>
+                  <div class="bd2-info-lbl">Check-in</div>
+                  <div class="bd2-info-val"><a href="{{ checkin_url }}" target="_blank" rel="noopener" class="bd2-info-link">Open airline check-in →</a></div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Booking actions #}
+          {% if not is_cancelled %}
+          <div class="bd2-card">
+            <div class="bd2-card-hd">
+              <h2 class="bd2-card-title">Booking actions</h2>
+            </div>
+            <div class="bd2-action-grid">
+              {% if order_summary.order_id %}
+              <a class="bd2-action-tile" href="{{ url_for('booking_itinerary', order_id=order_summary.order_id) }}" download>
+                <div class="bd2-action-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+                <div class="bd2-action-title">Download itinerary</div>
+                <div class="bd2-action-desc">Save your itinerary as PDF</div>
+              </a>
+              <a class="bd2-action-tile" href="{{ url_for('booking_calendar', order_id=order_summary.order_id) }}" download>
+                <div class="bd2-action-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <div class="bd2-action-title">Add to calendar</div>
+                <div class="bd2-action-desc">Add flight details to your calendar</div>
+              </a>
+              {% endif %}
+              {% if manage_model and manage_model.can_change %}
+              <a class="bd2-action-tile" href="{{ url_for('manage_booking') }}#change">
+                <div class="bd2-action-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg></div>
+                <div class="bd2-action-title">Change flight</div>
+                <div class="bd2-action-desc">Modify dates or destination</div>
+              </a>
+              {% endif %}
+              {% if manage_model and manage_model.can_cancel %}
+              <button class="bd2-action-tile bd2-action-tile--danger" type="button" onclick="document.getElementById('bd2CancelModal').classList.add('is-open')">
+                <div class="bd2-action-icon bd2-action-icon--danger"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg></div>
+                <div class="bd2-action-title">Cancel booking</div>
+                <div class="bd2-action-desc">Subject to fare rules</div>
+              </button>
+              {% else %}
+              <button class="bd2-action-tile bd2-action-tile--disabled" type="button" disabled>
+                <div class="bd2-action-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg></div>
+                <div class="bd2-action-title">Cancel booking</div>
+                <div class="bd2-action-desc">Not available for this booking</div>
+              </button>
+              {% endif %}
+            </div>
+            {% if not (manage_model and manage_model.can_cancel) %}
+            <p class="bd2-actions-note">Cancellation is unavailable for this booking through the airline. Contact <a href="mailto:support@skairova.com">support</a> for help.</p>
+            {% endif %}
+          </div>
+          {% endif %}
+
+        </div><!-- /left -->
+
+        <!-- ── Right rail ────────────────────────────────────────────── -->
+        <aside>
+
+          <div class="bd2-card">
+            <div class="bd2-card-hd"><h2 class="bd2-card-title">Booking summary</h2></div>
+            <div class="bd2-summary-rows">
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Reference</span><span class="bd2-summary-val bd2-summary-val--mono">{{ order_summary.booking_reference }}</span></div>
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Status</span><span class="bd2-summary-val"><span class="bd2-status-pill {{ 'bd2-status-pill--cancelled' if is_cancelled else 'bd2-status-pill--confirmed' }}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;"></span>{{ order_summary.status_label }}</span></span></div>
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Airline</span><span class="bd2-summary-val">{{ order_summary.airline_name }}</span></div>
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Total paid</span><span class="bd2-summary-val bd2-summary-val--price">{{ order_summary.currency }} {{ order_summary.total_amount }}</span></div>
+              {% if order_summary.slices %}
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Legs</span><span class="bd2-summary-val">{{ order_summary.slices|length }}</span></div>
+              {% endif %}
+              {% if order_summary.booking_date %}
+              <div class="bd2-summary-row"><span class="bd2-summary-lbl">Booked</span><span class="bd2-summary-val">{{ order_summary.booking_date }}</span></div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if order_summary.passenger_names %}
+          <div class="bd2-card">
+            <div class="bd2-card-hd">
+              <h2 class="bd2-card-title">Travelers</h2>
+            </div>
+            <div class="bd2-travelers">
+              {% for name in order_summary.passenger_names %}
+              <div class="bd2-traveler">
+                <div class="bd2-traveler-avatar">{{ name[0]|upper if name else '?' }}</div>
+                <span class="bd2-traveler-name">{{ name }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  {# Cancel confirmation modal #}
+  {% if manage_model and manage_model.can_cancel %}
+  <div id="bd2CancelModal" class="bd2-modal-overlay" onclick="if(event.target===this)this.classList.remove('is-open')">
+    <div class="bd2-modal">
+      <div class="bd2-modal-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg>
+      </div>
+      <h3 class="bd2-modal-title">Cancel this booking?</h3>
+      <p class="bd2-modal-body">This will permanently cancel booking <strong>{{ order_summary.booking_reference }}</strong>. A refund will be processed per the fare rules. This cannot be undone.</p>
+      <div class="bd2-modal-actions">
+        <form method="post" action="{{ url_for('manage_booking_cancel', order_id=manage_model.order_id) }}" style="flex:1;">
+          <button class="bd2-modal-btn bd2-modal-btn--danger" type="submit" style="width:100%;">Confirm cancellation</button>
+        </form>
+        <button class="bd2-modal-btn bd2-modal-btn--ghost" type="button" onclick="document.getElementById('bd2CancelModal').classList.remove('is-open')" style="flex:1;">Keep booking</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+  {% include "partials/theme_scripts.html" %}
+</body>
+</html>

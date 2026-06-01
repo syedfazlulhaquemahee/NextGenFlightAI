@@ -1,0 +1,22 @@
+<section class="checkout-section compact-trip-card">
+  <div class="compact-trip-head">
+    <div>
+      <p class="checkout-eyebrow">Trip summary</p>
+      <h2>{{ offer_summary.airline_name }}</h2>
+    </div>
+    <div class="compact-trip-total">{{ offer_summary.currency }} <span data-total-display>{{ offer_summary.total_amount }}</span></div>
+  </div>
+  <div class="compact-trip-route">{{ offer_summary.route_summary }}</div>
+  <div class="compact-trip-meta">
+    {% for slice in offer_summary.slices %}
+      <span>{{ slice.label }} · {{ slice.depart_label }} · {{ slice.duration_label }}</span>
+    {% endfor %}
+  </div>
+  {% if model.ancillaries.selected_services %}
+    <div class="compact-trip-selected">
+      {% for service in model.ancillaries.selected_services %}
+        <span>{{ service.label }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>

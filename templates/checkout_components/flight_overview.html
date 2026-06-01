@@ -1,0 +1,91 @@
+<section class="checkout-section checkout-surface">
+  <div class="checkout-section-head">
+    <div>
+      <p class="checkout-eyebrow">Flight overview</p>
+      <h2>Selected flight</h2>
+    </div>
+    <div class="flight-top-meta">
+      {% if offer_summary.cabin_label %}<span>{{ offer_summary.cabin_label }}</span>{% endif %}
+      {% if offer_summary.fare_brand %}<span>{{ offer_summary.fare_brand }}</span>{% endif %}
+      <span>{{ offer_summary.traveler_count }} traveler{{ '' if offer_summary.traveler_count == 1 else 's' }}</span>
+    </div>
+  </div>
+
+  <div class="flight-hero">
+    <div class="flight-brand">
+      {% with logo_url=offer_summary.airline_logo_url, fallback_text=offer_summary.airline_logo %}
+        {% include "partials/airline_brand_mark.html" %}
+      {% endwith %}
+      <div>
+        <div class="flight-brand-name">{{ offer_summary.airline_name }}</div>
+        <div class="flight-brand-route">{{ offer_summary.route_summary }}</div>
+        {% if offer_summary.city_summary %}<div class="flight-brand-city">{{ offer_summary.city_summary }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="flight-hero-metrics">
+      <div><span>Dates</span><strong>{{ offer_summary.slices[0].date_label if offer_summary.slices else "Dates pending" }}</strong></div>
+      <div><span>Journey</span><strong>{{ offer_summary.slices[0].duration_label if offer_summary.slices else "" }}</strong></div>
+      <div><span>Flex</span><strong>{{ offer_summary.flexibility.changes.label }}</strong></div>
+    </div>
+  </div>
+
+  <div class="flight-overview-grid">
+    {% for slice in offer_summary.slices %}
+      <details class="itinerary-panel" {% if loop.first %}open{% endif %}>
+        <summary>
+          <span class="itinerary-summary-title">
+            <span class="itinerary-summary-logo">
+              {% with logo_url=slice.airline_logo_url, fallback_text=slice.airline_mark_fallback, modifier_class='flight-brand-mark--itinerary-summary' %}
+                {% include "partials/airline_brand_mark.html" %}
+              {% endwith %}
+            </span>
+            <span class="itinerary-summary-title-text">
+              <strong>{{ slice.label }}</strong>
+              <small>{{ slice.date_label }}</small>
+            </span>
+          </span>
+          <span class="itinerary-summary-meta">
+            <span>{{ slice.depart_label }}</span>
+            <span>{{ slice.duration_label }}</span>
+            <span>{{ slice.stops_label }}</span>
+          </span>
+        </summary>
+
+        <div class="segment-stack">
+          {% for segment in slice.segments %}
+            <article class="segment-card">
+              <div class="segment-card-airline" aria-hidden="true">
+                {% with logo_url=segment.airline_logo_url, fallback_text=segment.airline_mark_fallback, modifier_class='flight-brand-mark--segment' %}
+                  {% include "partials/airline_brand_mark.html" %}
+                {% endwith %}
+              </div>
+              <div class="segment-time">
+                <strong>{{ segment.depart_time }}</strong>
+                <span>{{ segment.origin_code }}</span>
+                <small>{{ segment.origin_city }}</small>
+                {% if segment.departure_terminal %}<small>{{ segment.departure_terminal }}</small>{% endif %}
+              </div>
+              <div class="segment-line">
+                <span>{{ segment.duration_label }}</span>
+                <small>{{ segment.flight_number }}</small>
+                {% if segment.aircraft %}<small>{{ segment.aircraft }}</small>{% endif %}
+              </div>
+              <div class="segment-time">
+                <strong>{{ segment.arrive_time }}</strong>
+                <span>{{ segment.destination_code }}</span>
+                <small>{{ segment.destination_city }}</small>
+                {% if segment.arrival_terminal %}<small>{{ segment.arrival_terminal }}</small>{% endif %}
+              </div>
+            </article>
+            {% if segment.operating_carrier %}
+              <div class="segment-footnote">Operated by {{ segment.operating_carrier }}</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+  {% include "checkout_components/flexibility.html" %}
+</section>

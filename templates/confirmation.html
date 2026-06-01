@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Booking Confirmed • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <style>
+    /* ===== Confirmation page ===== */
+    .confirmation-page {
+      --c-green:       #22c55e;
+      --c-green-bg:    rgba(34,197,94,.14);
+      --c-green-bd:    rgba(34,197,94,.30);
+      --c-ind:         #6366f1;
+      --c-ind-bg:      rgba(99,102,241,.14);
+      --c-teal:        #14b8a6;
+      --c-teal-bg:     rgba(20,184,166,.10);
+      --c-teal-bd:     rgba(20,184,166,.28);
+    }
+
+    /* --- Dark base (default) --- */
+    html:not([data-theme="light"]) .confirmation-page {
+      --c-page:        #0c1018;
+      --c-card:        #141c2b;
+      --c-card-bd:     rgba(255,255,255,.07);
+      --c-card-sh:     0 1px 10px rgba(0,0,0,.38);
+      --c-text:        #eef2fb;
+      --c-muted:       #8a9ab8;
+      --c-soft:        #54697e;
+      --c-sep:         rgba(255,255,255,.06);
+      --c-sub:         rgba(255,255,255,.04);
+      --c-sub-bd:      rgba(255,255,255,.07);
+      --c-ref:         #4ade80;
+      --c-badge-bg:    rgba(34,197,94,.14);
+      --c-badge-txt:   #4ade80;
+      --c-tile-icon:   rgba(99,102,241,.20);
+      --c-tile-clr:    #818cf8;
+      --c-ind-lnk:     #818cf8;
+      --c-teal-lnk:    #2dd4bf;
+      --c-rew-bg:      rgba(99,102,241,.06);
+      --c-rew-bd:      rgba(99,102,241,.14);
+      /* hero */
+      --c-hero-bg:     #111722;
+      --c-hero-sh:     none;
+      --c-hero-bd:     transparent;
+      --c-hero-title:  #ffffff;
+      --c-hero-sub:    rgba(255,255,255,.56);
+      --c-hero-rlbl:   rgba(255,255,255,.42);
+      --c-hero-star:   .13;
+      --c-hero-dl-bd:  rgba(255,255,255,.22);
+      --c-hero-dl-txt: #ffffff;
+      --c-hero-dl-hov: rgba(255,255,255,.08);
+      --c-hero-cp-bd:  rgba(74,222,128,.35);
+      --c-hero-cp-bg:  rgba(74,222,128,.10);
+      --c-hero-cp-clr: #4ade80;
+      --c-hero-ref:    #4ade80;
+    }
+
+    /* --- Light override --- */
+    html[data-theme="light"] .confirmation-page {
+      --c-page:        #f0f3f8;
+      --c-card:        #ffffff;
+      --c-card-bd:     rgba(15,23,42,.08);
+      --c-card-sh:     0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);
+      --c-text:        #0f172a;
+      --c-muted:       #64748b;
+      --c-soft:        #94a3b8;
+      --c-sep:         rgba(15,23,42,.07);
+      --c-sub:         #f8fafc;
+      --c-sub-bd:      rgba(15,23,42,.07);
+      --c-ref:         #16a34a;
+      --c-badge-bg:    #dcfce7;
+      --c-badge-txt:   #15803d;
+      --c-tile-icon:   rgba(99,102,241,.12);
+      --c-tile-clr:    #4f46e5;
+      --c-ind-lnk:     #4f46e5;
+      --c-teal-lnk:    #0f766e;
+      --c-rew-bg:      #f5f3ff;
+      --c-rew-bd:      rgba(99,102,241,.14);
+      /* hero */
+      --c-hero-bg:     #ffffff;
+      --c-hero-sh:     0 2px 16px rgba(99,102,241,.10), 0 1px 4px rgba(99,102,241,.08);
+      --c-hero-bd:     rgba(99,102,241,.16);
+      --c-hero-title:  #1e1b4b;
+      --c-hero-sub:    #475569;
+      --c-hero-rlbl:   #6b7280;
+      --c-hero-star:   .05;
+      --c-hero-dl-bd:  rgba(79,70,229,.28);
+      --c-hero-dl-txt: #4f46e5;
+      --c-hero-dl-hov: rgba(79,70,229,.06);
+      --c-hero-cp-bd:  rgba(22,163,74,.35);
+      --c-hero-cp-bg:  rgba(22,163,74,.10);
+      --c-hero-cp-clr: #15803d;
+      --c-hero-ref:    #16a34a;
+    }
+
+    .confirmation-page { background: var(--c-page) !important; }
+    .conf-shell { max-width: 1100px; margin: 0 auto; padding: 0 20px 80px; }
+
+    /* ===== Hero — always dark ===== */
+    .conf-hero {
+      position: relative;
+      background: var(--c-hero-bg);
+      border: 1px solid var(--c-hero-bd);
+      box-shadow: var(--c-hero-sh);
+      border-radius: 16px;
+      margin-top: 22px;
+      padding: 36px 40px 38px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+
+    /* subtle star-field texture */
+    .conf-hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(99,102,241,.6) 1px, transparent 1px),
+        radial-gradient(circle, rgba(99,102,241,.3) 1px, transparent 1px);
+      background-size: 90px 90px, 45px 45px;
+      background-position: 10px 10px, 30px 30px;
+      opacity: var(--c-hero-star);
+      pointer-events: none;
+    }
+
+    /* decorative accent dots */
+    .conf-hero::after {
+      content: "";
+      position: absolute;
+      top: 20px; left: 50%;
+      width: 3px; height: 3px; border-radius: 50%;
+      background: rgba(244,114,182,.8);
+      box-shadow:
+        -120px 30px 0 2px rgba(251,191,36,.8),
+        80px -10px 0 1.5px rgba(167,139,250,.8),
+        200px 40px 0 2px rgba(52,211,153,.8),
+        -60px -10px 0 1.5px rgba(251,146,60,.8);
+      opacity: 1;
+      pointer-events: none;
+    }
+    html[data-theme="light"] .conf-hero::after { opacity: .55; }
+
+    .conf-hero-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      padding-right: 180px;
+    }
+    @media (max-width: 640px) { .conf-hero-body { padding-right: 0; } }
+
+    /* Green circle checkmark */
+    .conf-check-circle {
+      flex-shrink: 0;
+      width: 68px; height: 68px; border-radius: 50%;
+      background: var(--c-green);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 10px rgba(34,197,94,.14);
+    }
+    .conf-check-tick {
+      stroke-dasharray: 38; stroke-dashoffset: 38;
+      animation: confTick .4s ease-out .15s forwards;
+    }
+    @keyframes confTick { to { stroke-dashoffset: 0; } }
+
+    .conf-hero-copy { flex: 1; min-width: 0; }
+    .conf-hero-title {
+      margin: 0 0 6px;
+      font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+      font-weight: 800; line-height: 1.12;
+      color: var(--c-hero-title); letter-spacing: -.022em;
+    }
+    .conf-hero-sub {
+      margin: 0 0 20px;
+      font-size: .9rem; color: var(--c-hero-sub); line-height: 1.55;
+    }
+
+    .conf-ref-download-row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
+    }
+    .conf-ref-lbl {
+      font-size: .67rem; font-weight: 600;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--c-hero-rlbl); margin-bottom: 4px;
+    }
+    .conf-ref-code {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 1.3rem; font-weight: 800;
+      letter-spacing: .06em; color: var(--c-hero-ref);
+    }
+    .conf-copy-btn {
+      width: 26px; height: 26px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 7px;
+      border: 1px solid var(--c-hero-cp-bd);
+      background: var(--c-hero-cp-bg);
+      color: var(--c-hero-cp-clr); cursor: pointer; padding: 0; opacity: .8;
+      transition: opacity .12s; flex-shrink: 0;
+    }
+    .conf-copy-btn:hover { opacity: 1; }
+    .conf-copy-toast {
+      font-size: .72rem; font-weight: 600; color: var(--c-hero-ref);
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+
+    .conf-btn-dl {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 16px; border-radius: 9px;
+      border: 1px solid var(--c-hero-dl-bd);
+      background: transparent; color: var(--c-hero-dl-txt);
+      font: inherit; font-size: .85rem; font-weight: 600;
+      text-decoration: none; white-space: nowrap; flex-shrink: 0;
+      transition: background .14s;
+    }
+    .conf-btn-dl:hover { background: var(--c-hero-dl-hov); }
+
+    /* Travel illustration */
+    .conf-hero-illo {
+      position: absolute; right: 32px; top: 50%;
+      transform: translateY(-50%);
+      width: 148px; height: 148px;
+      pointer-events: none;
+    }
+    @media (max-width: 640px) { .conf-hero-illo { display: none; } }
+
+    /* Error hero */
+    html:not([data-theme="light"]) .conf-hero-err { background: #1a1220; border: 1px solid rgba(239,68,68,.18); }
+    html[data-theme="light"] .conf-hero-err { background: #fff0f0; border: 1px solid rgba(239,68,68,.20); }
+
+    /* ===== 2-col workspace ===== */
+    .conf-workspace {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 340px;
+      gap: 18px; align-items: start; margin-top: 18px;
+    }
+    .conf-main { display: flex; flex-direction: column; gap: 14px; }
+    .conf-rail {
+      display: flex; flex-direction: column; gap: 14px;
+      position: sticky;
+      top: max(18px,calc(env(safe-area-inset-top,0px) + 68px));
+      align-self: start;
+    }
+
+    /* ===== Cards ===== */
+    .conf-card {
+      background: var(--c-card);
+      border: 1px solid var(--c-card-bd);
+      border-radius: 14px;
+      box-shadow: var(--c-card-sh);
+      overflow: hidden;
+    }
+    .conf-card-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 17px 20px 14px;
+      border-bottom: 1px solid var(--c-sep);
+    }
+    .conf-card-title { margin: 0; font-size: .96rem; font-weight: 700; color: var(--c-text); }
+
+    .conf-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--c-badge-bg); color: var(--c-badge-txt);
+      font-size: .72rem; font-weight: 700;
+    }
+    .conf-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+    /* ===== Flight card ===== */
+    .conf-airline-row {
+      display: flex; align-items: center; gap: 9px;
+      padding: 13px 20px 12px;
+      border-bottom: 1px solid var(--c-sep);
+    }
+    .conf-airline-logo {
+      width: 22px; height: 22px; border-radius: 5px; object-fit: contain;
+    }
+    .conf-airline-logo-fb {
+      width: 22px; height: 22px; border-radius: 5px;
+      background: var(--c-sub); border: 1px solid var(--c-sub-bd);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .62rem; font-weight: 700; color: var(--c-muted);
+    }
+    .conf-airline-name { font-size: .88rem; font-weight: 600; color: var(--c-text); }
+    .conf-airline-flight { font-size: .82rem; color: var(--c-muted); }
+
+    .conf-tl {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; padding: 20px 20px 22px;
+    }
+    .conf-tl-end { display: flex; flex-direction: column; gap: 3px; }
+    .conf-tl-end--r { text-align: right; align-items: flex-end; }
+    .conf-tl-time {
+      font-size: 1.75rem; font-weight: 800;
+      letter-spacing: -.03em; line-height: 1; color: var(--c-text);
+    }
+    .conf-tl-plus1 {
+      font-size: .7rem; font-weight: 700;
+      color: #f97316; vertical-align: super; margin-left: 2px;
+    }
+    .conf-tl-code { font-size: .95rem; font-weight: 660; color: var(--c-text); margin-top: 1px; }
+    .conf-tl-city { font-size: .78rem; color: var(--c-muted); }
+    .conf-tl-date { font-size: .74rem; color: var(--c-soft); margin-top: 2px; }
+
+    .conf-tl-mid {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 0 24px;
+    }
+    .conf-tl-dur { font-size: .74rem; color: var(--c-muted); white-space: nowrap; }
+    .conf-tl-line { width: 100%; height: 1px; background: var(--c-sep); }
+    .conf-tl-plane { color: var(--c-soft); }
+    .conf-tl-stops { font-size: .72rem; color: var(--c-soft); white-space: nowrap; }
+    .conf-tl-aircraft { font-size: .70rem; color: var(--c-soft); white-space: nowrap; opacity: .75; }
+
+    .conf-flight-chip {
+      display: inline-flex; align-items: center;
+      font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+      padding: 2px 7px; border-radius: 20px;
+      background: var(--c-ind-bg); color: var(--c-ind-lnk);
+      border: 1px solid rgba(99,102,241,.22);
+      line-height: 1.4;
+    }
+
+    /* ===== Passenger card ===== */
+    .conf-pax-bd { padding: 16px 20px; }
+    .conf-pax-row {
+      display: flex; align-items: center;
+      gap: 16px; flex-wrap: wrap;
+      padding: 6px 0;
+    }
+    .conf-pax-row + .conf-pax-row { border-top: 1px solid var(--c-sep); }
+    .conf-pax-info { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+    .conf-pax-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #7c3aed;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .74rem; font-weight: 700; color: #ffffff; flex-shrink: 0;
+    }
+    .conf-pax-name { font-size: .9rem; font-weight: 600; color: var(--c-text); }
+
+    .conf-pax-meta {
+      display: flex; align-items: center; gap: 28px;
+      margin-left: auto; flex-wrap: wrap;
+    }
+    .conf-pax-col { display: flex; flex-direction: column; gap: 2px; }
+    .conf-pax-col-lbl {
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--c-muted);
+    }
+    .conf-pax-col-val { font-size: .88rem; font-weight: 600; color: var(--c-text); }
+
+    /* ===== Manage booking — 4-col tiles ===== */
+    .conf-action-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+    }
+    .conf-action-tile {
+      display: flex; flex-direction: column; gap: 5px;
+      padding: 16px 14px 28px;
+      text-decoration: none; position: relative;
+      transition: background .13s;
+    }
+    .conf-action-tile:hover { background: var(--c-sub); }
+    .conf-action-tile + .conf-action-tile { border-left: 1px solid var(--c-sep); }
+    .conf-action-tile:first-child { border-top: 1px solid var(--c-sep); }
+    .conf-action-tile:nth-child(n) { border-top: 1px solid var(--c-sep); }
+
+    .conf-action-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--c-tile-icon);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--c-tile-clr); margin-bottom: 4px;
+    }
+    .conf-action-title { font-size: .83rem; font-weight: 700; color: var(--c-text); line-height: 1.3; }
+    .conf-action-desc { font-size: .73rem; color: var(--c-muted); line-height: 1.4; }
+    .conf-action-arrow {
+      position: absolute; bottom: 10px; right: 12px; color: var(--c-soft);
+    }
+
+    @media (max-width: 580px) {
+      .conf-action-grid { grid-template-columns: repeat(2,1fr); }
+      .conf-action-tile:nth-child(2) { border-left: 1px solid var(--c-sep); }
+      .conf-action-tile:nth-child(3) { border-left: none; }
+    }
+
+    /* ===== Check-in strip ===== */
+    .conf-checkin-strip {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 20px;
+      background: var(--c-card);
+      border: 1px solid var(--c-card-bd);
+      border-radius: 14px; box-shadow: var(--c-card-sh);
+    }
+    .conf-checkin-icon {
+      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+      background: var(--c-teal-bg); border: 1px solid var(--c-teal-bd);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--c-teal-lnk);
+    }
+    .conf-checkin-body { flex: 1; min-width: 0; }
+    .conf-checkin-title {
+      font-size: .92rem; font-weight: 700;
+      color: var(--c-teal-lnk); margin-bottom: 2px;
+    }
+    .conf-checkin-desc { font-size: .8rem; color: var(--c-muted); line-height: 1.5; }
+    .conf-checkin-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 9px 14px; border-radius: 9px;
+      border: 1px solid var(--c-card-bd);
+      background: var(--c-sub); color: var(--c-text);
+      font: inherit; font-size: .82rem; font-weight: 600;
+      text-decoration: none; white-space: nowrap; flex-shrink: 0;
+      transition: background .13s;
+    }
+    .conf-checkin-btn:hover { background: var(--c-sep); }
+
+    /* ===== Rewards strip ===== */
+    .conf-rew-strip {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 20px;
+      background: var(--c-rew-bg); border: 1px solid var(--c-rew-bd);
+      border-radius: 14px;
+    }
+    .conf-rew-icon {
+      flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+      background: var(--c-ind-bg);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--c-tile-clr);
+    }
+    .conf-rew-body { flex: 1; min-width: 0; }
+    .conf-rew-title { font-size: .9rem; font-weight: 700; color: var(--c-text); margin-bottom: 2px; }
+    .conf-rew-desc { font-size: .79rem; color: var(--c-muted); line-height: 1.5; }
+    .conf-rew-link {
+      display: flex; align-items: center; gap: 4px;
+      font-size: .82rem; font-weight: 650;
+      color: var(--c-ind-lnk); text-decoration: none;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .conf-rew-link:hover { text-decoration: underline; }
+
+    /* ===== Rail ===== */
+    .conf-rail-card {
+      background: var(--c-card); border: 1px solid var(--c-card-bd);
+      border-radius: 14px; box-shadow: var(--c-card-sh); overflow: hidden;
+    }
+    .conf-rail-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 18px 13px; border-bottom: 1px solid var(--c-sep);
+    }
+    .conf-rail-title { font-size: .93rem; font-weight: 700; color: var(--c-text); }
+    .conf-rail-print {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: .78rem; font-weight: 650;
+      color: var(--c-ind-lnk); text-decoration: none; cursor: pointer;
+      background: none; border: none; padding: 0; font-family: inherit;
+    }
+    .conf-rail-print:hover { text-decoration: underline; }
+
+    .conf-total-sec {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--c-sep);
+    }
+    .conf-total-lbl { font-size: .78rem; color: var(--c-muted); margin-bottom: 3px; }
+    .conf-total-val {
+      font-size: 1.6rem; font-weight: 800;
+      letter-spacing: -.025em; color: var(--c-text); line-height: 1;
+    }
+
+    .conf-sum-sec { padding: 12px 18px; border-bottom: 1px solid var(--c-sep); }
+    .conf-sum-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline; gap: 8px; padding: 4px 0;
+    }
+    .conf-sum-lbl { font-size: .81rem; color: var(--c-muted); }
+    .conf-sum-val { font-size: .83rem; font-weight: 620; color: var(--c-text); }
+
+    .conf-paid-sec {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px; border-bottom: 1px solid var(--c-sep);
+    }
+    .conf-paid-lbl { font-size: .81rem; color: var(--c-muted); margin-right: 2px; }
+
+    .conf-mc {
+      display: inline-flex; flex-shrink: 0;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.2));
+    }
+    .conf-paid-num { font-size: .83rem; font-weight: 620; color: var(--c-text); }
+
+    .conf-receipt-lnk {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 18px;
+      font-size: .83rem; font-weight: 650;
+      color: var(--c-ind-lnk); text-decoration: none;
+    }
+    .conf-receipt-lnk:hover { text-decoration: underline; }
+
+    /* Help / Info items */
+    .conf-help-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 12px 18px; text-decoration: none;
+      transition: background .12s;
+    }
+    .conf-help-item:hover { background: var(--c-sub); }
+    .conf-help-item + .conf-help-item { border-top: 1px solid var(--c-sep); }
+
+    .conf-help-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--c-sub); border: 1px solid var(--c-sub-bd);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--c-muted); flex-shrink: 0;
+    }
+    .conf-help-name { font-size: .83rem; font-weight: 650; color: var(--c-ind-lnk); }
+    .conf-help-desc { font-size: .73rem; color: var(--c-muted); margin-top: 1px; }
+    .conf-help-ext { margin-left: auto; color: var(--c-soft); flex-shrink: 0; }
+
+    .conf-info-item {
+      display: flex; align-items: flex-start; gap: 11px;
+      padding: 11px 18px; text-decoration: none;
+      transition: background .12s;
+    }
+    .conf-info-item:not(.conf-info-item--static):hover { background: var(--c-sub); }
+    .conf-info-item + .conf-info-item { border-top: 1px solid var(--c-sep); }
+    .conf-info-item--static { cursor: default; }
+
+    .conf-info-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--c-sub); border: 1px solid var(--c-sub-bd);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--c-muted); flex-shrink: 0; margin-top: 1px;
+    }
+    .conf-info-name { font-size: .83rem; font-weight: 650; color: var(--c-text); }
+    .conf-info-desc { font-size: .73rem; color: var(--c-muted); margin-top: 2px; }
+    .conf-info-ext { margin-left: auto; color: var(--c-soft); flex-shrink: 0; }
+
+    .conf-fare-rule { display: inline-block; }
+    .conf-fare-rule--ok { color: #16a34a; }
+    .conf-fare-rule--no { color: #dc2626; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 940px) {
+      .conf-workspace { grid-template-columns: 1fr; }
+      .conf-rail { position: static; }
+    }
+    @media (max-width: 640px) {
+      .conf-hero { padding: 26px 20px 28px; border-radius: 12px; }
+      .conf-hero-body { flex-direction: column; gap: 14px; padding-right: 0; }
+      .conf-ref-download-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .conf-tl-mid { padding: 0 12px; }
+      .conf-tl-time { font-size: 1.35rem; }
+      .conf-shell { padding: 0 14px 56px; }
+      .conf-pax-bd { padding: 16px; }
+      .conf-pax-row {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr);
+        align-items: start;
+        gap: 14px 16px;
+        padding: 18px 0;
+      }
+      .conf-pax-info {
+        display: contents;
+      }
+      .conf-pax-avatar {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        width: 56px;
+        height: 56px;
+        font-size: .95rem;
+      }
+      .conf-pax-name {
+        grid-column: 2;
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+      }
+      .conf-pax-meta {
+        grid-column: 2;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: start;
+        gap: 14px 18px;
+        width: 100%;
+        margin-left: 0;
+      }
+      .conf-pax-col {
+        min-width: 0;
+      }
+      .conf-pax-col-lbl {
+        font-size: .62rem;
+        letter-spacing: .08em;
+        line-height: 1.25;
+      }
+      .conf-pax-col-val {
+        font-size: .9rem;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+    }
+    @media (max-width: 480px) {
+      .conf-hero { margin-top: 0; border-radius: 0; padding: 22px 16px 24px; }
+      .conf-check-circle { width: 56px; height: 56px; }
+      .conf-hero-title { font-size: 1.45rem; }
+      .conf-shell { padding: 0 12px 52px; }
+      .conf-pax-bd { padding: 14px 16px; }
+      .conf-pax-row {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 12px 14px;
+        padding: 16px 0;
+      }
+      .conf-pax-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: .86rem;
+      }
+      .conf-pax-meta {
+        gap: 12px 14px;
+      }
+      .conf-pax-col-lbl {
+        font-size: .58rem;
+        letter-spacing: .075em;
+      }
+      .conf-pax-col-val {
+        font-size: .86rem;
+      }
+    }
+    @media (max-width: 380px) {
+      .conf-pax-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    /* Per-segment breakdown */
+    .conf-segs { padding: 12px 20px 16px; border-top: 1px solid var(--c-sep); }
+    .conf-seg-row { display:flex; align-items:center; gap:12px; padding:8px 0; }
+    .conf-seg-left { display:flex; align-items:center; gap:8px; min-width:140px; }
+    .conf-seg-logo { width:20px; height:20px; object-fit:contain; border-radius:4px; }
+    .conf-seg-airline { display:flex; flex-direction:column; }
+    .conf-seg-carrier { font-size:.78rem; font-weight:600; color:var(--c-text); }
+    .conf-seg-fn { font-size:.7rem; color:var(--c-muted); font-weight:500; }
+    .conf-seg-aircraft { font-size:.68rem; color:var(--c-soft); }
+    .conf-seg-times { display:flex; align-items:center; gap:8px; flex:1; }
+    .conf-seg-time-col { display:flex; flex-direction:column; align-items:flex-start; min-width:70px; }
+    .conf-seg-time-col--r { align-items:flex-end; }
+    .conf-seg-time { font-size:.88rem; font-weight:700; color:var(--c-text); }
+    .conf-seg-iata { font-size:.72rem; font-weight:700; color:var(--c-ind); letter-spacing:.04em; }
+    .conf-seg-city { font-size:.7rem; color:var(--c-muted); }
+    .conf-seg-arrow { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .conf-seg-line { width:100%; height:1px; background:var(--c-sep); }
+    .conf-seg-dur { font-size:.68rem; color:var(--c-soft); white-space:nowrap; }
+    .conf-layover-pill { display:flex; align-items:center; gap:5px; margin:4px 0 4px 148px; padding:5px 10px; background:var(--c-sub); border:1px solid var(--c-sub-bd); border-radius:20px; font-size:.72rem; color:var(--c-muted); width:fit-content; }
+  </style>
+</head>
+<body class="results-page booking-page premium-checkout-page confirmation-page">
+  {% include "partials/platform_header.html" %}
+
+  <main>
+    <div class="conf-shell">
+
+      {% if booking_error %}
+      {# ---- Error ---- #}
+      <div class="conf-hero conf-hero-err" style="margin-top:22px;">
+        <div class="conf-hero-body">
+          <div class="conf-check-circle" style="background:#ef4444;box-shadow:0 0 0 10px rgba(239,68,68,.14);">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <line x1="9" y1="9" x2="21" y2="21" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+              <line x1="21" y1="9" x2="9" y2="21" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="conf-hero-copy">
+            <h1 class="conf-hero-title">We couldn't load that booking.</h1>
+            <p class="conf-hero-sub">{{ booking_error }}</p>
+            <div class="conf-ref-download-row" style="margin-top:16px;">
+              <a class="conf-btn-dl" href="{{ url_for('index') }}">Search flights</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% elif order_summary %}
+      {# ---- Success hero ---- #}
+      <div class="conf-hero">
+
+        <!-- Luggage illustration -->
+        <svg class="conf-hero-illo" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Shadow -->
+          <ellipse cx="80" cy="148" rx="56" ry="8" fill="rgba(0,0,0,.28)"/>
+          <!-- Suitcase body -->
+          <rect x="22" y="62" width="116" height="82" rx="14" fill="#7c3aed"/>
+          <!-- Suitcase top stripe -->
+          <rect x="22" y="62" width="116" height="22" rx="14" fill="#6d28d9"/>
+          <rect x="22" y="72" width="116" height="12" fill="#6d28d9"/>
+          <!-- Stripe across middle -->
+          <rect x="22" y="97" width="116" height="14" fill="#5b21b6"/>
+          <!-- Handle bar -->
+          <rect x="58" y="40" width="44" height="26" rx="10" fill="none" stroke="#a78bfa" stroke-width="5.5"/>
+          <rect x="58" y="50" width="44" height="16" rx="0" fill="#111722"/>
+          <!-- Wheels -->
+          <rect x="30" y="140" width="18" height="10" rx="5" fill="#4c1d95"/>
+          <rect x="112" y="140" width="18" height="10" rx="5" fill="#4c1d95"/>
+          <!-- Lock -->
+          <rect x="69" y="88" width="22" height="16" rx="5" fill="#8b5cf6"/>
+          <rect x="74" y="82" width="12" height="9" rx="5" fill="none" stroke="#8b5cf6" stroke-width="3.5"/>
+          <!-- Green checkmark badge -->
+          <circle cx="130" cy="70" r="20" fill="#22c55e" stroke="#111722" stroke-width="3"/>
+          <polyline points="121,70 128,77 140,62" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Hat -->
+          <ellipse cx="80" cy="54" rx="44" ry="10" fill="#fbbf24"/>
+          <rect x="54" y="30" width="52" height="26" rx="10" fill="#f59e0b"/>
+          <!-- Hat band -->
+          <rect x="54" y="46" width="52" height="7" rx="0" fill="#d97706"/>
+          <!-- Sparkles -->
+          <circle cx="18" cy="46" r="3.5" fill="#f472b6" opacity=".9"/>
+          <circle cx="152" cy="100" r="3" fill="#fb923c" opacity=".9"/>
+          <circle cx="10" cy="90" r="2.5" fill="#a78bfa" opacity=".8"/>
+          <circle cx="148" cy="46" r="2" fill="#fbbf24" opacity=".7"/>
+        </svg>
+
+        <div class="conf-hero-body">
+          <div class="conf-check-circle">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <polyline points="7,17 13,23 25,11"
+                stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                fill="none" class="conf-check-tick"/>
+            </svg>
+          </div>
+
+          <div class="conf-hero-copy">
+            <h1 class="conf-hero-title">Your trip is confirmed!</h1>
+            <p class="conf-hero-sub">We've sent a confirmation email with your booking details. Use your booking reference for check-in and any changes.</p>
+
+            <div class="conf-ref-download-row">
+              <div>
+                <div class="conf-ref-lbl">Booking reference</div>
+                <div class="conf-ref-code">
+                  {{ order_summary.booking_reference or "—" }}
+                  <button class="conf-copy-btn"
+                    id="confCopyBtn"
+                    onclick="(function(btn){navigator.clipboard.writeText('{{ order_summary.booking_reference }}').then(function(){var t=document.getElementById('confCopyToast');t.style.opacity='1';setTimeout(function(){t.style.opacity='0';},1400);});})(this)"
+                    title="Copy booking reference" aria-label="Copy booking reference">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                  </button>
+                  <span class="conf-copy-toast" id="confCopyToast">Copied!</span>
+                </div>
+              </div>
+
+              <a class="conf-btn-dl" href="{{ url_for('booking_itinerary', order_id=order_summary.order_id) }}" download>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download itinerary
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ---- Workspace ---- #}
+      <div class="conf-workspace">
+        <div class="conf-main">
+
+          {# ---- Flight details ---- #}
+          <div class="conf-card">
+            <div class="conf-card-hd">
+              <h2 class="conf-card-title">Flight details</h2>
+              <span class="conf-badge"><span class="conf-badge-dot"></span>Confirmed</span>
+            </div>
+
+            {% for slice in order_summary.slices %}
+              {% set fs = slice.segments[0] if slice.segments else None %}
+              {% set ls = slice.segments[-1] if slice.segments else None %}
+
+              {# Airline row #}
+              <div class="conf-airline-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--c-muted);flex-shrink:0;">
+                  <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/>
+                </svg>
+                {% if slice.airline_logo_url %}
+                  <img class="conf-airline-logo" src="{{ slice.airline_logo_url }}" alt="{{ slice.airline_label }}" loading="lazy"/>
+                {% endif %}
+                <span class="conf-airline-name">{{ slice.airline_label }}</span>
+                {% if fs and fs.flight_number %}
+                  <span class="conf-flight-chip">{{ fs.flight_number }}</span>
+                {% endif %}
+                {% if order_summary.slices|length > 1 %}
+                  <span class="conf-airline-flight" style="margin-left:auto;">{{ slice.label }}</span>
+                {% endif %}
+              </div>
+
+              {# Timeline #}
+              <div class="conf-tl">
+                <div class="conf-tl-end">
+                  <span class="conf-tl-time">{{ fs.depart_time if fs else "—" }}</span>
+                  <span class="conf-tl-code">{{ fs.origin_code if fs else "" }}</span>
+                  <span class="conf-tl-city">{{ fs.origin_city if fs else "" }}</span>
+                  <span class="conf-tl-date">{{ fs.depart_label if fs else "" }}</span>
+                </div>
+
+                <div class="conf-tl-mid">
+                  <span class="conf-tl-dur">{{ slice.duration_label }}</span>
+                  <div class="conf-tl-line"></div>
+                  <svg class="conf-tl-plane" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(90deg)">
+                    <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2h0A1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/>
+                  </svg>
+                  <div class="conf-tl-line"></div>
+                  <span class="conf-tl-stops">{{ slice.stops_label }}</span>
+                  {% if fs and fs.aircraft %}
+                    <span class="conf-tl-aircraft">{{ fs.aircraft }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="conf-tl-end conf-tl-end--r">
+                  <span class="conf-tl-time">{{ ls.arrive_time if ls else "—" }}</span>
+                  <span class="conf-tl-code">{{ ls.destination_code if ls else "" }}</span>
+                  <span class="conf-tl-city">{{ ls.destination_city if ls else "" }}</span>
+                  <span class="conf-tl-date">{{ ls.arrive_label if ls else "" }}</span>
+                </div>
+              </div>
+
+              {# Per-segment breakdown for connecting flights #}
+              {% if slice.segments|length > 1 %}
+              <div class="conf-segs">
+                {% for seg in slice.segments %}
+                <div class="conf-seg-row">
+                  <div class="conf-seg-left">
+                    {% if seg.airline_logo_url %}
+                      <img class="conf-seg-logo" src="{{ seg.airline_logo_url }}" alt="{{ seg.carrier_name }}" loading="lazy"/>
+                    {% endif %}
+                    <div class="conf-seg-airline">
+                      <span class="conf-seg-carrier">{{ seg.carrier_name }}</span>
+                      {% if seg.flight_number %}<span class="conf-seg-fn">{{ seg.flight_number }}</span>{% endif %}
+                      {% if seg.aircraft %}<span class="conf-seg-aircraft"> · {{ seg.aircraft }}</span>{% endif %}
+                    </div>
+                  </div>
+                  <div class="conf-seg-times">
+                    <div class="conf-seg-time-col">
+                      <span class="conf-seg-time">{{ seg.depart_time }}</span>
+                      <span class="conf-seg-iata">{{ seg.origin_code }}</span>
+                      <span class="conf-seg-city">{{ seg.origin_city }}</span>
+                    </div>
+                    <div class="conf-seg-arrow">
+                      <div class="conf-seg-line"></div>
+                      <span class="conf-seg-dur">{{ seg.duration_label }}</span>
+                    </div>
+                    <div class="conf-seg-time-col conf-seg-time-col--r">
+                      <span class="conf-seg-time">{{ seg.arrive_time }}</span>
+                      <span class="conf-seg-iata">{{ seg.destination_code }}</span>
+                      <span class="conf-seg-city">{{ seg.destination_city }}</span>
+                    </div>
+                  </div>
+                </div>
+                {% if not loop.last %}
+                  {% set conn = slice.connections[loop.index0] if slice.connections and loop.index0 < slice.connections|length else none %}
+                  <div class="conf-layover-pill">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                    Layover{% if conn and conn.duration_label %} · {{ conn.duration_label }}{% endif %} at {{ seg.destination_city or seg.destination_code }}
+                  </div>
+                {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% if not loop.last %}
+              <div style="height:1px;background:var(--c-sep);margin:0 20px;"></div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {# ---- Passengers ---- #}
+          {% set pax_detail = order_summary.passengers_detail %}
+          {% if pax_detail or order_summary.passenger_names %}
+          <div class="conf-card">
+            <div class="conf-card-hd">
+              <h2 class="conf-card-title">Passenger{{ 's' if (pax_detail|length if pax_detail else order_summary.passenger_names|length) > 1 }}</h2>
+            </div>
+            <div class="conf-pax-bd">
+              {% if pax_detail %}
+                {% for p in pax_detail %}
+                <div class="conf-pax-row">
+                  <div class="conf-pax-info">
+                    <div class="conf-pax-avatar">{{ p.name[:2]|upper }}</div>
+                    <span class="conf-pax-name">{{ p.name }}</span>
+                  </div>
+                  <div class="conf-pax-meta">
+                    <div class="conf-pax-col">
+                      <span class="conf-pax-col-lbl">Ticket type</span>
+                      <span class="conf-pax-col-val">{{ p.cabin }}</span>
+                    </div>
+                    <div class="conf-pax-col">
+                      <span class="conf-pax-col-lbl">Seat</span>
+                      <span class="conf-pax-col-val">—</span>
+                    </div>
+                    <div class="conf-pax-col">
+                      <span class="conf-pax-col-lbl">Booking class</span>
+                      <span class="conf-pax-col-val">{{ p.type }}</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                {% for name in order_summary.passenger_names %}
+                <div class="conf-pax-row">
+                  <div class="conf-pax-info">
+                    <div class="conf-pax-avatar">{{ name[:2]|upper }}</div>
+                    <span class="conf-pax-name">{{ name }}</span>
+                  </div>
+                  <div class="conf-pax-meta">
+                    <div class="conf-pax-col">
+                      <span class="conf-pax-col-lbl">Ticket type</span>
+                      <span class="conf-pax-col-val">Economy</span>
+                    </div>
+                    <div class="conf-pax-col">
+                      <span class="conf-pax-col-lbl">Seat</span>
+                      <span class="conf-pax-col-val">—</span>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          {# ---- Manage your booking (4 tiles) ---- #}
+          <div class="conf-card">
+            <div class="conf-card-hd">
+              <h2 class="conf-card-title">Manage your booking</h2>
+            </div>
+            <div class="conf-action-grid">
+              <a class="conf-action-tile" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference) }}">
+                <div class="conf-action-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/>
+                  </svg>
+                </div>
+                <div class="conf-action-title">Manage booking</div>
+                <div class="conf-action-desc">Change or cancel this booking</div>
+                <svg class="conf-action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+
+              <a class="conf-action-tile" href="{{ url_for('booking_itinerary', order_id=order_summary.order_id) }}" download>
+                <div class="conf-action-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </div>
+                <div class="conf-action-title">Download itinerary</div>
+                <div class="conf-action-desc">Save your itinerary as PDF</div>
+                <svg class="conf-action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+
+              <a class="conf-action-tile" href="{{ url_for('booking_calendar', order_id=order_summary.order_id) }}" download>
+                <div class="conf-action-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div class="conf-action-title">Add to calendar</div>
+                <div class="conf-action-desc">Add flight details to your calendar</div>
+                <svg class="conf-action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+
+              <a class="conf-action-tile" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference) }}">
+                <div class="conf-action-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                </div>
+                <div class="conf-action-title">Flight alerts</div>
+                <div class="conf-action-desc">Get real-time updates about your flight</div>
+                <svg class="conf-action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+            </div>
+          </div>
+
+          {# ---- Check-in strip ---- #}
+          <div class="conf-checkin-strip">
+            <div class="conf-checkin-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="conf-checkin-body">
+              <div class="conf-checkin-title">Check in opens in 24h</div>
+              <div class="conf-checkin-desc">Check in online 24–48 hours before departure.</div>
+            </div>
+            {% if checkin_url %}
+            <a class="conf-checkin-btn" href="{{ checkin_url }}" target="_blank" rel="noopener noreferrer">
+              Go to check-in
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+            {% else %}
+            <a class="conf-checkin-btn" href="https://www.google.com/search?q={{ (order_summary.airline_name or '') | urlencode }}+online+check+in" target="_blank" rel="noopener noreferrer">
+              Go to check-in
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+            {% endif %}
+          </div>
+
+          {# ---- Rewards strip ---- #}
+          <div class="conf-rew-strip">
+            <div class="conf-rew-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 12 20 22 4 22 4 12"/>
+                <rect x="2" y="7" width="20" height="5"/>
+                <line x1="12" y1="22" x2="12" y2="7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+              </svg>
+            </div>
+            <div class="conf-rew-body">
+              <div class="conf-rew-title">Earn rewards on this trip</div>
+              <div class="conf-rew-desc">You'll earn points after your trip is complete.</div>
+            </div>
+            <a class="conf-rew-link" href="{{ url_for('index') }}">
+              View rewards
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+          </div>
+
+        </div>{# /conf-main #}
+
+        {# ---- Rail ---- #}
+        <aside class="conf-rail">
+
+          {# Booking summary #}
+          <div class="conf-rail-card">
+            <div class="conf-rail-hd">
+              <span class="conf-rail-title">Booking summary</span>
+              <button class="conf-rail-print" type="button" onclick="window.print()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Print
+              </button>
+            </div>
+
+            <div class="conf-total-sec">
+              <div class="conf-total-lbl">Total paid</div>
+              <div class="conf-total-val">{{ order_summary.currency }} {{ order_summary.total_amount }}</div>
+            </div>
+
+            <div class="conf-sum-sec">
+              {% if order_summary.booking_date %}
+              <div class="conf-sum-row">
+                <span class="conf-sum-lbl">Booking date</span>
+                <span class="conf-sum-val">{{ order_summary.booking_date }}</span>
+              </div>
+              {% endif %}
+              <div class="conf-sum-row">
+                <span class="conf-sum-lbl">Travelers</span>
+                <span class="conf-sum-val">{{ order_summary.passenger_names|length }} passenger{{ 's' if order_summary.passenger_names|length != 1 }}</span>
+              </div>
+              {% if order_summary.ancillaries.has_services %}
+                {% for service in order_summary.ancillaries.selected_services %}
+                <div class="conf-sum-row">
+                  <span class="conf-sum-lbl">+ {{ service.label }}</span>
+                  <span class="conf-sum-val">{{ service.currency }} {{ service.amount }}</span>
+                </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            <div class="conf-paid-sec">
+              <span class="conf-paid-lbl">Paid with</span>
+              <!-- Mastercard icon -->
+              <svg class="conf-mc" width="32" height="22" viewBox="0 0 32 22" fill="none">
+                <rect width="32" height="22" rx="4" fill="rgba(255,255,255,.06)"/>
+                <circle cx="13" cy="11" r="7" fill="#eb001b"/>
+                <circle cx="19" cy="11" r="7" fill="#f79e1b"/>
+                <path d="M16 5.6a7 7 0 0 1 0 10.8A7 7 0 0 1 16 5.6z" fill="#ff5f00"/>
+              </svg>
+              <span class="conf-paid-num">•••• 1234</span>
+            </div>
+
+            <a class="conf-receipt-lnk" href="{{ url_for('booking_itinerary', order_id=order_summary.order_id, inline=1) }}" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              View receipt
+            </a>
+          </div>
+
+          {# Need help? #}
+          <div class="conf-rail-card">
+            <div class="conf-rail-hd">
+              <span class="conf-rail-title">Need help?</span>
+            </div>
+            <a class="conf-help-item" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference) }}">
+              <div class="conf-help-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <div class="conf-help-name">Visit Help Center</div>
+                <div class="conf-help-desc">Find answers to common questions</div>
+              </div>
+              <svg class="conf-help-ext" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+            <a class="conf-help-item" href="mailto:support@skairova.com">
+              <div class="conf-help-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.23h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.09 6.09l.96-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="conf-help-name">Contact support</div>
+                <div class="conf-help-desc">We're here to help</div>
+              </div>
+              <svg class="conf-help-ext" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+
+          {# Important information #}
+          <div class="conf-rail-card">
+            <div class="conf-rail-hd">
+              <span class="conf-rail-title">Important information</span>
+            </div>
+
+            {# ── Baggage allowance (real data from Duffel) ── #}
+            <div class="conf-info-item conf-info-item--static">
+              <div class="conf-info-icon">
+                {# luggage icon from our icon library #}
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+              </div>
+              <div>
+                <div class="conf-info-name">Baggage allowance</div>
+                {% if order_summary.baggage_allowance %}
+                  {% for line in order_summary.baggage_allowance %}
+                    <div class="conf-info-desc">{{ line }}</div>
+                  {% endfor %}
+                {% else %}
+                  <div class="conf-info-desc">See airline for baggage policy</div>
+                {% endif %}
+              </div>
+            </div>
+
+            {# ── Fare rules (real data from Duffel) ── #}
+            {% set cond = order_summary.conditions or {} %}
+            {% set ch = cond.get('changes') or {} if cond else {} %}
+            {% set rf = cond.get('refunds') or {} if cond else {} %}
+            <div class="conf-info-item conf-info-item--static">
+              <div class="conf-info-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div>
+                <div class="conf-info-name">Fare rules</div>
+                <div class="conf-info-desc">
+                  <span class="conf-fare-rule {{ 'conf-fare-rule--ok' if ch.get('status') == 'allowed' else 'conf-fare-rule--no' }}">
+                    {% if ch.get('status') == 'allowed' %}✓{% else %}✕{% endif %} Changes: {{ ch.get('label') or 'Contact airline' }}
+                  </span>
+                </div>
+                <div class="conf-info-desc">
+                  <span class="conf-fare-rule {{ 'conf-fare-rule--ok' if rf.get('status') == 'allowed' else 'conf-fare-rule--no' }}">
+                    {% if rf.get('status') == 'allowed' %}✓{% else %}✕{% endif %} Refunds: {{ rf.get('label') or 'Contact airline' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <a class="conf-info-item" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference) }}">
+              <div class="conf-info-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <div>
+                <div class="conf-info-name">Travel requirements</div>
+                <div class="conf-info-desc">Check visa &amp; entry requirements</div>
+              </div>
+              <svg class="conf-info-ext" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+            <a class="conf-info-item" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference) }}">
+              <div class="conf-info-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="conf-info-name">Travel insurance</div>
+                <div class="conf-info-desc">Add protection for your trip</div>
+              </div>
+              <svg class="conf-info-ext" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+
+        </aside>
+      </div>{# /conf-workspace #}
+      {% endif %}
+
+    </div>{# /conf-shell #}
+  </main>
+
+  {% include "partials/theme_scripts.html" %}
+  {% if order_summary %}
+  {% set _skair_page = {"page_type": "confirmation", "booking_reference": order_summary.booking_reference or "", "airline_name": order_summary.airline_name or "", "route_summary": (order_summary.slices[0].route if order_summary.slices else "") or "", "destination": (order_summary.slices[-1].destination_code if order_summary.slices else "") or "", "currency": order_summary.currency or "USD", "total_amount": order_summary.total_amount or "", "passenger_names": order_summary.passenger_names or [], "slices": order_summary.slices or []} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  {% endif %}
+  {% include "partials/ai_chatbot.html" %}
+</body>
+</html>

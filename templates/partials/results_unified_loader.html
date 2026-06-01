@@ -1,0 +1,11 @@
+{# Minimal live-search loader: thin progress bar + pulsing status line. IDs align with flex-results-stream.js #}
+<div class="gf-loader" role="status" aria-live="polite" aria-busy="true" id="flexFlightLoader">
+  <div class="gf-loader-track" aria-hidden="true">
+    <div class="gf-loader-fill" id="resultsFlexProgressFill" style="width: 4%;"></div>
+  </div>
+  <div class="gf-loader-line">
+    <span class="gf-loader-dot" aria-hidden="true"></span>
+    <span class="gf-loader-status" id="resultsFlexLiveStatus">{{ loader_primary | default("Searching live inventory…") }}</span>
+    <span class="gf-loader-best" id="resultsFlexBestFound" hidden></span>
+  </div>
+</div>

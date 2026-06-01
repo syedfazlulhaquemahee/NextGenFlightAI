@@ -1,0 +1,28 @@
+{% extends "agent/layout.html" %}
+{% block title %}Verify Sign In{% endblock %}
+{% block heading %}Two-Factor Verification{% endblock %}
+{% block subheading %}One more step to keep your account secure.{% endblock %}
+{% block content %}
+<section class="auth-hero auth-hero-narrow">
+  <div class="auth-panel auth-panel-form">
+    <div class="auth-panel-head">
+      <h2>Enter your code</h2>
+      <p>Open your authenticator app and enter the 6-digit code for <strong>{{ pending_user.email }}</strong>.</p>
+    </div>
+    <form method="post" class="stack-form" autocomplete="off" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <label>
+        <span>Verification code</span>
+        <input type="text" name="verification_code"
+               inputmode="text" autocomplete="one-time-code"
+               maxlength="14" placeholder="000000 or ABCD-1234-EFGH" required autofocus
+               class="input-code">
+      </label>
+      <button type="submit" class="button button-primary button-full">Verify and enter portal →</button>
+    </form>
+    <p class="helper-text verify-hint">
+      Lost your phone? You can also enter one of your one-time backup codes (for example <code>ABCD-1234-EFGH</code>).
+    </p>
+  </div>
+</section>
+{% endblock %}

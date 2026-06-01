@@ -1,0 +1,137 @@
+.result-skeleton-mimic .sk-line,
+.result-skeleton-mimic .sk-circle,
+.result-skeleton-mimic .sk-pill,
+.result-skeleton-mimic .sk-chip,
+.result-skeleton-mimic .sk-button {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.08)
+  );
+  background-size: 200% 100%;
+  animation: resultShellShimmer 1.2s linear infinite;
+}
+
+.result-skeleton-mimic .sk-line {
+  height: 10px;
+  border-radius: 999px;
+}
+
+.result-skeleton-mimic .sk-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+.result-skeleton-mimic .sk-title {
+  width: 180px;
+  height: 14px;
+}
+
+.result-skeleton-mimic .sk-subtitle {
+  margin-top: 10px;
+  width: 240px;
+}
+
+.result-skeleton-mimic .sk-pill {
+  display: inline-block;
+  width: 80px;
+  height: 22px;
+  border-radius: 999px;
+  border: 0;
+}
+
+.result-skeleton-mimic .sk-pill-sm {
+  width: 62px;
+}
+
+.result-skeleton-mimic .shell-leg-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.result-skeleton-mimic .shell-leg-block .sk-time {
+  width: 68px;
+  height: 12px;
+}
+
+.result-skeleton-mimic .shell-leg-block .sk-city {
+  margin-top: 8px;
+  width: 92px;
+}
+
+.result-skeleton-mimic .shell-leg-center .sk-duration {
+  width: 120px;
+  height: 11px;
+  margin: 0 auto;
+}
+
+.result-skeleton-mimic .shell-leg-center .sk-path {
+  margin: 8px auto 0;
+  width: 154px;
+}
+
+.result-skeleton-mimic .shell-chip-row {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.result-skeleton-mimic .sk-chip {
+  width: 96px;
+  height: 26px;
+  border: 0;
+}
+
+.result-skeleton-mimic .sk-chip-sm {
+  width: 74px;
+}
+
+.result-skeleton-mimic .shell-price-panel {
+  min-height: 118px;
+}
+
+.result-skeleton-mimic .sk-price-kicker {
+  width: 52px;
+  height: 10px;
+}
+
+.result-skeleton-mimic .sk-price {
+  margin-top: 10px;
+  width: 94px;
+  height: 22px;
+}
+
+.result-skeleton-mimic .sk-note {
+  margin-top: 8px;
+  width: 110px;
+}
+
+.result-skeleton-mimic .sk-button {
+  margin-top: 12px;
+  width: 138px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+@media (max-width: 760px) {
+  .result-skeleton-mimic .shell-leg-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .result-skeleton-mimic .shell-leg-center .sk-duration,
+  .result-skeleton-mimic .shell-leg-center .sk-path {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+@keyframes resultShellShimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -20% 0; }
+}

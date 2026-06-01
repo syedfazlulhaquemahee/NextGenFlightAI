@@ -1,0 +1,69 @@
+{# ── Skairova AI Chatbot Bubble — include in any booking journey page ── #}
+<link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260513-v1') }}" />
+
+<div id="aiChatBubbleWrap" class="ai-chat-bubble-wrap" aria-label="AI flight assistant">
+  <div class="ai-chat-panel" role="dialog" aria-label="Skairova AI flight assistant" aria-modal="false">
+    <header class="ai-chat-header">
+      <div class="ai-chat-header-avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+      </div>
+      <div class="ai-chat-header-info">
+        <div class="ai-chat-header-name">Skairova AI</div>
+        <div class="ai-chat-header-status">
+          <span class="ai-chat-status-dot" aria-hidden="true"></span>
+          Flight expert · Online
+        </div>
+      </div>
+      <button class="ai-chat-header-close" type="button" aria-label="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+
+    <div class="ai-chat-focus-bar" aria-live="polite" aria-atomic="true">
+      <span class="ai-chat-focus-label"></span>
+      <button class="ai-chat-focus-clear" type="button" aria-label="Clear flight focus">Clear</button>
+    </div>
+
+    <div class="ai-chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="ai-chat-greeting">
+        <div class="ai-chat-greeting-title">Need help with your booking?</div>
+        <div class="ai-chat-greeting-sub">Ask about baggage, check-in, seat selection, or anything else about your trip.</div>
+      </div>
+      <div class="ai-msg ai-msg--ai">
+        <div class="ai-msg-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
+        </div>
+        <div class="ai-msg-bubble">
+          I'm here throughout your booking. Got questions about this flight, baggage, or what to expect at the airport?
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-quick-replies" aria-label="Quick questions"></div>
+
+    <footer class="ai-chat-footer">
+      <div class="ai-chat-input-wrap">
+        <textarea
+          class="ai-chat-input"
+          placeholder="Ask anything about your trip…"
+          rows="1"
+          maxlength="400"
+          aria-label="Type your question (max 400 characters)"
+        ></textarea>
+        <span class="ai-chat-char-count" aria-live="polite" aria-atomic="true">0/400</span>
+      </div>
+      <button class="ai-chat-send" type="button" aria-label="Send message" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+      </button>
+    </footer>
+    <div class="ai-chat-footer-note">Questions only — I can't run searches or make bookings</div>
+  </div>
+
+  <button class="ai-chat-trigger" type="button" aria-label="Open AI flight assistant" aria-expanded="false">
+    <svg class="ai-chat-trigger-icon-chat" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l4.93-1.37A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zM7.5 14a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+    <svg class="ai-chat-trigger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    <span class="ai-chat-badge" style="display:none;" aria-label="1 new message">1</span>
+  </button>
+</div>
+
+<script src="{{ url_for('static', filename='ai-assistant.js', v='20260526-next-level') }}"></script>

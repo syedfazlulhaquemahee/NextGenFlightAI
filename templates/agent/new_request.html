@@ -1,0 +1,41 @@
+{% extends "agent/layout.html" %}
+{% block title %}Request New User{% endblock %}
+{% block heading %}Request to add a user{% endblock %}
+{% block subheading %}Submit a request for a new agent to be added to your agency. A platform admin will review it.{% endblock %}
+
+{% block content %}
+<section class="panel" style="max-width:560px">
+  <form method="post" action="{{ url_for('agent.new_user_request') }}" class="agent-admin-form" autocomplete="off">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="agent-admin-grid">
+      <label>
+        <span>First name</span>
+        <input type="text" name="first_name" maxlength="80" required autofocus>
+      </label>
+      <label>
+        <span>Last name</span>
+        <input type="text" name="last_name" maxlength="80" required>
+      </label>
+    </div>
+    <label>
+      <span>Email address</span>
+      <input type="email" name="email" maxlength="160" required>
+    </label>
+    <label>
+      <span>Requested role</span>
+      <select name="role">
+        <option value="agent_user">Agent user</option>
+        <option value="agency_admin">Agency admin</option>
+      </select>
+    </label>
+    <label>
+      <span>Notes for admin (optional)</span>
+      <textarea name="notes" rows="3" maxlength="500" placeholder="e.g. New hire joining the team on June 1st"></textarea>
+    </label>
+    <div class="agent-admin-actions">
+      <a href="{{ url_for('agent.dashboard') }}" class="button button-ghost">Cancel</a>
+      <button type="submit" class="button button-primary">Submit request →</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

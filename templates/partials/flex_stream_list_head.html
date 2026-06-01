@@ -1,0 +1,17 @@
+{# Live flex stream: minimal loader (no date chips / verbose lede) #}
+{% if flex_streaming %}
+<div class="gf-date-chips" id="resultsFlexDateChips" aria-label="Date checks completed" hidden></div>
+<p id="resultsFlexStreamLede" hidden></p>
+
+{% if flex_ai_deferred | default(false) %}
+  {% set loader_primary = "Parsing your trip with AI…" %}
+  {% set loader_secondary = "" %}
+{% elif query.get('origin') and query.get('destination') %}
+  {% set loader_primary = "Live scan · " ~ query.get('origin') ~ " → " ~ query.get('destination') ~ ((" · " ~ query.get('flex_month')) if query.get('flex_month') else "") %}
+  {% set loader_secondary = "" %}
+{% else %}
+  {% set loader_primary = "Searching live inventory…" %}
+  {% set loader_secondary = "" %}
+{% endif %}
+{% include "partials/results_unified_loader.html" %}
+{% endif %}

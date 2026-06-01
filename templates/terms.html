@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Terms &amp; Conditions • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='terms.css', v='20260425-v2') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="terms-page">
+
+  <!-- Reading progress bar -->
+  <div class="terms-progress" id="termsProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Reading progress"></div>
+
+  {% include "partials/platform_header.html" %}
+
+  <main class="terms-main">
+
+    <!-- ── Hero band ───────────────────────────────────────────── -->
+    <div class="terms-hero-band">
+      <div class="terms-hero-inner">
+        <span class="terms-eyebrow">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 1.5 L10.5 6 L15.5 6.75 L11.75 10.4 L12.6 15.4 L8 12.75 L3.4 15.4 L4.25 10.4 L0.5 6.75 L5.5 6 Z" fill="currentColor"/>
+          </svg>
+          Legal
+        </span>
+        <h1 class="terms-title">Terms &amp;<br>Conditions</h1>
+        <p class="terms-lede">These terms govern your use of Skairova — including AI-powered search, price comparison, booking orchestration, account management, and manage-booking tools. Please read them carefully before using our service.</p>
+        <div class="terms-meta-row">
+          <div class="terms-meta-pill">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 1v3M11 1v3M2 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Effective April&nbsp;22,&nbsp;2026</span>
+          </div>
+          <div class="terms-meta-pill">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v4l2.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>~4&nbsp;min read</span>
+          </div>
+          <div class="terms-meta-pill">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>16&nbsp;sections</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Body: sidebar + document ───────────────────────────── -->
+    <div class="terms-body-wrap">
+
+      <!-- Sidebar TOC -->
+      <aside class="terms-toc-aside" aria-label="Table of contents">
+        <div class="terms-toc-inner">
+          <p class="terms-toc-heading">On this page</p>
+          <nav>
+            <ol class="terms-toc-list">
+              <li><a class="terms-toc-link" href="#s1"  data-toc="s1">Acceptance of Terms</a></li>
+              <li><a class="terms-toc-link" href="#s2"  data-toc="s2">Service Description</a></li>
+              <li><a class="terms-toc-link" href="#s3"  data-toc="s3">Eligibility &amp; Responsibilities</a></li>
+              <li><a class="terms-toc-link" href="#s4"  data-toc="s4">Search &amp; Pricing Data</a></li>
+              <li><a class="terms-toc-link" href="#s5"  data-toc="s5">AI Search Usage</a></li>
+              <li><a class="terms-toc-link" href="#s6"  data-toc="s6">Booking, Changes &amp; Cancellations</a></li>
+              <li><a class="terms-toc-link" href="#s7"  data-toc="s7">Account Security</a></li>
+              <li><a class="terms-toc-link" href="#s8"  data-toc="s8">Saved Searches &amp; Portal Data</a></li>
+              <li><a class="terms-toc-link" href="#s9"  data-toc="s9">Acceptable Use</a></li>
+              <li><a class="terms-toc-link" href="#s10" data-toc="s10">Third-Party Providers</a></li>
+              <li><a class="terms-toc-link" href="#s11" data-toc="s11">Privacy &amp; Data Handling</a></li>
+              <li><a class="terms-toc-link" href="#s12" data-toc="s12">Disclaimers</a></li>
+              <li><a class="terms-toc-link" href="#s13" data-toc="s13">Limitation of Liability</a></li>
+              <li><a class="terms-toc-link" href="#s14" data-toc="s14">Modification &amp; Suspension</a></li>
+              <li><a class="terms-toc-link" href="#s15" data-toc="s15">Changes to These Terms</a></li>
+              <li><a class="terms-toc-link" href="#s16" data-toc="s16">Contact</a></li>
+            </ol>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Document -->
+      <article class="terms-doc">
+
+        <section class="terms-section" id="s1">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">01</span>
+            <h2>Acceptance of Terms</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>By using Skairova, you agree to these Terms and Conditions and our related policies. If you do not agree, do not use the service.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s2">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">02</span>
+            <h2>Service Description</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>Skairova provides flight search, AI-assisted query parsing, price comparison, and booking management workflows powered by third-party travel providers and APIs.</p>
+            <p>We do not guarantee availability, fare continuity, or uninterrupted operation of third-party systems.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s3">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">03</span>
+            <h2>Account Eligibility and Responsibilities</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>You must provide accurate profile data when creating an account, including first name, last name, date of birth, and a valid email address.</p>
+            <p>You are responsible for safeguarding your login credentials and any account activity performed under your session.</p>
+            <p>You must immediately stop using the service if you suspect unauthorized access to your account.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s4">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">04</span>
+            <h2>Search and Pricing Data</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>Displayed prices are time-sensitive and can change between search, selection, and checkout.</p>
+            <p>Taxes, ancillaries, penalties, and fare-rule restrictions may vary by airline, route, inventory source, and time of ticketing.</p>
+            <p>AI and manual search outputs are informational aids and are not final offers until confirmed by the booking provider at checkout.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s5">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">05</span>
+            <h2>AI Search Usage</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>AI parsing may infer dates, airports, or filters from natural language. You are responsible for verifying all interpreted details before booking.</p>
+            <p>Do not submit sensitive personal data in AI free-text fields beyond what is needed for travel search intent.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s6">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">06</span>
+            <h2>Booking, Changes, and Cancellations</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>All booking actions, including changes and cancellations, are subject to airline and supplier fare rules.</p>
+            <p>Any cancellation amount, change penalty, or residual value shown in manage booking is based on live provider responses and may expire quickly.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s7">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">07</span>
+            <h2>Account Security and Password Recovery</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>Password resets require a verification step and may include one-time codes and secure reset tokens with expiration windows.</p>
+            <p>We may invalidate reset links and sessions at any time when suspicious activity is detected.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s8">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">08</span>
+            <h2>Saved Searches and Portal Data</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>When signed in, manual and AI searches may be saved to your user portal to support faster trip replay and planning continuity.</p>
+            <p>You can clear saved-search history from the portal interface. Clearing history only affects account-level saved searches in this service.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s9">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">09</span>
+            <h2>Acceptable Use</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>You may not use Skairova to abuse supplier systems, perform scraping beyond normal usage, circumvent rate limits, or attempt unauthorized access to data or infrastructure.</p>
+            <p>You may not use this service to submit fraudulent passenger, payment, or identity details.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s10">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">10</span>
+            <h2>Third-Party Providers</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>Inventory, booking, ancillaries, and fulfillment may rely on third-party systems. Their terms and conditions also apply to your travel transaction.</p>
+            <p>In the event of a conflict between pricing snapshots and supplier confirmation responses, supplier confirmation governs.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s11">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">11</span>
+            <h2>Privacy and Data Handling</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>We process account data and booking identifiers required to provide search, account, and manage-booking functions.</p>
+            <p>Do not use shared devices without logging out. Session data may persist briefly for operational reliability and fraud prevention.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s12">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">12</span>
+            <h2>Disclaimers</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>Skairova is provided on an "as available" basis. To the maximum extent permitted by law, we disclaim implied warranties including merchantability, fitness for a particular purpose, and non-infringement.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s13">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">13</span>
+            <h2>Limitation of Liability</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>To the maximum extent permitted by law, Skairova is not liable for indirect, incidental, special, consequential, or punitive damages, including lost bookings, missed connections, or fare changes caused by supplier actions.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s14">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">14</span>
+            <h2>Modification and Suspension</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>We may update features, pricing logic, or access controls without prior notice. We may suspend accounts or access when risk, abuse, or legal compliance concerns arise.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s15">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">15</span>
+            <h2>Changes to These Terms</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>We may revise these terms periodically. Continued use after an updated effective date constitutes acceptance of the revised terms.</p>
+          </div>
+        </section>
+
+        <section class="terms-section" id="s16">
+          <header class="terms-section-hd">
+            <span class="terms-num" aria-hidden="true">16</span>
+            <h2>Contact</h2>
+          </header>
+          <div class="terms-section-body">
+            <p>For support related to account access, booking lookup, or terms questions, use the support workflow available through the application and manage-booking portal.</p>
+          </div>
+        </section>
+
+        <!-- Doc footer -->
+        <footer class="terms-doc-footer">
+          <div class="terms-doc-footer-stamp">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5a6.5 6.5 0 1 0 0 13A6.5 6.5 0 0 0 8 1.5zM7.25 5a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0zm.75 2.25a.75.75 0 0 1 .75.75V11a.75.75 0 0 1-1.5 0V8a.75.75 0 0 1 .75-.75z" fill="currentColor"/></svg>
+            Last reviewed April&nbsp;22,&nbsp;2026 · Skairova
+          </div>
+          <a href="{{ url_for('index') }}" class="terms-back-btn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 3.5 6 8l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Back to Search
+          </a>
+        </footer>
+
+      </article>
+    </div>
+  </main>
+
+  {% include "partials/theme_scripts.html" %}
+
+  <script>
+    (function(){
+      /* Reading progress */
+      var bar = document.getElementById('termsProgress');
+      function updateProgress(){
+        var scrolled = window.scrollY;
+        var total = document.documentElement.scrollHeight - window.innerHeight;
+        var pct = total > 0 ? scrolled / total : 0;
+        bar.style.transform = 'scaleX(' + pct + ')';
+        bar.setAttribute('aria-valuenow', Math.round(pct * 100));
+      }
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+
+      /* TOC active-link via IntersectionObserver */
+      var sections = document.querySelectorAll('.terms-section[id]');
+      var tocLinks = document.querySelectorAll('[data-toc]');
+      function setActive(id){
+        tocLinks.forEach(function(l){
+          l.classList.toggle('is-active', l.getAttribute('data-toc') === id);
+        });
+      }
+      if ('IntersectionObserver' in window && sections.length){
+        var io = new IntersectionObserver(function(entries){
+          entries.forEach(function(e){
+            if (e.isIntersecting) setActive(e.target.id);
+          });
+        }, { rootMargin: '-15% 0px -78% 0px' });
+        sections.forEach(function(s){ io.observe(s); });
+      }
+
+      /* Smooth scroll for TOC links */
+      tocLinks.forEach(function(link){
+        link.addEventListener('click', function(e){
+          var target = document.getElementById(this.getAttribute('data-toc'));
+          if (target){
+            e.preventDefault();
+            var top = target.getBoundingClientRect().top + window.scrollY - 88;
+            window.scrollTo({ top: top, behavior: 'smooth' });
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

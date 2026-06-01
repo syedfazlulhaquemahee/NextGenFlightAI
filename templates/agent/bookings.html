@@ -1,0 +1,157 @@
+{% extends "agent/layout.html" %}
+{% block title %}Bookings{% endblock %}
+{% block heading %}Bookings{% endblock %}
+{% block subheading %}
+  {% if selected_agency %}{{ selected_agency.name }} — {% endif %}
+  {% if selected_user %}{{ selected_user.email }} — {% endif %}
+  All bookings with full margin breakdown.
+{% endblock %}
+{% block content %}
+
+{# ── Filter bar ───────────────────────────────────────────────────────────── #}
+{% if agencies or agency_users %}
+<section class="filter-section">
+  <form method="get" action="{{ url_for('agent.bookings_list') }}" class="filter-form" id="bookingFilterForm">
+    {% if agencies %}
+    <label class="filter-field">
+      <span>Agency</span>
+      <select name="agency_id" id="agencySelect">
+        <option value="">All agencies</option>
+        {% for a in agencies %}
+        <option value="{{ a.id }}" {% if filter_agency_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    {% if agency_users %}
+    <label class="filter-field">
+      <span>Agent</span>
+      <select name="user_id">
+        <option value="">All agents</option>
+        {% for u in agency_users %}
+        <option value="{{ u.id }}" {% if filter_user_id == u.id %}selected{% endif %}>
+          {{ (u.first_name ~ ' ' ~ u.last_name).strip() or u.email }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button type="submit" class="button button-secondary">Apply</button>
+    <a href="{{ url_for('agent.bookings_list') }}" class="button button-ghost">Clear</a>
+  </form>
+</section>
+{% endif %}
+
+{# ── Active filter pills ───────────────────────────────────────────────────── #}
+{% if selected_agency or selected_user %}
+<div class="active-filters">
+  {% if selected_agency %}
+  <span class="filter-pill">
+    Agency: {{ selected_agency.name }}
+    <a href="{{ url_for('agent.bookings_list', user_id=filter_user_id or '') }}" class="pill-remove">×</a>
+  </span>
+  {% endif %}
+  {% if selected_user %}
+  <span class="filter-pill">
+    Agent: {{ selected_user.email }}
+    <a href="{{ url_for('agent.bookings_list', agency_id=filter_agency_id or '') }}" class="pill-remove">×</a>
+  </span>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Financial summary ─────────────────────────────────────────────────────── #}
+<section class="stats-grid" aria-label="Booking financials">
+  <article class="stat-card">
+    <span class="stat-label">Bookings</span>
+    <strong class="stat-value">{{ finance.booking_count or 0 }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Gross revenue</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.gross_revenue_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Total markup</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.total_markup_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">Platform profit</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.total_platform_share_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Agency earned</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.total_agency_share_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card {% if (finance.balance_owed_usd or 0) > 0 %}stat-card-warn{% endif %}">
+    <span class="stat-label">Balance owed</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.balance_owed_usd or 0) }}</strong>
+  </article>
+</section>
+
+{# ── Bookings table ────────────────────────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Booking ledger</h2>
+      <p>{{ bookings | length }} booking{{ 's' if bookings | length != 1 }} — every cent tracked.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Route</th>
+          <th>Date</th>
+          {% if not filter_agency_id %}<th>Agency</th>{% endif %}
+          <th>Agent</th>
+          <th>Pax</th>
+          <th>Airline</th>
+          <th>Base fare</th>
+          <th>Markup</th>
+          <th>Platform share</th>
+          <th>Agency share</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td class="td-mono">{{ b.booking_reference or b.duffel_order_id[:8] }}</td>
+          <td><strong>{{ b.origin }}→{{ b.destination }}</strong></td>
+          <td class="td-mono">{{ b.depart_date or b.created_at[:10] }}</td>
+          {% if not filter_agency_id %}
+          <td>{{ b.agency_name or '—' }}</td>
+          {% endif %}
+          <td>{{ b.agent_name or b.agent_email or '—' }}</td>
+          <td class="td-num">{{ b.passenger_count }}</td>
+          <td>{{ b.airline_name or '—' }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.base_fare_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.markup_amount_usd) }}</td>
+          <td class="td-num td-good">${{ '%.2f' | format(b.platform_share_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.agency_share_usd) }}</td>
+          <td><span class="event-badge event-{{ b.status }}">{{ b.status }}</span></td>
+          <td>
+            <a href="{{ url_for('agent.booking_detail', booking_id=b.id) }}"
+               class="button button-ghost btn-sm">Detail</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="13" class="empty-cell">No bookings recorded yet. Bookings made through the platform will appear here.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+var agencySelect = document.getElementById('agencySelect');
+if (agencySelect) {
+  agencySelect.addEventListener('change', function() {
+    document.getElementById('bookingFilterForm').submit();
+  });
+}
+</script>
+
+{% endblock %}

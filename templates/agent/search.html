@@ -1,0 +1,1226 @@
+{% extends "agent/layout.html" %}
+{% block title %}Search & Book{% endblock %}
+{% block heading %}Search & Book{% endblock %}
+{% block subheading %}Live fare search, comparison, and direct booking for agency customers.{% endblock %}
+{% block page_class %}agent-page-search{% if searched and flights %} agent-page-search-results{% endif %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='agent-booking.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
+{% endblock %}
+
+{% block sidebar_footer %}
+{% set display_name = (agent_user.first_name ~ ' ' ~ agent_user.last_name).strip() if (agent_user.first_name or agent_user.last_name) else agent_user.email %}
+{% set initials = (agent_user.first_name[:1] ~ agent_user.last_name[:1]) if (agent_user.first_name and agent_user.last_name) else agent_user.email[:2] %}
+<div class="booking-sidebar-stack">
+  <section class="booking-sidebar-card balance-card" aria-label="Agency balance">
+    <span>{{ workspace.scope_label }} Balance</span>
+    <strong>${{ '%.2f'|format(workspace.finance.balance_owed_usd or 0) }}</strong>
+    <div class="balance-line">
+      <small>Gross revenue</small>
+      <small>${{ '%.2f'|format(workspace.finance.gross_revenue_usd or 0) }}</small>
+    </div>
+    <em>{{ workspace.finance.booking_count or 0 }} bookings</em>
+  </section>
+  <section class="booking-sidebar-card support-card" aria-label="Support">
+    <span>Support</span>
+    {% if workspace.support.configured %}
+      {% if workspace.support.phone %}<strong>{{ workspace.support.phone }}</strong>{% endif %}
+      {% if workspace.support.email %}<a href="mailto:{{ workspace.support.email }}">{{ workspace.support.email }}</a>{% endif %}
+      <small><i></i> Configured</small>
+    {% else %}
+      <strong>Not configured</strong>
+      <small>Set NGF_SUPPORT_PHONE or NGF_SUPPORT_EMAIL</small>
+    {% endif %}
+  </section>
+  <section class="booking-sidebar-profile" aria-label="Signed in user">
+    <div>{{ initials.upper() }}</div>
+    <span>
+      <strong>{{ display_name }}</strong>
+      <small>{{ agent_effective_role.replace('_', ' ').title() }}</small>
+    </span>
+  </section>
+</div>
+{% endblock %}
+
+{% block content %}
+{% set display_name = (agent_user.first_name ~ ' ' ~ agent_user.last_name).strip() if (agent_user.first_name or agent_user.last_name) else agent_user.email %}
+{% set initials = (agent_user.first_name[:1] ~ agent_user.last_name[:1]) if (agent_user.first_name and agent_user.last_name) else agent_user.email[:2] %}
+<div class="booking-workspace">
+  <span class="sr-only">Book Flights</span>
+
+  <header class="booking-commandbar">
+    <button class="command-square" type="button" id="commandSidebarBtn" aria-label="Toggle menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M4 5h10M4 9h10M4 13h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div class="command-menu-wrapper command-search-wrapper">
+      <div class="command-search" role="search">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+          <circle cx="7.2" cy="7.2" r="4.9" stroke="currentColor" stroke-width="1.4"/>
+          <path d="m11 11 3.1 3.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <input type="search" id="workspaceSearch" placeholder="Search bookings, customers, PNRs..." autocomplete="off" aria-controls="workspaceSearchMenu" aria-expanded="false">
+      </div>
+      <div class="command-menu command-search-menu" id="workspaceSearchMenu" hidden data-command-menu>
+        {% if workspace.recent_bookings %}
+        <div class="command-menu-section">Recent PNRs</div>
+        {% for booking in workspace.recent_bookings %}
+        <a class="command-menu-item" href="{{ url_for('agent.booking_detail', booking_id=booking.id) }}" data-search-text="{{ booking_reference_label(booking) }} {{ booking.origin }} {{ booking.destination }} {{ booking.airline_name }} {{ booking.status }}">
+          <strong>{{ booking_reference_label(booking) }}</strong>
+          <span>{{ booking.origin or '—' }} → {{ booking.destination or '—' }} · {{ (booking.status or 'unknown')|replace('_', ' ')|title }}</span>
+        </a>
+        {% endfor %}
+        {% endif %}
+        {% if workspace.saved_travelers %}
+        <div class="command-menu-section">Customers</div>
+        {% for traveler in workspace.saved_travelers %}
+        <button type="button" class="command-menu-item" data-command-action="select-customer" data-customer-name="{{ traveler.name }}" data-search-text="{{ traveler.name }} {{ traveler.last_route }}">
+          <strong>{{ traveler.name }}</strong>
+          <span>{{ traveler.last_route or 'No route recorded' }} · {{ traveler.trip_count }} trip{% if traveler.trip_count != 1 %}s{% endif %}</span>
+        </button>
+        {% endfor %}
+        {% endif %}
+        {% if not workspace.recent_bookings and not workspace.saved_travelers %}
+        <div class="command-menu-empty">No real bookings or customers yet. They will appear here after agent bookings are created.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="command-menu-wrapper">
+      <button class="command-select ai-command" type="button" id="aiCommandBtn" aria-expanded="false" aria-controls="aiCommandMenu">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+          <path d="M8.5 1.8 9.7 5l3.4 1.2-3.4 1.2-1.2 3.4-1.2-3.4L3.9 6.2 7.3 5l1.2-3.2Z" fill="currentColor"/>
+          <path d="m4.3 10.4.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6Z" fill="currentColor" opacity=".55"/>
+        </svg>
+        AI Command
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+          <path d="m3.2 5 3.3 3.2L9.8 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="command-menu" id="aiCommandMenu" hidden data-command-menu data-menu-placeholder="Search AI actions...">
+        <button type="button" class="command-menu-item" data-command-action="focus-route" data-search-text="route origin destination from to">
+          <strong>Start with route</strong>
+          <span>Jump to origin and destination fields.</span>
+        </button>
+        <button type="button" class="command-menu-item" data-command-action="show-advanced" data-search-text="advanced filters cabin passengers nonstop">
+          <strong>Open advanced options</strong>
+          <span>Cabin, passengers, airline, and nonstop filters.</span>
+        </button>
+        <button type="button" class="command-menu-item" data-command-action="show-recent" data-search-text="recent searches popular routes">
+          <strong>Review recent searches</strong>
+          <span>Scroll to saved real search history.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="command-menu-wrapper">
+      <button class="command-select command-link" type="button" id="customerLookupBtn" aria-expanded="false" aria-controls="customerLookupMenu">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="5.3" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M3.5 13c.5-2.2 2.2-3.6 4.5-3.6s4 1.4 4.5 3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Customer lookup
+      </button>
+      <div class="command-menu" id="customerLookupMenu" hidden data-command-menu data-menu-placeholder="Search saved travelers...">
+        {% for traveler in workspace.saved_travelers %}
+        <button type="button" class="command-menu-item" data-command-action="select-customer" data-customer-name="{{ traveler.name }}" data-search-text="{{ traveler.name }} {{ traveler.last_route }}">
+          <strong>{{ traveler.name }}</strong>
+          <span>{{ traveler.last_route or 'No route recorded' }} · {{ traveler.trip_count }} trip{% if traveler.trip_count != 1 %}s{% endif %}</span>
+        </button>
+        {% else %}
+        <div class="command-menu-empty">No traveler history yet. Customers will appear after real bookings are created.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="command-menu-wrapper">
+      <button class="command-select command-link" type="button" id="recentPnrBtn" aria-expanded="false" aria-controls="recentPnrMenu">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="2.2" y="3" width="11.6" height="10.4" rx="1.4" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M5 1.8v2.4M11 1.8v2.4M2.2 6.3h11.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Recent PNR
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+          <path d="m3.2 5 3.3 3.2L9.8 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="command-menu command-menu-right" id="recentPnrMenu" hidden data-command-menu data-menu-placeholder="Search recent PNRs...">
+        {% for booking in workspace.recent_bookings %}
+        <a class="command-menu-item" href="{{ url_for('agent.booking_detail', booking_id=booking.id) }}" data-search-text="{{ booking_reference_label(booking) }} {{ booking.origin }} {{ booking.destination }} {{ booking.airline_name }} {{ booking.status }}">
+          <strong>{{ booking_reference_label(booking) }}</strong>
+          <span>{{ booking.origin or '—' }} → {{ booking.destination or '—' }} · {{ (booking.status or 'unknown')|replace('_', ' ')|title }}</span>
+        </a>
+        {% else %}
+        <div class="command-menu-empty">No real PNRs yet. Completed agent bookings will appear here.</div>
+        {% endfor %}
+        <a class="command-menu-footer" href="{{ url_for('agent.bookings_list') }}">View all bookings</a>
+      </div>
+    </div>
+
+    <div class="command-spacer"></div>
+
+    <div class="notif-wrapper booking-notif" id="notifWrapper">
+      <button type="button" class="command-square notif-bell" id="notifBell" aria-label="Notifications" aria-expanded="false" aria-haspopup="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M9 2.5A3.5 3.5 0 0 0 5.5 6v1.5c0 .55-.22 1.08-.6 1.47L3.8 10.2c-.44.47-.13 1.3.52 1.3h9.36c.65 0 .96-.83.52-1.3L13.1 9a2.08 2.08 0 0 1-.6-1.47V6A3.5 3.5 0 0 0 9 2.5Z" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M7.3 13.5a1.7 1.7 0 0 0 3.4 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <span class="notif-badge" id="notifBadge" hidden>0</span>
+      </button>
+      <div class="notif-dropdown" id="notifDropdown" hidden role="dialog" aria-label="Notifications">
+        <div class="notif-dropdown-header">
+          <strong>Notifications</strong>
+          <button type="button" class="notif-mark-read" id="notifMarkRead">Mark all read</button>
+        </div>
+        <ul class="notif-list" id="notifList">
+          <li class="notif-empty">No notifications</li>
+        </ul>
+      </div>
+    </div>
+
+    <a class="command-square" href="{{ url_for('agent.dashboard') }}" aria-label="Help and dashboard">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <circle cx="9" cy="9" r="6.6" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M7.2 7.2A1.9 1.9 0 0 1 9 5.9c1.1 0 1.9.7 1.9 1.7 0 1.4-1.4 1.5-1.7 2.6M9 12.7h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </a>
+  </header>
+
+  <div class="booking-grid">
+    <main class="booking-primary">
+      <section class="booking-panel booking-search-panel">
+        <div class="booking-panel-head">
+          <div>
+            <h1>Book flights</h1>
+            <p>Search, compare and book the best flights for your customers.</p>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('agent.search') }}" id="agentSearchForm" class="booking-form" autocomplete="off">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <input type="hidden" name="trip_type" id="agentTripType" value="{{ query.trip_type }}">
+          <input type="hidden" name="sort" id="agentSortInput" value="{{ query.sort }}">
+
+          <section class="booking-step trip-step" aria-labelledby="tripCoreTitle">
+            <div class="step-heading">
+              <span class="step-number">1</span>
+              <strong id="tripCoreTitle">Trip core</strong>
+            </div>
+
+            <div class="trip-core-grid">
+              <label class="trip-field airport-field">
+                <span>From</span>
+                <div class="field-control airport-control">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <path d="M2.6 12.4 14.9 7c.72-.31 1.29.58.83 1.14l-2.64 3.17 1.35 3.16-1.53.58-2.26-2.18-3.36 1.48-.77 2.25-1.48.53.11-2.64-2.44-1.56Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                    <path d="M10.2 5.1 12.9 2.9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                  <input type="text" name="origin" class="airport-input" value="{{ query.origin }}" placeholder="JFK" autocomplete="off" spellcheck="false" required>
+                  <small class="airport-hint">New York, USA</small>
+                </div>
+              </label>
+
+              <button type="button" class="swap-route-btn" id="swapBtn" aria-label="Swap origin and destination">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <path d="M5.2 6.3h7.4M10.4 4.1l2.2 2.2-2.2 2.2M12.8 11.7H5.4M7.6 9.5l-2.2 2.2 2.2 2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+
+              <label class="trip-field airport-field">
+                <span>To</span>
+                <div class="field-control airport-control">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <path d="M9 9.8a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z" stroke="currentColor" stroke-width="1.35"/>
+                    <path d="M14 7.2c0 3.8-5 8-5 8s-5-4.2-5-8a5 5 0 0 1 10 0Z" stroke="currentColor" stroke-width="1.35"/>
+                  </svg>
+                  <input type="text" name="destination" class="airport-input" value="{{ query.destination }}" placeholder="DXB" autocomplete="off" spellcheck="false" required>
+                  <small class="airport-hint">Dubai, UAE</small>
+                </div>
+              </label>
+
+              <label class="trip-field date-field">
+                <span>Depart</span>
+                <div class="field-control">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <rect x="3" y="4" width="12" height="11" rx="1.6" stroke="currentColor" stroke-width="1.35"/>
+                    <path d="M6 2.8v2.6M12 2.8v2.6M3 7.3h12" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/>
+                  </svg>
+                  <input type="text" id="agentDepartDisplay" placeholder="Select date" readonly required>
+                  <input type="hidden" id="agentDepartInput" name="depart_date" value="{{ query.depart_date or '' }}">
+                </div>
+              </label>
+
+              <label class="trip-field date-field" id="agentReturnLabel">
+                <span>Return</span>
+                <div class="field-control">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                    <rect x="3" y="4" width="12" height="11" rx="1.6" stroke="currentColor" stroke-width="1.35"/>
+                    <path d="M6 2.8v2.6M12 2.8v2.6M3 7.3h12" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/>
+                  </svg>
+                  <input type="text" id="agentReturnDisplay" placeholder="Select date" readonly>
+                  <input type="hidden" id="agentReturnInput" name="return_date" value="{{ query.return_date or '' }}">
+                </div>
+              </label>
+
+              <label class="oneway-check">
+                <input type="checkbox" id="onewayToggle" {% if query.trip_type == 'oneway' %}checked{% endif %}>
+                <span>One way</span>
+              </label>
+            </div>
+          </section>
+
+          <details class="booking-step collapsed-step" id="advancedOptions">
+            <summary>
+              <span class="step-heading">
+                <span class="step-number">2</span>
+                <strong>Advanced options</strong>
+              </span>
+              <small>Cabin, passengers, airlines, filters...</small>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </summary>
+            <div class="advanced-grid">
+              <label class="compact-field">
+                <span>Cabin</span>
+                <select name="cabin">
+                  {% for value, label in cabin_options %}
+                  <option value="{{ value }}" {% if query.cabin == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="compact-field">
+                <span>Passengers</span>
+                <select name="passengers">
+                  {% for n in range(1, 10) %}
+                  <option value="{{ n }}" {% if query.passengers == n %}selected{% endif %}>{{ n }} passenger{% if n != 1 %}s{% endif %}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="compact-field">
+                <span>Default sort</span>
+                <select id="advancedSortSelect">
+                  {% for value, label in sort_options %}
+                  <option value="{{ value }}" {% if query.sort == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                  <option value="earliest">Earliest departure</option>
+                </select>
+              </label>
+              <label class="compact-field">
+                <span>Trip type</span>
+                <select id="advancedTripSelect">
+                  {% for value, label in trip_options %}
+                  <option value="{{ value }}" {% if query.trip_type == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="compact-field">
+                <span>Airline preference</span>
+                <input type="text" name="preferred_airline" placeholder="Any airline">
+              </label>
+              <label class="inline-filter">
+                <input type="checkbox" name="nonstop" id="nonstopCheck" {% if query.nonstop %}checked{% endif %}>
+                <span>Nonstop only</span>
+              </label>
+            </div>
+          </details>
+
+          <details class="booking-step controls-step" open>
+            <summary>
+              <span class="step-heading">
+                <span class="step-number">3</span>
+                <strong>Agency controls</strong>
+              </span>
+              <small>Markup, commission, notes, payment...</small>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </summary>
+            <div class="agency-control-grid">
+              <div class="metric-readout">
+                <span>Markup rule</span>
+                {% if workspace.markup_preview.markup_type == 'pct' %}
+                <strong>{{ '%.1f'|format(workspace.markup_preview.markup_value or 0) }}%</strong>
+                {% else %}
+                <strong>${{ '%.2f'|format(workspace.markup_preview.markup_amount or 0) }}</strong>
+                {% endif %}
+              </div>
+              <div class="metric-readout">
+                <span>Agency split</span>
+                <strong>{{ '%.1f'|format(workspace.markup_preview.agency_split_pct or 0) }}%</strong>
+              </div>
+              <div class="metric-readout">
+                <span>Owner</span>
+                <strong>{{ display_name }}</strong>
+              </div>
+              <div class="metric-readout">
+                <span>Payment</span>
+                <strong>Selected at checkout</strong>
+              </div>
+            </div>
+          </details>
+
+          {% if error %}
+          <div class="search-error" role="alert">{{ error }}</div>
+          {% endif %}
+
+          <div class="booking-actions">
+            <button type="submit" class="primary-search-btn" id="searchBtn">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M3 12.8 17 6.5c.9-.4 1.5.7.8 1.4l-3.6 3.7 1 3.8-1.6.6-2.2-3-3.8 1.7-1.2 2.5-1.6.4.5-3.2L2.5 12.8H3Z" fill="currentColor"/>
+              </svg>
+              Search flights
+            </button>
+            <button type="submit" class="secondary-action-btn" id="saveSearchBtn" name="save_search" value="1">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M5 3.2h8v11.6L9 12.3l-4 2.5V3.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+              Save search
+            </button>
+            <button type="button" class="secondary-action-btn" id="clearSearchBtn">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M4.2 5.7a5.8 5.8 0 1 1 .7 7.5M4.2 5.7V2.9M4.2 5.7h2.9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Clear
+            </button>
+          </div>
+        </form>
+
+        <section class="quick-list-block" aria-labelledby="recentSearchesTitle">
+          <div class="block-title-row">
+            <h2 id="recentSearchesTitle">Recent searches</h2>
+            <span class="text-link">{{ workspace.recent_searches|length }} recorded</span>
+          </div>
+          {% if workspace.recent_searches %}
+          <div class="quick-card-grid">
+            {% for search in workspace.recent_searches %}
+            <button type="button" class="quick-route-card" data-origin="{{ search.origin }}" data-destination="{{ search.destination }}" data-depart="{{ search.depart_date }}" data-return="{{ search.return_date }}">
+              <strong>{{ search.origin or 'Origin' }} <span>{% if search.trip_type == 'oneway' %}→{% else %}⇄{% endif %}</span> {{ search.destination or 'Destination' }}</strong>
+              <small>{{ search.depart_date or 'No depart date' }}{% if search.return_date %} - {{ search.return_date }}{% endif %}</small>
+              <em>{{ search.passenger_count }} Pax, {{ (search.cabin or 'Cabin')|replace('_', ' ')|title }} · {{ search.result_count }} results</em>
+            </button>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-data-card">No agent searches have been recorded yet. Run a search and it will appear here.</div>
+          {% endif %}
+        </section>
+
+        <section class="quick-list-block popular-routes" aria-labelledby="popularRoutesTitle">
+          <div class="block-title-row">
+            <h2 id="popularRoutesTitle">Popular routes</h2>
+            <span class="text-link">{{ workspace.popular_routes|length }} routes</span>
+          </div>
+          {% if workspace.popular_routes %}
+          <div class="popular-card-grid">
+            {% for route in workspace.popular_routes %}
+            <button type="button" class="popular-route-card" data-origin="{{ route.origin }}" data-destination="{{ route.destination }}">
+              <strong>{{ route.origin }} <span>→</span> {{ route.destination }}</strong>
+              <small>{{ route.search_count }} search{% if route.search_count != 1 %}es{% endif %}</small>
+              <em>{{ (route.cabin or 'Cabin')|replace('_', ' ')|title }}</em>
+            </button>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-data-card">Popular routes will build from real agent searches over time.</div>
+          {% endif %}
+        </section>
+      </section>
+
+      {% if searched and flights %}
+      <section class="booking-panel results-panel" id="agentResultsSection" aria-labelledby="agentResultsTitle">
+        <div class="results-head">
+          <div>
+            <h2 id="agentResultsTitle">Available fares</h2>
+            <p>{{ flights|length }} live result{% if flights|length != 1 %}s{% endif %} for {{ query.origin }} to {{ query.destination }}.</p>
+          </div>
+          <div class="results-controls">
+            <label>
+              Sort
+              <select id="resultsSortSelect">
+                <option value="recommended" {% if query.sort == 'recommended' %}selected{% endif %}>Recommended</option>
+                <option value="cheapest" {% if query.sort == 'cheapest' %}selected{% endif %}>Cheapest</option>
+                <option value="fastest" {% if query.sort == 'fastest' %}selected{% endif %}>Fastest</option>
+                <option value="earliest">Earliest</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="fare-list" id="agentResultsList">
+          {% for f in flights %}
+          {% set first_seg = f.segments_ui[0] if f.segments_ui else {} %}
+          {% set return_seg = f.segments_ui[1] if f.segments_ui|length > 1 else None %}
+          {% set price_value = f.price or 0 %}
+          {% set total_dur = f.total_duration_min if f.total_duration_min is defined else 0 %}
+          {% set margin_value = f.agent_agency_share or 0 %}
+          {% set checkout_url = url_for('agent.checkout_offer', offer_id=f.offer_id) if f.offer_id else '' %}
+          {% set layover_codes = [] %}
+          {% for segment in f.segments_ui %}
+            {% for layover in segment.layovers %}
+              {% if layover.code %}
+                {% set _ = layover_codes.append(layover.code) %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          <article class="fare-card {% if loop.first %}selected{% endif %}"
+                   data-price="{{ '%.2f'|format(price_value) }}"
+                   data-duration-min="{{ total_dur }}"
+                   data-depart-time="{{ first_seg.depart_time if first_seg.depart_time is defined else '' }}">
+            <div class="fare-summary">
+              <div class="fare-airline">
+                <span class="airline-logo-wrap">
+                  {% if f.airline_logo_url or first_seg.airline_logo_url %}
+                  <img src="{{ f.airline_logo_url or first_seg.airline_logo_url }}" alt="" loading="lazy" decoding="async">
+                  {% else %}
+                  <em>{{ (f.airline_summary or 'A')[:1] }}</em>
+                  {% endif %}
+                </span>
+                <span>
+                  <strong>{{ f.airline_summary }}</strong>
+                  <small>{{ first_seg.airline if first_seg.airline is defined else f.airline_summary }}</small>
+                </span>
+              </div>
+              <div class="fare-journey">
+                <span class="fare-meta-label">Outbound</span>
+                <strong>{{ first_seg.depart_time if first_seg.depart_time is defined else '—' }} to {{ first_seg.arrive_time if first_seg.arrive_time is defined else '—' }}</strong>
+                <small>{{ first_seg.origin if first_seg.origin is defined else query.origin }} to {{ first_seg.destination if first_seg.destination is defined else query.destination }}</small>
+              </div>
+              <div class="fare-journey">
+                <span class="fare-meta-label">{{ 'Return' if return_seg else 'Trip type' }}</span>
+                {% if return_seg %}
+                <strong>{{ return_seg.depart_time or '—' }} to {{ return_seg.arrive_time or '—' }}</strong>
+                <small>{{ return_seg.origin or query.destination }} to {{ return_seg.destination or query.origin }}</small>
+                {% else %}
+                <strong>One way</strong>
+                <small>{{ first_seg.depart_day if first_seg.depart_day is defined else 'Single flight' }}</small>
+                {% endif %}
+              </div>
+              <div class="fare-meta">
+                <span class="fare-meta-label">Trip info</span>
+                <strong>{{ f.duration if f.duration is defined and f.duration else (first_seg.duration if first_seg.duration is defined else '—') }}</strong>
+                <small>{{ first_seg.stops_label if first_seg.stops_label is defined else '—' }}{% if layover_codes %} · Via {{ layover_codes|join(', ') }}{% endif %}</small>
+                {% if f.segments_ui %}
+                {% set layover_ns = namespace(has_any=false) %}
+                {% for segment in f.segments_ui %}
+                  {% if segment.layovers %}
+                    {% set layover_ns.has_any = true %}
+                  {% endif %}
+                {% endfor %}
+                {% if layover_ns.has_any %}
+                <div class="layover-popover">
+                  <strong>Layover details</strong>
+                  {% for segment in f.segments_ui %}
+                    {% for layover in segment.layovers %}
+                    <span>{{ layover.code or 'Stop' }}{% if layover.name %} · {{ layover.name }}{% endif %}{% if layover.duration_label %} · {{ layover.duration_label }}{% endif %}</span>
+                    {% endfor %}
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% endif %}
+              </div>
+              <div class="fare-price">
+                <span class="fare-meta-label">Fare total</span>
+                <strong>${{ '%.0f'|format(price_value) }}</strong>
+                {% if f.metric_is_cheapest %}
+                <small>Best</small>
+                {% elif f.metric_is_fastest %}
+                <small>Fastest</small>
+                {% elif f.smart_badge %}
+                <small>{{ f.smart_badge }}</small>
+                {% endif %}
+              </div>
+              <div class="fare-actions">
+                {% if checkout_url %}
+                <a href="{{ checkout_url }}" class="fare-select">Select</a>
+                {% else %}
+                <span class="fare-select disabled">Select</span>
+                {% endif %}
+                <button type="button" class="fare-expand" aria-expanded="false" aria-label="Show fare details">
+                  <span>Details</span>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="fare-detail-panel" hidden>
+              <h3>Flight details</h3>
+              <div class="fare-detail-meta">
+                <span>Agency share <strong>${{ '%.2f'|format(margin_value) }}</strong></span>
+                <span>{{ '%.1f'|format(f.agent_split_pct or 0) }}% split</span>
+              </div>
+              <div class="segment-grid">
+                {% for segment in f.segments_ui %}
+                <section class="segment-card">
+                  <header>
+                    <strong>{{ segment.label or 'Segment' }}</strong>
+                    <span>{{ segment.airline or f.airline_summary }}</span>
+                  </header>
+                  <div class="segment-columns">
+                    <div>
+                      <span>Departure</span>
+                      <strong>{{ segment.origin or query.origin }} · {{ segment.depart_time or '—' }}</strong>
+                      <small>{{ segment.depart_day or '' }}</small>
+                    </div>
+                    <div>
+                      <span>Arrival</span>
+                      <strong>{{ segment.destination or query.destination }} · {{ segment.arrive_time or '—' }}</strong>
+                      <small>{{ segment.arrive_day or '' }}</small>
+                    </div>
+                    <div>
+                      <span>Duration</span>
+                      <strong>{{ segment.duration or '—' }}</strong>
+                      <small>{{ segment.stops_label or '—' }}</small>
+                    </div>
+                    <div>
+                      <span>Routing</span>
+                      <strong>{{ segment.route_chip or 'Direct service' }}</strong>
+                      <small>{{ segment.narrative or '' }}</small>
+                    </div>
+                  </div>
+                  {% if segment.layovers %}
+                  <div class="segment-layovers">
+                    <span>Layover details</span>
+                    {% for layover in segment.layovers %}
+                    <article>
+                      <strong>{{ layover.code or 'Stop' }}{% if layover.name %} · {{ layover.name }}{% endif %}</strong>
+                      <small>{{ layover.duration_label or 'Details unavailable' }}{% if layover.quality_label %} · {{ layover.quality_label }}{% endif %}{% if layover.overnight %} · Overnight{% endif %}</small>
+                    </article>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </section>
+                {% endfor %}
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% elif searched and not error %}
+      <section class="booking-panel empty-results">
+        <strong>No fares returned</strong>
+        <p>Try flexible dates, remove nonstop, or search a nearby airport.</p>
+      </section>
+      {% endif %}
+    </main>
+
+    <aside class="booking-right-rail" aria-label="Workspace summary">
+      <section class="rail-card summary-card">
+        <div class="rail-card-head">
+          <h2>Your summary</h2>
+          <a href="{{ url_for('agent.bookings_list') }}">View all</a>
+        </div>
+        <dl class="summary-list">
+          <div><dt>Pending ticketing</dt><dd>{{ workspace.status_counts.pending }}</dd></div>
+          <div><dt>On hold</dt><dd>{{ workspace.status_counts.on_hold }}</dd></div>
+          <div><dt>Refunds / Exchanges</dt><dd>{{ workspace.status_counts.refund_requested + workspace.status_counts.refunded }}</dd></div>
+          <div><dt>Unpaid invoices</dt><dd>{{ workspace.status_counts.unpaid }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="rail-card balance-rail-card">
+        <h2>{{ workspace.scope_label }} balance</h2>
+        <strong>${{ '%.2f'|format(workspace.finance.balance_owed_usd or 0) }}</strong>
+        <span>{{ workspace.finance.booking_count or 0 }} real booking{% if (workspace.finance.booking_count or 0) != 1 %}s{% endif %}</span>
+      </section>
+
+      <section class="rail-card recent-bookings-card">
+        <div class="rail-card-head">
+          <h2>Recent bookings</h2>
+          <a href="{{ url_for('agent.bookings_list') }}">View all</a>
+        </div>
+        <ul class="rail-bookings">
+          {% for booking in workspace.recent_bookings %}
+          {% set status = (booking.status or '')|lower %}
+          <li>
+            <strong>{{ booking_reference_label(booking) }}</strong>
+            <span>{{ booking.origin or '—' }} → {{ booking.destination or '—' }}</span>
+            <em class="{% if status in ('pending', 'on_hold', 'hold') %}warn{% elif status in ('cancelled', 'refunded', 'refund_requested') %}info{% endif %}">{{ (booking.status or 'unknown')|replace('_', ' ')|title }}</em>
+          </li>
+          {% else %}
+          <li class="rail-empty">No bookings yet</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="rail-card travelers-card">
+        <div class="rail-card-head">
+          <h2>Saved travelers</h2>
+          <a href="{{ url_for('agent.users_list') }}">View all</a>
+        </div>
+        <ul class="traveler-list">
+          {% for traveler in workspace.saved_travelers %}
+          <li><span>{{ traveler.initials }}</span><strong>{{ traveler.name }}</strong><small>{{ traveler.last_route or 'No route recorded' }}</small><em>{{ traveler.trip_count }} trip{% if traveler.trip_count != 1 %}s{% endif %}</em></li>
+          {% else %}
+          <li class="traveler-empty">No traveler history yet</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="booking-statusbar">
+    <div><span class="status-dot"></span><strong>Duffel</strong><small>{{ workspace.duffel_status }}{% if workspace.duffel_env %} · {{ workspace.duffel_env }}{% endif %}</small></div>
+    <div><strong>Last login</strong><small>{{ workspace.last_login_label }}</small></div>
+    <div><strong>Idle expiry</strong><small>{{ workspace.idle_timeout_minutes }} min</small></div>
+    <div><strong>Office ID</strong><small>{{ workspace.office_id }}</small></div>
+    <div class="status-actions"><span>{{ workspace.recent_searches|length }} recent search{% if workspace.recent_searches|length != 1 %}es{% endif %}</span></div>
+  </footer>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+<script>
+(function () {
+  "use strict";
+
+  const form = document.getElementById("agentSearchForm");
+  const originInput = form ? form.querySelector('[name="origin"]') : null;
+  const destinationInput = form ? form.querySelector('[name="destination"]') : null;
+  const originHint = originInput ? originInput.closest(".airport-field").querySelector(".airport-hint") : null;
+  const destinationHint = destinationInput ? destinationInput.closest(".airport-field").querySelector(".airport-hint") : null;
+  const departInput = document.getElementById("agentDepartInput");
+  const departDisplay = document.getElementById("agentDepartDisplay");
+  const returnInput = document.getElementById("agentReturnInput");
+  const returnDisplay = document.getElementById("agentReturnDisplay");
+  const returnLabel = document.getElementById("agentReturnLabel");
+  const tripInput = document.getElementById("agentTripType");
+  const tripSelect = document.getElementById("advancedTripSelect");
+  const sortInput = document.getElementById("agentSortInput");
+  const sortSelect = document.getElementById("advancedSortSelect");
+  const onewayToggle = document.getElementById("onewayToggle");
+  const searchBtn = document.getElementById("searchBtn");
+  const swapBtn = document.getElementById("swapBtn");
+  const clearBtn = document.getElementById("clearSearchBtn");
+  const resultsSection = document.getElementById("agentResultsSection");
+  const commandSidebarBtn = document.getElementById("commandSidebarBtn");
+  const aiCommandBtn = document.getElementById("aiCommandBtn");
+  const aiCommandMenu = document.getElementById("aiCommandMenu");
+  const customerLookupBtn = document.getElementById("customerLookupBtn");
+  const customerLookupMenu = document.getElementById("customerLookupMenu");
+  const recentPnrBtn = document.getElementById("recentPnrBtn");
+  const recentPnrMenu = document.getElementById("recentPnrMenu");
+  const workspaceSearch = document.getElementById("workspaceSearch");
+  const workspaceSearchMenu = document.getElementById("workspaceSearchMenu");
+  const defaultWorkspacePlaceholder = workspaceSearch ? workspaceSearch.placeholder : "";
+  const scrollResultsKey = "agent-scroll-results";
+  const isoDateFormat = "Y-m-d";
+  const prettyDateFormat = "M j, Y";
+  let departPicker = null;
+  let returnPicker = null;
+
+  function parseIsoDate(value) {
+    if (!value || typeof window.flatpickr !== "function") return null;
+    return window.flatpickr.parseDate(value, isoDateFormat);
+  }
+
+  function syncDateDisplay(hiddenInput, displayInput, picker) {
+    if (!hiddenInput || !displayInput || !picker) return;
+    const isoValue = (hiddenInput.value || "").trim();
+    const parsed = parseIsoDate(isoValue);
+    displayInput.value = parsed ? picker.formatDate(parsed, prettyDateFormat) : "";
+  }
+
+  function updateReturnMinDate() {
+    if (!returnPicker) return;
+    returnPicker.set("minDate", (departInput && departInput.value) ? departInput.value : "today");
+    if (returnInput && departInput && returnInput.value && returnInput.value < departInput.value) {
+      returnInput.value = "";
+      returnPicker.clear();
+      if (returnDisplay) returnDisplay.value = "";
+    }
+  }
+
+  function summarizeAirportLabel(code, label) {
+    const fallback = (label || "").replace((code || "") + " — ", "").trim();
+    if (!fallback) return "";
+    const parenMatches = Array.from(fallback.matchAll(/\(([^()]+)\)/g));
+    if (parenMatches.length) {
+      const lastMatch = parenMatches[parenMatches.length - 1];
+      return String(lastMatch[1] || "").trim() || fallback;
+    }
+    const parts = fallback.split(",").map(function (part) { return part.trim(); }).filter(Boolean);
+    if (parts.length >= 2) {
+      return parts.slice(-2).join(", ");
+    }
+    return fallback;
+  }
+
+  function applyAirportSelection(input, hint, code, label) {
+    if (input) input.value = code || "";
+    if (hint) hint.textContent = summarizeAirportLabel(code, label);
+  }
+
+  function syncTripMode() {
+    const isOneway = Boolean(onewayToggle && onewayToggle.checked);
+    if (!isOneway && tripSelect && tripSelect.value === "oneway") tripSelect.value = "roundtrip";
+    const mode = isOneway ? "oneway" : (tripSelect ? tripSelect.value : "roundtrip");
+    if (tripInput) tripInput.value = mode;
+    if (tripSelect) tripSelect.value = mode;
+    if (returnInput) {
+      returnInput.disabled = isOneway;
+      if (isOneway) returnInput.value = "";
+    }
+    if (returnDisplay) {
+      returnDisplay.disabled = isOneway;
+      if (isOneway) returnDisplay.value = "";
+    }
+    if (returnLabel) returnLabel.classList.toggle("is-disabled", isOneway);
+    updateReturnMinDate();
+  }
+
+  if (onewayToggle) {
+    onewayToggle.addEventListener("change", syncTripMode);
+  }
+  if (tripSelect) {
+    tripSelect.addEventListener("change", function () {
+      if (onewayToggle) onewayToggle.checked = tripSelect.value === "oneway";
+      if (tripInput) tripInput.value = tripSelect.value;
+      syncTripMode();
+    });
+  }
+  if (sortSelect && sortInput) {
+    sortSelect.addEventListener("change", function () {
+      sortInput.value = sortSelect.value;
+    });
+  }
+
+  if (typeof window.flatpickr === "function" && departInput && departDisplay && returnInput && returnDisplay) {
+    departPicker = window.flatpickr(departDisplay, {
+      dateFormat: prettyDateFormat,
+      defaultDate: parseIsoDate(departInput.value) || undefined,
+      minDate: "today",
+      disableMobile: true,
+      allowInput: false,
+      clickOpens: true,
+      monthSelectorType: "static",
+      onReady: function (_selectedDates, _dateStr, instance) {
+        syncDateDisplay(departInput, departDisplay, instance);
+      },
+      onChange: function (selectedDates, _dateStr, instance) {
+        departInput.value = selectedDates[0] ? instance.formatDate(selectedDates[0], isoDateFormat) : "";
+        syncDateDisplay(departInput, departDisplay, instance);
+        updateReturnMinDate();
+      }
+    });
+
+    returnPicker = window.flatpickr(returnDisplay, {
+      dateFormat: prettyDateFormat,
+      defaultDate: parseIsoDate(returnInput.value) || undefined,
+      minDate: departInput.value || "today",
+      disableMobile: true,
+      allowInput: false,
+      clickOpens: true,
+      monthSelectorType: "static",
+      onReady: function (_selectedDates, _dateStr, instance) {
+        syncDateDisplay(returnInput, returnDisplay, instance);
+      },
+      onChange: function (selectedDates, _dateStr, instance) {
+        returnInput.value = selectedDates[0] ? instance.formatDate(selectedDates[0], isoDateFormat) : "";
+        syncDateDisplay(returnInput, returnDisplay, instance);
+      }
+    });
+  }
+
+  syncTripMode();
+
+  if (swapBtn && originInput && destinationInput) {
+    swapBtn.addEventListener("click", function () {
+      const origin = originInput.value;
+      const originHintText = originHint ? originHint.textContent : "";
+      originInput.value = destinationInput.value;
+      destinationInput.value = origin;
+      if (originHint && destinationHint) {
+        originHint.textContent = destinationHint.textContent;
+        destinationHint.textContent = originHintText;
+      }
+      originInput.focus();
+    });
+  }
+
+  if (form && searchBtn) {
+    form.addEventListener("submit", function () {
+      try {
+        window.sessionStorage.setItem(scrollResultsKey, "1");
+      } catch (error) {}
+      searchBtn.disabled = true;
+      searchBtn.innerHTML = "Searching...";
+    });
+  }
+
+  if (clearBtn && form) {
+    clearBtn.addEventListener("click", function () {
+      form.reset();
+      if (departInput) departInput.value = "";
+      if (returnInput) returnInput.value = "";
+      if (departPicker) departPicker.clear();
+      else if (departDisplay) departDisplay.value = "";
+      if (returnPicker) returnPicker.clear();
+      else if (returnDisplay) returnDisplay.value = "";
+      if (tripInput) tripInput.value = "roundtrip";
+      if (sortInput) sortInput.value = "recommended";
+      syncTripMode();
+      if (originInput) originInput.focus();
+    });
+  }
+
+  if (commandSidebarBtn) {
+    commandSidebarBtn.addEventListener("click", function () {
+      const mobileToggle = document.getElementById("sidebarToggle");
+      const sidebar = document.getElementById("agentSidebar");
+      if (window.matchMedia("(max-width: 860px)").matches && mobileToggle) {
+        mobileToggle.click();
+      } else if (sidebar) {
+        sidebar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+  }
+
+  const commandPairs = [
+    { button: aiCommandBtn, menu: aiCommandMenu },
+    { button: customerLookupBtn, menu: customerLookupMenu },
+    { button: recentPnrBtn, menu: recentPnrMenu }
+  ].filter(function (pair) {
+    return pair.button && pair.menu;
+  });
+  let activeCommandMenu = null;
+
+  function commandMenuItems(menu) {
+    return Array.from(menu.querySelectorAll(".command-menu-item"));
+  }
+
+  function filterCommandMenu() {
+    if (!activeCommandMenu || !workspaceSearch) return;
+    const query = workspaceSearch.value.trim().toLowerCase();
+    let visible = 0;
+    commandMenuItems(activeCommandMenu).forEach(function (item) {
+      const haystack = String(item.dataset.searchText || item.textContent || "").toLowerCase();
+      const match = !query || haystack.includes(query);
+      item.hidden = !match;
+      if (match) visible += 1;
+    });
+    activeCommandMenu.classList.toggle("has-no-matches", visible === 0);
+  }
+
+  function closeCommandMenus() {
+    commandPairs.forEach(function (pair) {
+      pair.menu.hidden = true;
+      pair.button.setAttribute("aria-expanded", "false");
+    });
+    if (workspaceSearchMenu) workspaceSearchMenu.hidden = true;
+    activeCommandMenu = null;
+    if (workspaceSearch) {
+      workspaceSearch.value = "";
+      workspaceSearch.placeholder = defaultWorkspacePlaceholder;
+      workspaceSearch.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function openWorkspaceSearchMenu() {
+    if (!workspaceSearch || !workspaceSearchMenu || activeCommandMenu) return;
+    workspaceSearchMenu.hidden = false;
+    workspaceSearch.setAttribute("aria-expanded", "true");
+    activeCommandMenu = workspaceSearchMenu;
+    filterCommandMenu();
+  }
+
+  function openCommandMenu(button, menu) {
+    const wasOpen = !menu.hidden;
+    closeCommandMenus();
+    if (wasOpen) return;
+    menu.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    activeCommandMenu = menu;
+    if (workspaceSearch) {
+      workspaceSearch.value = "";
+      workspaceSearch.placeholder = menu.dataset.menuPlaceholder || defaultWorkspacePlaceholder;
+      workspaceSearch.setAttribute("aria-expanded", "true");
+      workspaceSearch.focus();
+    }
+    filterCommandMenu();
+  }
+
+  commandPairs.forEach(function (pair) {
+    pair.button.addEventListener("click", function (event) {
+      event.stopPropagation();
+      openCommandMenu(pair.button, pair.menu);
+    });
+    pair.menu.addEventListener("click", function (event) {
+      event.stopPropagation();
+    });
+  });
+
+  if (workspaceSearch) {
+    workspaceSearch.addEventListener("focus", openWorkspaceSearchMenu);
+    workspaceSearch.addEventListener("click", function (event) {
+      event.stopPropagation();
+      openWorkspaceSearchMenu();
+    });
+    workspaceSearch.addEventListener("input", filterCommandMenu);
+    workspaceSearch.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeCommandMenus();
+      if (event.key === "Enter" && activeCommandMenu) {
+        const firstVisible = commandMenuItems(activeCommandMenu).find(function (item) { return !item.hidden; });
+        if (firstVisible) {
+          event.preventDefault();
+          firstVisible.click();
+        }
+      }
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest(".command-menu-wrapper") && !event.target.closest(".command-search")) {
+      closeCommandMenus();
+    }
+  });
+
+  document.querySelectorAll("[data-command-action]").forEach(function (item) {
+    item.addEventListener("click", function () {
+      const action = item.dataset.commandAction || "";
+      if (action === "focus-route" && originInput) {
+        originInput.focus();
+      } else if (action === "show-advanced") {
+        const advanced = document.getElementById("advancedOptions");
+        if (advanced) {
+          advanced.open = true;
+          advanced.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } else if (action === "show-recent") {
+        const recent = document.getElementById("recentSearchesTitle");
+        if (recent) recent.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (action === "select-customer" && workspaceSearch) {
+        closeCommandMenus();
+        workspaceSearch.value = item.dataset.customerName || "";
+        workspaceSearch.placeholder = "Customer selected";
+        workspaceSearch.focus();
+        return;
+      }
+      if (action !== "") closeCommandMenus();
+    });
+  });
+
+  function fillRoute(button) {
+    if (!button) return;
+    if (originInput && button.dataset.origin) originInput.value = button.dataset.origin;
+    if (destinationInput && button.dataset.destination) destinationInput.value = button.dataset.destination;
+    if (departInput && button.dataset.depart) {
+      departInput.value = button.dataset.depart;
+      if (departPicker) departPicker.setDate(button.dataset.depart, true, isoDateFormat);
+      else if (departDisplay) departDisplay.value = button.dataset.depart;
+    }
+    if (returnInput) {
+      const nextReturn = button.dataset.return || "";
+      returnInput.value = nextReturn;
+      if (returnPicker) {
+        if (nextReturn) returnPicker.setDate(nextReturn, true, isoDateFormat);
+        else returnPicker.clear();
+      } else if (returnDisplay) {
+        returnDisplay.value = nextReturn;
+      }
+    }
+    if (onewayToggle) onewayToggle.checked = false;
+    syncTripMode();
+    if (originInput) originInput.focus();
+  }
+
+  document.querySelectorAll(".quick-route-card, .popular-route-card").forEach(function (button) {
+    button.addEventListener("click", function () { fillRoute(button); });
+  });
+
+  document.querySelectorAll(".airport-input").forEach(function (input) {
+    let popup = null;
+    let controller = null;
+    let selectedIndex = -1;
+
+    function closePopup() {
+      if (popup) popup.remove();
+      popup = null;
+      selectedIndex = -1;
+    }
+
+    function ensurePopup() {
+      if (popup) return popup;
+      popup = document.createElement("div");
+      popup.className = "airport-suggestion-panel";
+      input.closest(".airport-field").appendChild(popup);
+      return popup;
+    }
+
+    function setActive(items) {
+      items.forEach(function (item, index) {
+        item.classList.toggle("active", index === selectedIndex);
+      });
+    }
+
+    async function requestSuggestions(query) {
+      if (controller) controller.abort();
+      controller = new AbortController();
+      try {
+        const response = await fetch("/airports?q=" + encodeURIComponent(query), {
+          signal: controller.signal,
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    async function updateSuggestions() {
+      const value = input.value.trim();
+      if (value.length < 3) {
+        closePopup();
+        return;
+      }
+      const items = await requestSuggestions(value);
+      if (!items.length) {
+        closePopup();
+        return;
+      }
+      const panel = ensurePopup();
+      panel.innerHTML = "";
+      items.slice(0, 8).forEach(function (item) {
+        const option = document.createElement("button");
+        const code = String(item.code || "").toUpperCase();
+        const label = String(item.label || code);
+        option.type = "button";
+        option.className = "airport-suggestion-option";
+        option.dataset.code = code;
+        option.dataset.label = label;
+        option.innerHTML = "<strong></strong><span></span>";
+        option.querySelector("strong").textContent = code;
+        option.querySelector("span").textContent = summarizeAirportLabel(code, label);
+        panel.appendChild(option);
+      });
+      selectedIndex = -1;
+    }
+
+    input.addEventListener("input", updateSuggestions);
+    input.addEventListener("focus", updateSuggestions);
+    input.addEventListener("keydown", function (event) {
+      if (!popup) return;
+      const items = Array.from(popup.querySelectorAll(".airport-suggestion-option"));
+      if (!items.length) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        setActive(items);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+        setActive(items);
+      } else if (event.key === "Enter" && selectedIndex >= 0) {
+        event.preventDefault();
+        items[selectedIndex].click();
+      } else if (event.key === "Escape") {
+        closePopup();
+      }
+    });
+
+    input.closest(".airport-field").addEventListener("click", function (event) {
+      const option = event.target.closest(".airport-suggestion-option");
+      if (!option) return;
+      const hint = input.closest(".airport-field").querySelector(".airport-hint");
+      applyAirportSelection(input, hint, option.dataset.code || "", option.dataset.label || "");
+      closePopup();
+      input.focus();
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!input.closest(".airport-field").contains(event.target)) closePopup();
+    });
+  });
+
+  const resultList = document.getElementById("agentResultsList");
+  if (resultList) {
+    const rows = Array.from(resultList.querySelectorAll(".fare-card"));
+    const resultSort = document.getElementById("resultsSortSelect");
+
+    function setExpanded(row, open, options) {
+      const config = options || {};
+      const expand = row ? row.querySelector(".fare-expand") : null;
+      const panel = row ? row.querySelector(".fare-detail-panel") : null;
+      if (!row || !expand || !panel) return;
+      expand.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
+      row.classList.toggle("expanded", open);
+      row.classList.toggle("selected", open || config.keepSelected === true);
+      if (open && config.scroll !== false) {
+        row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    function parseTime(value) {
+      const match = String(value || "").match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return Number.MAX_SAFE_INTEGER;
+      let hour = parseInt(match[1], 10) % 12;
+      const minute = parseInt(match[2], 10);
+      if (match[3].toUpperCase() === "PM") hour += 12;
+      return hour * 60 + minute;
+    }
+
+    function sortRows(mode) {
+      const sorted = rows.slice().sort(function (a, b) {
+        const price = parseFloat(a.dataset.price || "0") - parseFloat(b.dataset.price || "0");
+        const duration = parseInt(a.dataset.durationMin || "0", 10) - parseInt(b.dataset.durationMin || "0", 10);
+        const depart = parseTime(a.dataset.departTime) - parseTime(b.dataset.departTime);
+        if (mode === "cheapest") return price || duration;
+        if (mode === "fastest") return duration || price;
+        if (mode === "earliest") return depart || price;
+        return 0;
+      });
+      if (mode === "recommended") rows.forEach(function (row) { resultList.appendChild(row); });
+      else sorted.forEach(function (row) { resultList.appendChild(row); });
+    }
+
+    rows.forEach(function (row) {
+      const expand = row.querySelector(".fare-expand");
+      const panel = row.querySelector(".fare-detail-panel");
+      if (!expand || !panel) return;
+      expand.addEventListener("click", function () {
+        const isOpen = expand.getAttribute("aria-expanded") === "true";
+        rows.forEach(function (other) {
+          setExpanded(other, false, { scroll: false, keepSelected: false });
+        });
+        if (!isOpen) {
+          setExpanded(row, true, { scroll: true, keepSelected: true });
+        }
+      });
+    });
+
+    if (resultSort) {
+      resultSort.addEventListener("change", function () {
+        sortRows(resultSort.value || "recommended");
+      });
+    }
+
+    if (rows[0]) {
+      setExpanded(rows[0], true, { scroll: false, keepSelected: true });
+    }
+  }
+
+  if (resultsSection && resultList) {
+    let shouldScroll = false;
+    try {
+      shouldScroll = window.sessionStorage.getItem(scrollResultsKey) === "1";
+      if (shouldScroll) window.sessionStorage.removeItem(scrollResultsKey);
+    } catch (error) {}
+    if (shouldScroll) {
+      window.requestAnimationFrame(function () {
+        window.setTimeout(function () {
+          resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
+      });
+    }
+  }
+})();
+</script>
+{% endblock %}

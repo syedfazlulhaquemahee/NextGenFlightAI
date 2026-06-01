@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Review Your Trip • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="results-page review-page">
+  {% set model = checkout_model or {} %}
+  {% include "partials/platform_header.html" %}
+  <main class="review-shell page-shell">
+    <header class="review-header">
+      <div>
+        <a class="review-back" href="javascript:history.back()" data-review-back="true">Back to results</a>
+        <h1>Review your trip</h1>
+      </div>
+    </header>
+
+    {% if booking_error %}
+      <div class="checkout-alert" role="alert">{{ booking_error }}</div>
+    {% endif %}
+
+    {% if offer_summary %}
+      {% set trip_slices = offer_summary.slices or [] %}
+      {% set fare_options_count = model.fare_options|length if model.fare_options else 0 %}
+      {% set selected_fare = ((model.fare_options | selectattr('is_selected') | list) | first) if model.fare_options else None %}
+      <section class="review-layout main-review-grid review-layout--new">
+        <div class="review-main section-stack">
+          {% if trip_slices %}
+            <div class="review-trip-stack" aria-label="Trip journeys">
+              {% for trip_slice in trip_slices %}
+                {% set trip_segments = trip_slice.segments or [] %}
+                {% set trip_first = trip_segments[0] if trip_segments else None %}
+                {% set trip_last = trip_segments[-1] if trip_segments else None %}
+                {% if trip_first and trip_last %}
+                  <section class="review-card review-trip-hero" aria-label="{{ trip_slice.label }} flight from {{ trip_first.origin_code }} to {{ trip_last.destination_code }}">
+                    {% set trip_stops_label = "Direct" if (trip_slice.stops_label|lower == "nonstop") else trip_slice.stops_label %}
+                    {% set trip_connections = trip_slice.connections or [] %}
+                    <div class="review-trip-topline">
+                      <p class="review-trip-title">
+                        <span class="review-trip-leg">{{ trip_slice.label }}</span>
+                        <span class="review-trip-title-main">{{ trip_first.origin_code }} to {{ trip_last.destination_code }}</span>
+                        <span class="review-trip-date">{{ trip_slice.date_short_label or trip_slice.date_label }}</span>
+                      </p>
+                    </div>
+                    <div class="review-trip-track">
+                      <div class="review-trip-brand">
+                        {% with logo_url=trip_slice.airline_logo_url or offer_summary.airline_logo_url, fallback_text=trip_slice.airline_mark_fallback or offer_summary.airline_logo %}
+                          {% include "partials/airline_brand_mark.html" %}
+                        {% endwith %}
+                      </div>
+                      <div class="review-trip-point">
+                        <strong>{{ trip_first.depart_time }}</strong>
+                        <span>{{ trip_first.origin_code }}</span>
+                      </div>
+                      <div class="review-trip-center">
+                        <span>{{ trip_slice.duration_label }}</span>
+                        <div class="review-trip-line" aria-hidden="true"></div>
+                        <small>{{ trip_stops_label }}</small>
+                      </div>
+                      <div class="review-trip-point review-trip-point--arrival">
+                        <strong>{{ trip_last.arrive_time }}</strong>
+                        <span>{{ trip_last.destination_code }}</span>
+                      </div>
+                    </div>
+                  </section>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <details class="review-card review-flight-manifest" aria-label="Complete flight details" open>
+              <summary class="review-flight-manifest-head">
+                <div>
+                  <h2>Flight details to verify</h2>
+                  <p>Please confirm your flight information</p>
+                </div>
+                <div class="review-flight-manifest-actions">
+                  <span class="review-flight-manifest-hint">Show details</span>
+                  <span class="review-stop-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 8l5 5 5-5" />
+                    </svg>
+                  </span>
+                </div>
+              </summary>
+
+              <div class="review-manifest-slices">
+                {% for trip_slice in trip_slices %}
+                  {% set trip_segments = trip_slice.segments or [] %}
+                  {% set first_segment = trip_segments[0] if trip_segments else None %}
+                  {% set last_segment = trip_segments[-1] if trip_segments else None %}
+                  {% if first_segment and last_segment %}
+                    <article class="review-manifest-slice">
+                      <div class="review-segment-detail-stack">
+                        {% for segment in trip_segments %}
+                          <section class="review-segment-detail-card">
+                            <header class="review-segment-detail-head">
+                              <div class="review-segment-route-banner">
+                                <span class="review-segment-leg-label">
+                                  <span class="review-svg-icon review-svg-icon--plane-takeoff review-leg-icon" aria-hidden="true"></span>
+                                  {{ trip_slice.label }}
+                                </span>
+                                <strong>{{ segment.origin_code }} <span aria-hidden="true">→</span> {{ segment.destination_code }}</strong>
+                              </div>
+
+                              <div class="review-segment-airline-row">
+                                <div class="review-segment-carrier">
+                                  {% with logo_url=segment.airline_logo_url, fallback_text=segment.airline_mark_fallback, modifier_class='flight-brand-mark--segment' %}
+                                    {% include "partials/airline_brand_mark.html" %}
+                                  {% endwith %}
+                                  <div>
+                                    {% set aircraft_full = segment.aircraft or "Aircraft not provided" %}
+                                    {% set aircraft_short = segment.aircraft_short or aircraft_full %}
+                                    <strong>{{ segment.carrier_name }}</strong>
+                                    <span class="review-segment-operator-line">
+                                      <small>Operated by {{ segment.operating_carrier or segment.carrier_name }}</small>
+                                      <span class="review-segment-flight-tags">
+                                        <span>
+                                          <span class="review-svg-icon review-svg-icon--plane-takeoff review-flight-tag-icon" aria-hidden="true"></span>
+                                          Flight {{ segment.flight_number or "not provided" }}
+                                        </span>
+                                        <span title="{{ aircraft_full }}">
+                                          <span class="review-svg-icon review-svg-icon--plane review-flight-tag-icon" aria-hidden="true"></span>
+                                          {{ aircraft_short }}
+                                        </span>
+                                      </span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </header>
+
+                            <div class="review-segment-route-detail">
+                              <div class="review-segment-timepoint">
+                                <span class="review-segment-timepoint-label">Departs</span>
+                                <div class="review-segment-time-row">
+                                  <strong>{{ segment.depart_time or "Time unavailable" }}</strong>
+                                  {% if segment.depart_timezone_label %}<em>{{ segment.depart_timezone_label }}</em>{% endif %}
+                                </div>
+                                <span>{{ segment.depart_date_full or segment.depart_label }}</span>
+                                <b>{{ segment.origin_code }} · {{ segment.origin_city }}</b>
+                                {% if segment.origin_airport_name %}<small>{{ segment.origin_airport_name }}</small>{% endif %}
+                              </div>
+
+                              <div class="review-segment-midline">
+                                <div class="review-segment-flight-arc" aria-hidden="true">
+                                  <span class="review-segment-flight-arc-line"></span>
+                                  <span class="review-svg-icon review-svg-icon--plane review-segment-flight-arc-plane"></span>
+                                </div>
+                                <span>{{ segment.duration_label or "Duration unavailable" }}</span>
+                                <small>Total duration</small>
+                              </div>
+
+                              <div class="review-segment-timepoint review-segment-timepoint--arrival">
+                                <span class="review-segment-timepoint-label">Arrives</span>
+                                <div class="review-segment-time-row">
+                                  <strong>{{ segment.arrive_time or "Time unavailable" }}</strong>
+                                  {% if segment.arrive_timezone_label %}<em>{{ segment.arrive_timezone_label }}</em>{% endif %}
+                                </div>
+                                <span>{{ segment.arrive_date_full or segment.arrive_label }}</span>
+                                <b>{{ segment.destination_code }} · {{ segment.destination_city }}</b>
+                                {% if segment.destination_airport_name %}<small>{{ segment.destination_airport_name }}</small>{% endif %}
+                              </div>
+                            </div>
+                          </section>
+
+                          {% set connection = trip_slice.connections[loop.index0] if trip_slice.connections and loop.index0 < (trip_slice.connections|length) else None %}
+                          {% if connection %}
+                            <div class="review-manifest-layover">
+                              <span>{{ connection.duration_label or "Layover" }}</span>
+                              <strong>{{ connection.airport_code }}{% if connection.airport_city %} · {{ connection.airport_city }}{% endif %}</strong>
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    </article>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </details>
+          {% else %}
+            <section class="review-fare-strip airline-summary-card">
+              <div class="review-fare-strip-start">
+                <div class="review-fare-logo-wrap">
+                  {% with logo_url=offer_summary.airline_logo_url, fallback_text=offer_summary.airline_logo %}
+                    {% include "partials/airline_brand_mark.html" %}
+                  {% endwith %}
+                </div>
+                <div class="review-fare-copy">
+                  <strong>{{ offer_summary.airline_name }}</strong>
+                  <span>{{ offer_summary.cabin_label or "Selected fare" }}</span>
+                </div>
+              </div>
+              <div class="review-fare-price">{{ offer_summary.currency }} {{ offer_summary.total_amount }}</div>
+            </section>
+          {% endif %}
+
+          <section
+            class="review-fare-compare-shell"
+            aria-label="Fare options"
+            id="fare-options-host"
+            data-fare-options-url="{{ url_for('checkout_fare_options', offer_id=offer_summary.offer_id) }}"
+            aria-live="polite"
+          >
+            {% if model.fare_options %}
+              {% with fare_options=model.fare_options, cabin_label=offer_summary.cabin_label %}
+                {% include "partials/fare_options_cards.html" %}
+              {% endwith %}
+            {% else %}
+              <div class="fare-options-skeleton" aria-hidden="true">
+                <div class="fare-options-skeleton-card"></div>
+                <div class="fare-options-skeleton-card"></div>
+              </div>
+            {% endif %}
+          </section>
+        </div>
+
+        <aside class="review-rail">
+          <section class="review-card review-price-card price-card review-summary-panel">
+            <h2>Summary</h2>
+            <div class="review-price-line review-price-line--meta review-summary-sold">
+              <span>Sold by</span>
+              <strong>{{ offer_summary.airline_name }}</strong>
+            </div>
+            {% if offer_summary.traveler_price_lines %}
+              <div class="review-summary-travelers">
+                {% for line in offer_summary.traveler_price_lines %}
+                  <div class="review-price-line review-summary-traveler-line">
+                    <span>{{ line.label }} · {{ line.type_label }}</span>
+                    <strong>{{ offer_summary.currency }} {{ line.amount }}</strong>
+                  </div>
+                {% endfor %}
+                {% if offer_summary.traveler_count > 1 %}
+                  <p class="review-summary-traveler-note">Trip total split evenly per traveler for this summary.</p>
+                {% endif %}
+              </div>
+            {% endif %}
+            <hr />
+            <ul class="review-summary-feature-list" role="list">
+              {% if selected_fare and selected_fare.feature_rows %}
+                {% for feature in selected_fare.feature_rows %}
+                  <li class="is-{{ feature.state or 'muted' }}">
+                    {% set feature_icon = feature.icon or feature.key or 'xmark' %}
+                    {% if feature.key in ['checked_bags', 'carry_on_bags'] and feature.state == 'negative' %}
+                      {% set feature_icon = 'bag_off' %}
+                    {% endif %}
+                    <span class="review-summary-feature-icon review-summary-feature-icon--{{ feature_icon|replace('_', '-') }}" aria-hidden="true"></span>
+                    <span>{% if feature.title %}{{ feature.title }}: {% endif %}{{ feature.value }}</span>
+                  </li>
+                {% endfor %}
+              {% else %}
+                <li><span class="review-summary-feature-icon review-summary-feature-icon--hold" aria-hidden="true"></span><span>Fare rules provided by airline</span></li>
+              {% endif %}
+            </ul>
+            <hr />
+            <div class="review-price-total review-summary-total">
+              <div>
+                <h3>total amount</h3>
+              </div>
+              <strong class="review-summary-total-amount">{{ offer_summary.currency }} {{ offer_summary.total_amount }}</strong>
+            </div>
+            <a class="review-primary-cta review-summary-cta checkout-btn" href="{{ url_for('checkout_details', offer_id=offer_summary.offer_id) }}">
+              <span>Go to checkout</span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </section>
+        </aside>
+      </section>
+      <nav class="review-mobile-checkout-bar" aria-label="Mobile checkout action" hidden>
+        <div>
+          <span>Total</span>
+          <strong>{{ offer_summary.currency }} {{ offer_summary.total_amount }}</strong>
+        </div>
+        <a href="{{ url_for('checkout_details', offer_id=offer_summary.offer_id) }}">Checkout</a>
+      </nav>
+    {% endif %}
+  </main>
+  <script src="{{ url_for('static', filename='review-trip.js', v='20260526-review-mobile-bar-visibility') }}"></script>
+  {% include "partials/theme_scripts.html" %}
+  {% if offer_summary %}
+  {% set _skair_page = {"page_type": "booking_review", "airline_name": offer_summary.airline_name or "", "route_summary": offer_summary.route_summary or "", "cabin_label": offer_summary.cabin_label or "Economy", "traveler_count": offer_summary.traveler_count or 1, "currency": offer_summary.currency or "USD", "total_amount": offer_summary.total_amount or "", "slices": offer_summary.slices or []} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  {% endif %}
+  {% include "partials/ai_chatbot.html" %}
+</body>
+</html>

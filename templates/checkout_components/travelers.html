@@ -1,0 +1,23 @@
+<section class="checkout-section checkout-surface checkout-surface--tight">
+  <div class="checkout-section-head checkout-section-head--tight">
+    <div>
+      <p class="checkout-eyebrow">Travelers</p>
+      <h2>Passenger details</h2>
+      <p class="checkout-muted checkout-muted--sm">Names must match travel documents.</p>
+    </div>
+    <div class="traveler-chip-row">
+      {% for traveler in travelers %}
+        <button class="traveler-chip {% if traveler.expanded %}is-active{% endif %}" type="button" data-traveler-jump="{{ traveler.index }}">
+          <span class="checkout-field-icon checkout-field-icon--user" aria-hidden="true"></span>
+          {{ traveler.label }}
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="traveler-accordion-stack">
+    {% for traveler in travelers %}
+      {% include "checkout_components/traveler_accordion.html" %}
+    {% endfor %}
+  </div>
+</section>

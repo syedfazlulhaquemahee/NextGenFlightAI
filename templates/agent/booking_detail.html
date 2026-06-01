@@ -1,0 +1,137 @@
+{% extends "agent/layout.html" %}
+{% block title %}Booking {{ booking.booking_reference or booking.id }}{% endblock %}
+{% block heading %}Booking {{ booking.booking_reference or '#' ~ booking.id }}{% endblock %}
+{% block subheading %}Full margin and passenger breakdown for this booking.{% endblock %}
+{% block content %}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ url_for('agent.bookings_list') }}">Bookings</a>
+  <span>/</span>
+  <span>{{ booking.booking_reference or booking.duffel_order_id[:12] }}</span>
+</nav>
+
+<div class="detail-grid">
+
+  {# ── Left: booking info ────────────────────────────────────────────────── #}
+  <section class="panel detail-panel">
+    <div class="panel-header"><div><h2>Booking info</h2></div></div>
+    <dl class="detail-list">
+      <dt>Reference</dt>
+      <dd class="td-mono">{{ booking.booking_reference or '—' }}</dd>
+
+      <dt>Duffel order ID</dt>
+      <dd class="td-mono">{{ booking.duffel_order_id }}</dd>
+
+      <dt>Status</dt>
+      <dd><span class="event-badge event-{{ booking.status }}">{{ booking.status }}</span></dd>
+
+      <dt>Route</dt>
+      <dd><strong>{{ booking.origin }} → {{ booking.destination }}</strong></dd>
+
+      <dt>Trip type</dt>
+      <dd>{{ booking.trip_type.replace('_', ' ').title() }}</dd>
+
+      <dt>Depart date</dt>
+      <dd class="td-mono">{{ booking.depart_date or '—' }}</dd>
+
+      {% if booking.return_date %}
+      <dt>Return date</dt>
+      <dd class="td-mono">{{ booking.return_date }}</dd>
+      {% endif %}
+
+      <dt>Cabin</dt>
+      <dd>{{ booking.cabin.replace('_', ' ').title() or '—' }}</dd>
+
+      <dt>Airline</dt>
+      <dd>{{ booking.airline_name or '—' }}</dd>
+
+      <dt>Passengers</dt>
+      <dd>{{ booking.passenger_count }}</dd>
+
+      {% set names = booking.passenger_names_json | tojson | tojson %}
+      {% if booking.passenger_names_json and booking.passenger_names_json != '[]' %}
+      <dt>Passenger names</dt>
+      <dd>
+        {% for name in booking.passenger_names_json | from_json %}
+        <span class="passenger-name">{{ name }}</span>
+        {% endfor %}
+      </dd>
+      {% endif %}
+
+      <dt>Booked</dt>
+      <dd class="td-mono">{{ booking.created_at | replace('T', ' ') | truncate(19, True, '') }}</dd>
+
+      <dt>Agency</dt>
+      <dd>
+        {% if booking.agency_name and 'agent.agencies.view' in agent_permissions %}
+        <a href="{{ url_for('agent.agency_detail', agency_id=booking.agency_id) }}">{{ booking.agency_name }}</a>
+        {% else %}
+        {{ booking.agency_name or '—' }}
+        {% endif %}
+      </dd>
+
+      <dt>Agent</dt>
+      <dd>{{ booking.agent_name or booking.agent_email or '—' }}</dd>
+    </dl>
+  </section>
+
+  {# ── Right: margin breakdown ───────────────────────────────────────────── #}
+  {# Agency admins cannot see platform profit #}
+  {% set is_platform_admin = 'agent.agencies.view' in agent_permissions %}
+  <section class="panel detail-panel">
+    <div class="panel-header"><div><h2>Margin breakdown</h2></div></div>
+    <div class="margin-stack">
+
+      <div class="margin-row margin-row-total">
+        <span>Customer paid</span>
+        <strong>${{ '%.2f' | format((booking.base_fare_usd or 0) + (booking.markup_amount_usd or 0)) }} {{ booking.currency }}</strong>
+      </div>
+
+      <div class="margin-row">
+        <span>Base fare (paid to airline)</span>
+        <span>${{ '%.2f' | format(booking.base_fare_usd or 0) }}</span>
+      </div>
+
+      {% if is_platform_admin %}
+      <div class="margin-row margin-row-highlight">
+        <span>Total markup</span>
+        <strong>${{ '%.2f' | format(booking.markup_amount_usd or 0) }}</strong>
+      </div>
+
+      <div class="margin-divider"></div>
+
+      <div class="margin-row margin-row-platform">
+        <span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <circle cx="6" cy="6" r="5.5" stroke="currentColor" stroke-width="1"/>
+            <path d="M6 3v1m0 4v1M4.5 5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S7.33 7 6 7s-1.5.67-1.5 1.5S5.17 10 6 10s1.5-.67 1.5-1.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+          Platform profit
+        </span>
+        <strong class="td-good">${{ '%.2f' | format(booking.platform_share_usd or 0) }}</strong>
+      </div>
+      {% endif %}
+
+      <div class="margin-row margin-row-agency">
+        <span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M1.5 10V4.5L6 1.5l4.5 3V10h-9Z" stroke="currentColor" stroke-width="1" fill="none"/>
+          </svg>
+          Agency earnings
+        </span>
+        <strong class="td-good">${{ '%.2f' | format(booking.agency_share_usd or 0) }}</strong>
+      </div>
+
+    </div>
+
+    {% if 'agent.finance.view' in agent_permissions and booking.agency_id %}
+    <div class="detail-action-row">
+      <a href="{{ url_for('agent.finance', agency_id=booking.agency_id) }}"
+         class="button button-secondary">View agency finance →</a>
+    </div>
+    {% endif %}
+  </section>
+
+</div>
+
+{% endblock %}

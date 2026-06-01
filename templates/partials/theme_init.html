@@ -1,0 +1,10 @@
+<script>
+(function(){try{
+  if(localStorage.getItem("ngf-theme")==="light"){
+    document.documentElement.setAttribute("data-theme","light");
+    var m=document.querySelector('meta[name="theme-color"]');
+    if(!m){m=document.createElement("meta");m.setAttribute("name","theme-color");document.head.appendChild(m);}
+    m.setAttribute("content","#eef2f7");
+  }
+}catch(e){}})();
+</script>

@@ -1,0 +1,128 @@
+{% extends "agent/layout.html" %}
+{% block title %}{{ section_title }}{% endblock %}
+{% block heading %}{{ section_title }}{% endblock %}
+{% block subheading %}{{ section_copy }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='agent-workspaces.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="workspace-page">
+  <header class="workspace-hero panel">
+    <div class="workspace-hero-copy">
+      <span class="workspace-eyebrow">{{ section_kicker }}</span>
+      <h2>{{ section_title }}</h2>
+      <p>{{ section_copy }}</p>
+    </div>
+    <button type="button" class="button button-primary workspace-action">{{ primary_action }}</button>
+  </header>
+
+  {% if filters %}
+  <section class="workspace-filterbar panel">
+    <div class="workspace-filter-grid">
+      {% for item in filters %}
+      <label class="workspace-filter">
+        <span>{{ item.label }}</span>
+        {% if item.type == "search" %}
+        <input type="text" placeholder="{{ item.placeholder }}" value="{{ item.value or '' }}">
+        {% else %}
+        <select>
+          {% for option in item.options %}
+          <option {% if option == item.value %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="workspace-metrics">
+    {% for metric in metrics %}
+    <article class="workspace-metric tone-{{ metric.tone }}">
+      <span class="workspace-metric-label">{{ metric.label }}</span>
+      <strong class="workspace-metric-value">{{ metric.value }}</strong>
+      <small class="workspace-metric-detail">{{ metric.detail }}</small>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="workspace-shell">
+    <div class="workspace-primary panel">
+      {% if table_columns %}
+      <div class="workspace-panel-head">
+        <div>
+          <h3>{{ table_title }}</h3>
+          <p>{{ table_copy }}</p>
+        </div>
+      </div>
+      <div class="workspace-table-wrap">
+        <table class="workspace-table">
+          <thead>
+            <tr>
+              {% for column in table_columns %}
+              <th>{{ column }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in table_rows %}
+            <tr>
+              {% for cell in row %}
+              <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if settings_groups %}
+      <div class="workspace-panel-head">
+        <div>
+          <h3>Configuration surface</h3>
+          <p>Compact control cards for agency defaults, security, and notifications.</p>
+        </div>
+      </div>
+      <div class="settings-grid">
+        {% for group in settings_groups %}
+        <article class="settings-card">
+          <h3>{{ group.title }}</h3>
+          <div class="settings-list">
+            {% for item in group["items"] %}
+            <div class="settings-row">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+            {% endfor %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <aside class="workspace-secondary">
+      <section class="panel workspace-sidecard">
+        <div class="workspace-panel-head">
+          <div>
+            <h3>{{ rail_title }}</h3>
+            <p>What deserves attention right now.</p>
+          </div>
+        </div>
+        <div class="workspace-rail-list">
+          {% for item in rail_items %}
+          <article class="workspace-rail-item">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.meta }}</span>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+</section>
+{% endblock %}

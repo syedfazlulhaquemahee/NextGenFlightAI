@@ -1,0 +1,62 @@
+{% extends "agent/layout.html" %}
+{% block title %}Agent Sign In{% endblock %}
+{% block heading %}Agent Sign In{% endblock %}
+{% block subheading %}Secure access for agency and Skairova operator accounts.{% endblock %}
+{% block content %}
+<section class="auth-hero">
+  <div class="auth-panel auth-panel-form">
+    <div class="auth-panel-head">
+      <h2>Sign in</h2>
+      <p>Use your assigned agency or operator credentials.</p>
+    </div>
+    <form method="post" class="stack-form" autocomplete="on" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ next_path }}">
+      <label>
+        <span>Email address</span>
+        <input type="email" name="email" autocomplete="username" required autofocus
+               placeholder="you@agency.com">
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" name="password" autocomplete="current-password" required
+               placeholder="••••••••">
+      </label>
+      <button type="submit" class="button button-primary button-full">Continue →</button>
+    </form>
+  </div>
+
+  <div class="auth-panel auth-panel-info">
+    <div class="auth-info-block">
+      <strong>Security defaults</strong>
+      <ul>
+        <li>Authenticator-app 2FA is mandatory on every account.</li>
+        <li>Sessions expire after {{ idle_timeout_minutes }} minutes of inactivity.</li>
+        <li>Five failed attempts trigger a temporary lock-out.</li>
+      </ul>
+    </div>
+    <div class="auth-info-block">
+      <strong>Need access?</strong>
+      <p>Contact your agency administrator or Skairova operations to request an account.</p>
+    </div>
+  </div>
+</section>
+{% if signed_out %}
+<script>
+  (function () {
+    "use strict";
+    try {
+      window.history.replaceState({ signedOut: true }, "", window.location.href);
+    } catch (error) {}
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+    window.addEventListener("popstate", function () {
+      window.history.go(1);
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

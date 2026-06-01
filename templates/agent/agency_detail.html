@@ -1,0 +1,187 @@
+{% extends "agent/layout.html" %}
+{% block title %}{{ agency.name }}{% endblock %}
+{% block heading %}{{ agency.name }}{% endblock %}
+{% block subheading %}Agency detail — users, bookings, earnings, and disbursements.{% endblock %}
+{% block content %}
+
+{# ── Breadcrumb ────────────────────────────────────────────────────────────── #}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ url_for('agent.agencies_list') }}">All agencies</a>
+  <span>/</span>
+  <span>{{ agency.name }}</span>
+</nav>
+
+{# ── Summary stats ─────────────────────────────────────────────────────────── #}
+<section class="stats-grid" aria-label="Agency summary">
+  <article class="stat-card">
+    <span class="stat-label">Users</span>
+    <strong class="stat-value">{{ users | length }}</strong>
+  </article>
+  <article class="stat-card stat-card-good">
+    <span class="stat-label">Bookings</span>
+    <strong class="stat-value">{{ bookings | length }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Gross revenue</span>
+    <strong class="stat-value">${{ '%.2f' | format(finance.gross_revenue_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Agency earned</span>
+    <strong class="stat-value">${{ '%.2f' | format(balance.earned_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Disbursed</span>
+    <strong class="stat-value">${{ '%.2f' | format(balance.disbursed_usd or 0) }}</strong>
+  </article>
+  <article class="stat-card {% if (balance.balance_usd or 0) > 0 %}stat-card-warn{% endif %}">
+    <span class="stat-label">Balance owed</span>
+    <strong class="stat-value">${{ '%.2f' | format(balance.balance_usd or 0) }}</strong>
+  </article>
+</section>
+
+{# ── Users table ───────────────────────────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Users</h2>
+      <p>{{ users | length }} account{{ 's' if users | length != 1 }} in this agency.</p>
+    </div>
+    <a href="{{ url_for('agent.users_list', agency_id=agency.id) }}" class="button button-secondary btn-sm">
+      Full user list →
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Bookings</th>
+          <th>Revenue</th>
+          <th>Last login</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ (u.first_name ~ ' ' ~ u.last_name).strip() or 'Unnamed' }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.effective_role.replace('_', ' ').title() }}</td>
+          <td>
+            {% if not u.is_active %}
+            <span class="status-pill status-disabled">Disabled</span>
+            {% elif u.locked_until %}
+            <span class="status-pill status-locked">Locked</span>
+            {% else %}
+            <span class="status-pill status-active">Active</span>
+            {% endif %}
+          </td>
+          <td class="td-num">{{ u.booking_count or 0 }}</td>
+          <td class="td-num">${{ '%.2f' | format(u.gross_revenue_usd or 0) }}</td>
+          <td class="td-mono">{{ (u.last_login_at or '—')[:10] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-cell">No users in this agency yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── Recent bookings ───────────────────────────────────────────────────────── #}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Recent bookings</h2>
+      <p>Last {{ bookings | length }} booking{{ 's' if bookings | length != 1 }} for this agency.</p>
+    </div>
+    <a href="{{ url_for('agent.bookings_list', agency_id=agency.id) }}" class="button button-secondary btn-sm">
+      All bookings →
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Route</th>
+          <th>Agent</th>
+          <th>Passengers</th>
+          <th>Fare</th>
+          <th>Markup</th>
+          <th>Agency share</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td class="td-mono">
+            <a href="{{ url_for('agent.booking_detail', booking_id=b.id) }}">
+              {{ b.booking_reference or b.duffel_order_id[:8] }}
+            </a>
+          </td>
+          <td>{{ b.origin }} → {{ b.destination }}</td>
+          <td>{{ b.agent_name or b.agent_email or '—' }}</td>
+          <td class="td-num">{{ b.passenger_count }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.base_fare_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.markup_amount_usd) }}</td>
+          <td class="td-num">${{ '%.2f' | format(b.agency_share_usd) }}</td>
+          <td>
+            <span class="event-badge event-{{ b.status }}">{{ b.status }}</span>
+          </td>
+          <td class="td-mono">{{ b.created_at[:10] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty-cell">No bookings for this agency yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── Disbursements ─────────────────────────────────────────────────────────── #}
+<section class="content-grid">
+
+  <article class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>Disbursement history</h2>
+        <p>Payments recorded from platform to this agency.</p>
+      </div>
+      <a href="{{ url_for('agent.finance', agency_id=agency.id) }}" class="button button-secondary btn-sm">
+        Finance view →
+      </a>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Note</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in disbursements %}
+          <tr>
+            <td class="td-mono">{{ d.created_at[:10] }}</td>
+            <td class="td-num">${{ '%.2f' | format(d.amount_usd) }}</td>
+            <td>{{ d.note or '—' }}</td>
+            <td>{{ d.created_by_email or 'System' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="empty-cell">No disbursements yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+</section>
+
+{% endblock %}
