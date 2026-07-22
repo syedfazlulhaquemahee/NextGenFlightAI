@@ -1,0 +1,37 @@
+{
+  "name": "nextgenflightai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syedfazlulhaquemahee/NextGenFlightAI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/syedfazlulhaquemahee/NextGenFlightAI/issues"
+  },
+  "homepage": "https://github.com/syedfazlulhaquemahee/NextGenFlightAI#readme",
+  "description": "",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.2.4",
+    "tsx": "^4.22.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  }
+}

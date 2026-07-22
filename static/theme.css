@@ -1057,6 +1057,509 @@ html[data-theme="light"] body.home-page .ai-input-ring textarea.ai-input:focus{
   }
 }
 
+/* Site-scale correction: keep the reference layout without oversized hero proportions. */
+html body.results-page.review-page .review-flight-manifest,
+html body.results-page.review-page .review-flight-manifest[open],
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+  max-width:960px !important;
+  padding:18px !important;
+  border-radius:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+  padding-bottom:16px !important;
+  gap:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+  font-size:1.18rem !important;
+  line-height:1.18 !important;
+  font-weight:800 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+  margin-top:5px !important;
+  font-size:.82rem !important;
+  line-height:1.35 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+html body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after{
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slices,
+html body.results-page.review-page .review-flight-manifest .review-manifest-slice,
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-stack,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slices,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slice,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-stack{
+  gap:12px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+  gap:16px !important;
+  padding:18px !important;
+  border-radius:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+  grid-template-columns:minmax(220px, .42fr) minmax(280px, .58fr) !important;
+  gap:24px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-group,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-group{
+  gap:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+  gap:7px !important;
+  padding:7px 9px !important;
+  border-radius:7px !important;
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon{
+  width:16px !important;
+  height:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+  grid-template-columns:auto minmax(48px, 1fr) auto !important;
+  gap:12px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+  font-size:1.75rem !important;
+  line-height:1 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point span{
+  font-size:.78rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+  grid-template-columns:1fr 34px 1fr !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+  width:34px !important;
+  height:34px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon{
+  width:16px !important;
+  height:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline{
+  grid-template-columns:56px minmax(0, 1fr) !important;
+  gap:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+  width:52px !important;
+  height:30px !important;
+  min-width:52px !important;
+  min-height:30px !important;
+  max-width:52px !important;
+  max-height:30px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy{
+  gap:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+  font-size:.96rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+  gap:6px !important;
+  font-size:.75rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span{
+  margin-left:14px !important;
+  padding-left:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon{
+  width:14px !important;
+  height:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+  grid-template-columns:minmax(150px, .95fr) minmax(88px, .62fr) minmax(150px, 1.1fr) minmax(150px, .95fr) minmax(88px, .62fr) !important;
+  gap:14px !important;
+  padding:16px !important;
+  border-radius:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+  grid-template-columns:36px minmax(0, 1fr) !important;
+  gap:10px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge{
+  width:36px !important;
+  height:36px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge .review-svg-icon{
+  width:18px !important;
+  height:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-main,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-main{
+  gap:6px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+  font-size:.7rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+  font-size:1.08rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html body.results-page.review-page .review-flight-manifest .review-verify-date,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-date{
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+  gap:5px !important;
+  padding-left:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport strong{
+  font-size:.96rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+html body.results-page.review-page .review-flight-manifest .review-verify-airport small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport small{
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration{
+  gap:6px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+  top:17px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before,
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after{
+  width:11px !important;
+  height:11px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line b{
+  width:96px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+  min-height:34px !important;
+  gap:7px !important;
+  padding:0 16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon{
+  width:17px !important;
+  height:17px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill strong{
+  font-size:.82rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration > small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration > small{
+  font-size:.7rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note{
+  grid-template-columns:32px minmax(0, 1fr) !important;
+  gap:12px !important;
+  padding:12px 14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note-icon{
+  width:28px !important;
+  height:28px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note strong,
+html body.results-page.review-page .review-flight-manifest .review-verify-note span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note span{
+  font-size:.76rem !important;
+}
+
+@media (max-width: 760px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+    gap:12px !important;
+    padding-bottom:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+    font-size:1.2rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+    max-width:300px !important;
+    margin-top:7px !important;
+    font-size:.82rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    gap:16px !important;
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+    gap:14px 12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+    padding:7px 9px !important;
+    font-size:.72rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline{
+    grid-template-columns:48px minmax(0, 1fr) !important;
+    gap:10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+    width:44px !important;
+    height:24px !important;
+    min-width:44px !important;
+    min-height:24px !important;
+    max-width:44px !important;
+    max-height:24px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+    font-size:.9rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+    font-size:.72rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+    grid-template-columns:minmax(0, 1fr) minmax(64px, .7fr) minmax(0, 1fr) !important;
+    gap:10px !important;
+    padding-top:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:1.9rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+    grid-template-columns:1fr 40px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+    width:40px !important;
+    height:40px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) 72px minmax(0, 1fr) !important;
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+    padding-bottom:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+    padding-bottom:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.18rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon{
+    width:34px !important;
+    height:34px !important;
+    padding:8px !important;
+  }
+}
+
+@media (max-width: 480px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:1.62rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) 62px minmax(0, 1fr) !important;
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.05rem !important;
+  }
+}
+
+/* Final desktop symmetry lock for the verification timeline. */
+@media (min-width: 761px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(190px, 1fr) minmax(170px, .82fr) minmax(230px, 1.12fr) minmax(170px, .82fr) minmax(190px, 1fr) !important;
+    gap:20px !important;
+    align-items:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--depart,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--depart{
+    grid-template-columns:36px minmax(0, 1fr) !important;
+    justify-items:start !important;
+    text-align:left !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--origin,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--origin{
+    justify-items:start !important;
+    text-align:left !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    justify-items:end !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+    grid-template-columns:36px minmax(0, 1fr) !important;
+    justify-items:end !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row{
+    flex-wrap:nowrap !important;
+    white-space:nowrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    white-space:nowrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--depart .review-verify-clock-row,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--depart .review-verify-clock-row{
+    justify-content:flex-start !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row{
+    justify-content:flex-end !important;
+  }
+}
+
 @media (max-width: 380px){
   html[data-theme="light"] body.home-page .ai-input-ring{
     border-radius: 26px !important;
@@ -4100,6 +4603,182 @@ html body.results-page.review-page .review-flight-manifest .review-segment-midli
   }
 }
 
+/* Verify section repair: ordered top meta and a route line that cannot disappear. */
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+  grid-template-columns:minmax(168px, .7fr) minmax(0, 1.3fr) !important;
+  align-items:start !important;
+  column-gap:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-airline-row,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-airline-row{
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier{
+  justify-items:start !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier > div,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier > div{
+  display:grid !important;
+  justify-items:start !important;
+  gap:2px !important;
+  min-width:0 !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark img,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark img{
+  object-fit:contain !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-operator-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-operator-line{
+  justify-content:flex-start !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags{
+  justify-content:flex-start !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc{
+  isolation:isolate !important;
+  min-width:86px !important;
+  height:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before{
+  content:"" !important;
+  display:block !important;
+  position:absolute !important;
+  left:7px !important;
+  right:7px !important;
+  top:50% !important;
+  height:3px !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg, var(--manifest-accent), var(--manifest-accent-2)) !important;
+  opacity:1 !important;
+  transform:translateY(-50%) !important;
+  z-index:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line{
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  background:transparent !important;
+  transform:none !important;
+  z-index:1 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  top:50% !important;
+  width:9px !important;
+  height:9px !important;
+  transform:translateY(-50%) !important;
+  z-index:2 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before{
+  left:0 !important;
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--manifest-accent) 22%, transparent) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  right:0 !important;
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--manifest-accent-2) 22%, transparent) !important;
+}
+
+@media (max-width: 860px){
+  html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-banner,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-banner{
+    padding-bottom:12px !important;
+    border-bottom:1px solid var(--manifest-line) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-carrier,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier{
+    grid-template-columns:44px minmax(0, 1fr) !important;
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-detail,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-detail{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-midline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline{
+    order:-1 !important;
+    align-items:stretch !important;
+    padding:2px 4px 4px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc{
+    width:100% !important;
+    min-width:100% !important;
+  }
+}
+
+@media (max-width: 560px){
+  html body.results-page.review-page .review-flight-manifest .review-segment-detail-card,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-card{
+    gap:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo{
+    width:42px !important;
+    height:32px !important;
+    min-width:42px !important;
+    min-height:32px !important;
+    max-width:42px !important;
+    max-height:32px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-detail,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-detail{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-timepoint,
+  html body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival{
+    width:100% !important;
+    padding:12px !important;
+  }
+}
+
 /* Final flight-manifest fit pass: visible timeline, light mode, and narrow widths. */
 html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line{
   display:block !important;
@@ -6110,4 +6789,2556 @@ html[data-theme="light"] body.results-page.review-page .review-flight-manifest .
   width:15px !important;
   height:15px !important;
   display:block !important;
+}
+
+/* Final review verification pass: compact, stable, and readable after legacy overrides. */
+html body.results-page.review-page details.review-card.review-flight-manifest,
+html body.results-page.review-page details.review-card.review-flight-manifest[open]{
+  --manifest-panel-bg:#071636 !important;
+  --manifest-panel-bg-2:#0a1837 !important;
+  --manifest-line:rgba(148, 163, 184, .18) !important;
+  --manifest-text:#f8fafc !important;
+  --manifest-muted:#a8b4ca !important;
+  --manifest-accent:#8172ff !important;
+  --manifest-accent-2:#55d890 !important;
+  width:100% !important;
+  padding:18px !important;
+  border:1px solid rgba(129, 114, 255, .14) !important;
+  border-radius:8px !important;
+  background:linear-gradient(180deg, var(--manifest-panel-bg), var(--manifest-panel-bg-2)) !important;
+  color:var(--manifest-text) !important;
+  box-shadow:0 14px 30px rgba(2, 6, 23, .24) !important;
+  overflow:hidden !important;
+}
+
+html[data-theme="light"] body.results-page.review-page details.review-card.review-flight-manifest,
+html[data-theme="light"] body.results-page.review-page details.review-card.review-flight-manifest[open]{
+  --manifest-panel-bg:#ffffff !important;
+  --manifest-panel-bg-2:#f8fafc !important;
+  --manifest-line:rgba(15, 23, 42, .12) !important;
+  --manifest-text:#0f172a !important;
+  --manifest-muted:#64748b !important;
+  --manifest-accent:#4f46e5 !important;
+  --manifest-accent-2:#059669 !important;
+  border-color:rgba(15, 23, 42, .10) !important;
+  box-shadow:0 12px 28px rgba(15, 23, 42, .08) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  gap:16px !important;
+  min-height:0 !important;
+  padding:0 0 14px !important;
+  margin:0 0 14px !important;
+  border-bottom:1px solid var(--manifest-line) !important;
+  background:transparent !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+  margin:0 !important;
+  color:var(--manifest-text) !important;
+  font-size:1.2rem !important;
+  line-height:1.2 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+  display:block !important;
+  margin:4px 0 0 !important;
+  color:var(--manifest-muted) !important;
+  font-size:.84rem !important;
+  line-height:1.35 !important;
+  font-weight:500 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions{
+  flex:0 0 auto !important;
+  height:24px !important;
+  min-height:24px !important;
+  color:var(--manifest-muted) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint::after,
+html body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after{
+  color:var(--manifest-muted) !important;
+  font-size:.72rem !important;
+  font-weight:700 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slices,
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-stack,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slices,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-stack{
+  display:grid !important;
+  gap:12px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slice + .review-manifest-slice,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slice + .review-manifest-slice{
+  padding-top:12px !important;
+  border-top:1px solid var(--manifest-line) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-card,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-card{
+  display:grid !important;
+  gap:12px !important;
+  padding:14px !important;
+  border:1px solid var(--manifest-line) !important;
+  border-radius:8px !important;
+  background:rgba(255, 255, 255, .035) !important;
+  box-shadow:none !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-card{
+  background:rgba(255, 255, 255, .82) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+  display:grid !important;
+  grid-template-columns:minmax(180px, .8fr) minmax(0, 1.2fr) !important;
+  align-items:center !important;
+  gap:14px !important;
+  min-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-route-banner,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-banner{
+  display:grid !important;
+  gap:5px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-leg-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-leg-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:7px !important;
+  min-height:0 !important;
+  padding:0 !important;
+  color:var(--manifest-accent) !important;
+  font-size:.68rem !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  text-transform:uppercase !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-leg-label .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-leg-label .review-svg-icon{
+  width:15px !important;
+  height:15px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-route-banner > strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-banner > strong{
+  color:var(--manifest-text) !important;
+  font-size:1.28rem !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier{
+  display:grid !important;
+  grid-template-columns:42px minmax(0, 1fr) !important;
+  align-items:center !important;
+  gap:10px !important;
+  min-height:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo{
+  width:40px !important;
+  height:40px !important;
+  min-width:40px !important;
+  min-height:40px !important;
+  max-width:40px !important;
+  max-height:40px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:8px !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier strong{
+  color:var(--manifest-text) !important;
+  font-size:.95rem !important;
+  line-height:1.2 !important;
+  font-weight:760 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-operator-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-operator-line{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  gap:4px 8px !important;
+  margin-top:4px !important;
+  color:var(--manifest-muted) !important;
+  font-size:.72rem !important;
+  line-height:1.3 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-operator-line small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-operator-line small{
+  color:inherit !important;
+  font-size:inherit !important;
+  font-weight:500 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags{
+  display:inline-flex !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  gap:5px 8px !important;
+  margin:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags > span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags > span{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:5px !important;
+  max-width:min(100%, 13rem) !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--manifest-muted) !important;
+  font-size:inherit !important;
+  font-weight:600 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags > span::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags > span::before{
+  content:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags .review-svg-icon{
+  width:12px !important;
+  height:12px !important;
+  color:var(--manifest-muted) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-route-detail,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-detail{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) minmax(120px, .56fr) minmax(0, 1fr) !important;
+  align-items:stretch !important;
+  gap:12px !important;
+  min-height:0 !important;
+  padding:0 !important;
+  border:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint,
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  min-height:0 !important;
+  padding:12px !important;
+  border:1px solid var(--manifest-line) !important;
+  border-radius:8px !important;
+  background:rgba(255, 255, 255, .035) !important;
+  box-shadow:none !important;
+  text-align:left !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival{
+  background:rgba(248, 250, 252, .84) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint-label{
+  display:block !important;
+  margin:0 0 7px !important;
+  color:var(--manifest-accent) !important;
+  font-size:.66rem !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  text-transform:uppercase !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-time-row,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-time-row{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:5px !important;
+  margin:0 !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-time-row strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-time-row strong{
+  margin:0 !important;
+  color:var(--manifest-text) !important;
+  font-size:1.35rem !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-time-row em,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-time-row em{
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  color:var(--manifest-muted) !important;
+  font-size:.66rem !important;
+  font-style:normal !important;
+  font-weight:700 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival .review-segment-time-row em,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint--arrival .review-segment-time-row em{
+  order:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint span:not(.review-segment-timepoint-label),
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint span:not(.review-segment-timepoint-label){
+  margin:7px 0 0 !important;
+  color:var(--manifest-muted) !important;
+  font-size:.76rem !important;
+  line-height:1.25 !important;
+  font-weight:520 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint b{
+  margin:8px 0 0 !important;
+  color:var(--manifest-text) !important;
+  font-size:.84rem !important;
+  line-height:1.22 !important;
+  font-weight:760 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-timepoint small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-timepoint small{
+  margin:4px 0 0 !important;
+  max-width:none !important;
+  color:var(--manifest-muted) !important;
+  font-size:.7rem !important;
+  line-height:1.3 !important;
+  font-weight:500 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
+  min-width:0 !important;
+  padding:0 !important;
+  text-align:center !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc{
+  position:relative !important;
+  width:100% !important;
+  max-width:none !important;
+  height:18px !important;
+  overflow:visible !important;
+  background:transparent !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc::before,
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc::after,
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before,
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::after,
+html body.results-page.review-page .review-flight-manifest .review-segment-midline div::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline div::after{
+  content:none !important;
+  display:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-plane,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-plane{
+  display:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line{
+  display:block !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  top:50% !important;
+  height:2px !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg, var(--manifest-accent), var(--manifest-accent-2)) !important;
+  opacity:1 !important;
+  transform:translateY(-50%) !important;
+  box-shadow:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  content:"" !important;
+  display:block !important;
+  position:absolute !important;
+  top:50% !important;
+  width:8px !important;
+  height:8px !important;
+  border-radius:999px !important;
+  transform:translateY(-50%) !important;
+  pointer-events:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before{
+  left:0 !important;
+  background:var(--manifest-accent) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  right:0 !important;
+  background:var(--manifest-accent-2) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline span{
+  color:var(--manifest-text) !important;
+  font-size:.78rem !important;
+  line-height:1.2 !important;
+  font-weight:760 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline small{
+  display:block !important;
+  color:var(--manifest-muted) !important;
+  font-size:.66rem !important;
+  line-height:1.2 !important;
+  font-weight:500 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-layover,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-layover{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:8px !important;
+  margin:0 !important;
+  padding:8px 10px !important;
+  border:1px solid rgba(245, 158, 11, .26) !important;
+  border-radius:8px !important;
+  background:rgba(245, 158, 11, .10) !important;
+  color:var(--manifest-muted) !important;
+  text-align:center !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-layover span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-layover span{
+  color:#d97706 !important;
+  font-size:.66rem !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  text-transform:uppercase !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-layover strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-layover strong{
+  color:var(--manifest-text) !important;
+  font-size:.76rem !important;
+  line-height:1.2 !important;
+  font-weight:760 !important;
+  letter-spacing:0 !important;
+}
+
+@media (max-width: 860px){
+  html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-detail,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-detail{
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-midline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline{
+    padding:4px 10px !important;
+  }
+}
+
+@media (max-width: 560px){
+  html body.results-page.review-page details.review-card.review-flight-manifest,
+  html body.results-page.review-page details.review-card.review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page details.review-card.review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page details.review-card.review-flight-manifest[open]{
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+    align-items:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-detail-card,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-card{
+    padding:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-banner > strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-banner > strong{
+    font-size:1.1rem !important;
+  }
+}
+
+/* Last-word verify layout fix: keep meta organized and always draw the route line. */
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+  grid-template-columns:minmax(168px, .7fr) minmax(0, 1.3fr) !important;
+  align-items:start !important;
+  gap:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-airline-row,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-airline-row{
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier{
+  display:grid !important;
+  grid-template-columns:42px minmax(0, 1fr) !important;
+  align-items:center !important;
+  justify-items:start !important;
+  gap:10px !important;
+  min-height:0 !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-carrier > div,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier > div{
+  display:grid !important;
+  justify-items:start !important;
+  gap:2px !important;
+  min-width:0 !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-operator-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-operator-line,
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-tags,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-tags{
+  justify-content:flex-start !important;
+  text-align:left !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc{
+  position:relative !important;
+  isolation:isolate !important;
+  width:100% !important;
+  min-width:86px !important;
+  height:18px !important;
+  overflow:visible !important;
+  background:transparent !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::before{
+  content:"" !important;
+  display:block !important;
+  position:absolute !important;
+  left:7px !important;
+  right:7px !important;
+  top:50% !important;
+  height:3px !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg, var(--manifest-accent), var(--manifest-accent-2)) !important;
+  opacity:1 !important;
+  transform:translateY(-50%) !important;
+  z-index:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc::after{
+  content:none !important;
+  display:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line{
+  display:block !important;
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  border:0 !important;
+  background:transparent !important;
+  transform:none !important;
+  opacity:1 !important;
+  z-index:1 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  content:"" !important;
+  display:block !important;
+  position:absolute !important;
+  top:50% !important;
+  width:9px !important;
+  height:9px !important;
+  border-radius:999px !important;
+  transform:translateY(-50%) !important;
+  pointer-events:none !important;
+  z-index:2 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::before{
+  left:0 !important;
+  background:var(--manifest-accent) !important;
+  box-shadow:0 0 0 4px rgba(129, 114, 255, .18) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-flight-arc-line::after{
+  right:0 !important;
+  background:var(--manifest-accent-2) !important;
+  box-shadow:0 0 0 4px rgba(85, 216, 144, .16) !important;
+}
+
+@media (max-width: 860px){
+  html body.results-page.review-page .review-flight-manifest .review-segment-detail-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-head{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-banner,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-banner{
+    padding-bottom:12px !important;
+    border-bottom:1px solid var(--manifest-line) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-route-detail,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-route-detail{
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-midline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline{
+    order:-1 !important;
+    align-items:stretch !important;
+    padding:2px 4px 4px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-midline .review-segment-flight-arc{
+    min-width:100% !important;
+  }
+}
+
+@media (max-width: 560px){
+  html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-carrier .flight-brand-mark--logo{
+    width:42px !important;
+    height:32px !important;
+    min-width:42px !important;
+    min-height:32px !important;
+    max-width:42px !important;
+    max-height:32px !important;
+  }
+}
+
+/* Reference verify design. Uses the app SVG assets as masks and owns the final cascade. */
+.review-svg-icon--landing{
+  --review-svg-icon:url("icons/landing-svgrepo-com.svg");
+}
+
+.review-svg-icon--clock{
+  --review-svg-icon:url("icons/clock-3.svg");
+}
+
+.review-svg-icon--info{
+  --review-svg-icon:url("icons/info.svg");
+}
+
+html body.results-page.review-page .review-flight-manifest,
+html body.results-page.review-page .review-flight-manifest[open]{
+  --verify-bg:#020d26;
+  --verify-bg-2:#061638;
+  --verify-card:#0b1b3e;
+  --verify-card-2:#111f46;
+  --verify-border:rgba(110, 133, 190, .28);
+  --verify-border-strong:rgba(140, 113, 255, .7);
+  --verify-text:#f8fafc;
+  --verify-muted:#b8c3dc;
+  --verify-soft:#8f9dbc;
+  --verify-purple:#8b6cff;
+  --verify-purple-deep:#321c90;
+  --verify-green:#33e881;
+  --verify-green-deep:#08683d;
+  --verify-line:rgba(150, 166, 205, .56);
+  width:100% !important;
+  padding:28px 32px 34px !important;
+  border:1px solid rgba(82, 111, 177, .24) !important;
+  border-radius:0 !important;
+  background:
+    radial-gradient(circle at 52% 45%, rgba(35, 72, 155, .18), transparent 44%),
+    linear-gradient(180deg, var(--verify-bg), var(--verify-bg-2)) !important;
+  color:var(--verify-text) !important;
+  box-shadow:none !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+  --verify-bg:#f8fbff;
+  --verify-bg-2:#eef4ff;
+  --verify-card:#ffffff;
+  --verify-card-2:#f5f8ff;
+  --verify-border:rgba(75, 95, 135, .22);
+  --verify-border-strong:rgba(93, 73, 220, .46);
+  --verify-text:#101827;
+  --verify-muted:#526178;
+  --verify-soft:#6c7890;
+  --verify-purple:#5e49df;
+  --verify-purple-deep:#ddd7ff;
+  --verify-green:#0a9f57;
+  --verify-green-deep:#d9f8e7;
+  --verify-line:rgba(94, 112, 148, .42);
+  background:
+    radial-gradient(circle at 52% 42%, rgba(79, 70, 229, .07), transparent 42%),
+    linear-gradient(180deg, var(--verify-bg), var(--verify-bg-2)) !important;
+  color:var(--verify-text) !important;
+  border-color:rgba(75, 95, 135, .18) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+  display:flex !important;
+  align-items:flex-start !important;
+  justify-content:space-between !important;
+  gap:24px !important;
+  padding:0 0 28px !important;
+  margin:0 !important;
+  border:0 !important;
+  background:transparent !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+  color:var(--verify-text) !important;
+  font-size:2rem !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+  display:block !important;
+  margin:10px 0 0 !important;
+  max-width:680px !important;
+  color:var(--verify-muted) !important;
+  font-size:1.08rem !important;
+  line-height:1.45 !important;
+  font-weight:500 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions{
+  margin-top:12px !important;
+  color:var(--verify-purple) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-hint{
+  display:inline-flex !important;
+  font-size:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after{
+  content:"Hide details" !important;
+  color:var(--verify-purple) !important;
+  font-size:.92rem !important;
+  font-weight:750 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after{
+  content:"Details" !important;
+  color:var(--verify-purple) !important;
+  font-size:.92rem !important;
+  font-weight:750 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-stop-chevron,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-stop-chevron{
+  color:var(--verify-purple) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slices,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slices{
+  display:grid !important;
+  gap:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slice,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slice{
+  display:grid !important;
+  gap:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-manifest-slice + .review-manifest-slice,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-manifest-slice + .review-manifest-slice{
+  padding-top:0 !important;
+  border-top:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-segment-detail-stack,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-segment-detail-stack{
+  display:grid !important;
+  gap:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+  position:relative !important;
+  display:grid !important;
+  gap:28px !important;
+  padding:34px 38px 32px !important;
+  border:1px solid var(--verify-border) !important;
+  border-left:2px solid var(--verify-border-strong) !important;
+  border-radius:8px !important;
+  background:
+    radial-gradient(circle at 52% 50%, rgba(39, 76, 158, .16), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--verify-card) 94%, transparent), color-mix(in srgb, var(--verify-card-2) 96%, transparent)) !important;
+  box-shadow:none !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+  background:linear-gradient(180deg, var(--verify-card), var(--verify-card-2)) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+  display:grid !important;
+  grid-template-columns:minmax(300px, .42fr) minmax(360px, .58fr) !important;
+  align-items:center !important;
+  gap:42px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-group,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-group{
+  display:grid !important;
+  gap:22px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+  justify-self:start !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:9px !important;
+  padding:10px 12px !important;
+  border-radius:7px !important;
+  color:var(--verify-purple) !important;
+  background:linear-gradient(90deg, rgba(139, 108, 255, .22), rgba(139, 108, 255, .08)) !important;
+  font-size:.9rem !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+  letter-spacing:.02em !important;
+  text-transform:uppercase !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon{
+  width:22px !important;
+  height:22px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+  display:grid !important;
+  grid-template-columns:auto minmax(72px, 1fr) auto !important;
+  align-items:center !important;
+  gap:22px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point{
+  display:grid !important;
+  gap:4px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+  color:var(--verify-text) !important;
+  font-size:2.5rem !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point span{
+  display:none !important;
+  color:var(--verify-muted) !important;
+  font-size:1rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+  display:grid !important;
+  grid-template-columns:1fr 48px 1fr !important;
+  align-items:center !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line > span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line > span{
+  height:1px !important;
+  min-width:18px !important;
+  background:linear-gradient(90deg, transparent, rgba(139, 108, 255, .56)) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line > span:last-child,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line > span:last-child{
+  background:linear-gradient(90deg, rgba(139, 108, 255, .56), transparent) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:48px !important;
+  height:48px !important;
+  border-radius:999px !important;
+  color:#ffffff !important;
+  background:linear-gradient(135deg, var(--verify-purple-deep), color-mix(in srgb, var(--verify-purple) 70%, #111827)) !important;
+  box-shadow:inset 0 0 0 1px rgba(139, 108, 255, .5) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon{
+  width:21px !important;
+  height:21px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline{
+  display:grid !important;
+  grid-template-columns:82px minmax(0, 1fr) !important;
+  align-items:center !important;
+  gap:22px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+  width:72px !important;
+  height:40px !important;
+  min-width:72px !important;
+  min-height:40px !important;
+  max-width:72px !important;
+  max-height:40px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark img,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  padding:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy{
+  display:grid !important;
+  gap:16px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+  color:var(--verify-text) !important;
+  font-size:1.22rem !important;
+  line-height:1.15 !important;
+  font-weight:780 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta{
+  display:flex !important;
+  align-items:center !important;
+  flex-wrap:wrap !important;
+  gap:0 !important;
+  min-width:0 !important;
+  color:var(--verify-muted) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:9px !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  color:var(--verify-muted) !important;
+  font-size:.92rem !important;
+  line-height:1.2 !important;
+  font-weight:550 !important;
+  white-space:nowrap !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span{
+  margin-left:22px !important;
+  padding-left:22px !important;
+  border-left:1px solid var(--verify-border) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon{
+  width:19px !important;
+  height:19px !important;
+  color:var(--verify-purple) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+  display:grid !important;
+  grid-template-columns:minmax(220px, .95fr) minmax(130px, .62fr) minmax(240px, 1.2fr) minmax(220px, .95fr) minmax(130px, .62fr) !important;
+  align-items:center !important;
+  gap:24px !important;
+  padding:28px 28px !important;
+  border:1px solid var(--verify-border) !important;
+  border-radius:8px !important;
+  background:linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .018)) !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+  background:linear-gradient(180deg, rgba(255, 255, 255, .82), rgba(245, 248, 255, .78)) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+  display:grid !important;
+  grid-template-columns:52px minmax(0, 1fr) !important;
+  align-items:start !important;
+  gap:14px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:52px !important;
+  height:52px !important;
+  border-radius:999px !important;
+  color:#ffffff !important;
+  background:linear-gradient(135deg, #4b22c8, #2a1688) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge--arrival,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge--arrival{
+  background:linear-gradient(135deg, #16b869, #0b6f42) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge .review-svg-icon{
+  width:24px !important;
+  height:24px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-main,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-main{
+  display:grid !important;
+  gap:9px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+  color:var(--verify-purple) !important;
+  font-size:.86rem !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+  letter-spacing:.02em !important;
+  text-transform:uppercase !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-label{
+  color:var(--verify-green) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:7px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+  color:var(--verify-text) !important;
+  font-size:1.5rem !important;
+  line-height:1.05 !important;
+  font-weight:850 !important;
+  letter-spacing:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row em{
+  color:var(--verify-muted) !important;
+  font-size:.86rem !important;
+  font-style:normal !important;
+  font-weight:650 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-date,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-date{
+  color:var(--verify-muted) !important;
+  font-size:.92rem !important;
+  line-height:1.25 !important;
+  font-weight:600 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+  display:grid !important;
+  gap:7px !important;
+  min-width:0 !important;
+  padding-left:22px !important;
+  border-left:1px solid var(--verify-border) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport strong{
+  color:var(--verify-text) !important;
+  font-size:1.2rem !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+html body.results-page.review-page .review-flight-manifest .review-verify-airport small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport small{
+  color:var(--verify-muted) !important;
+  font-size:.92rem !important;
+  line-height:1.28 !important;
+  font-weight:500 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+  position:relative !important;
+  display:grid !important;
+  justify-items:center !important;
+  gap:9px !important;
+  min-width:0 !important;
+  text-align:center !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  top:20px !important;
+  display:grid !important;
+  grid-template-columns:1fr auto 1fr !important;
+  align-items:center !important;
+  z-index:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line span{
+  height:1px !important;
+  border-top:1px dashed var(--verify-line) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before,
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after{
+  content:"" !important;
+  position:absolute !important;
+  top:50% !important;
+  width:15px !important;
+  height:15px !important;
+  border-radius:999px !important;
+  transform:translateY(-50%) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::before{
+  left:0 !important;
+  background:var(--verify-purple) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line::after{
+  right:0 !important;
+  background:var(--verify-green) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line b{
+  width:140px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+  position:relative !important;
+  z-index:1 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  min-height:42px !important;
+  padding:0 22px !important;
+  border:1px solid var(--verify-border) !important;
+  border-radius:999px !important;
+  color:var(--verify-text) !important;
+  background:linear-gradient(180deg, var(--verify-card), var(--verify-card-2)) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon{
+  width:22px !important;
+  height:22px !important;
+  color:var(--verify-purple) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill strong{
+  color:var(--verify-text) !important;
+  font-size:.98rem !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration > small,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration > small{
+  position:relative !important;
+  z-index:1 !important;
+  color:var(--verify-muted) !important;
+  font-size:.86rem !important;
+  line-height:1.2 !important;
+  font-weight:600 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note{
+  display:grid !important;
+  grid-template-columns:42px minmax(0, 1fr) !important;
+  align-items:center !important;
+  gap:16px !important;
+  padding:18px 20px !important;
+  border:1px solid var(--verify-border) !important;
+  border-radius:8px !important;
+  background:rgba(255, 255, 255, .025) !important;
+}
+
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note{
+  background:rgba(255, 255, 255, .7) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note-icon{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:32px !important;
+  height:32px !important;
+  border-radius:999px !important;
+  color:#ffffff !important;
+  background:linear-gradient(135deg, #3c28c4, #245df4) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note-icon .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note-icon .review-svg-icon{
+  width:18px !important;
+  height:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note div,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note div{
+  display:grid !important;
+  gap:4px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-note strong,
+html body.results-page.review-page .review-flight-manifest .review-verify-note span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-note span{
+  color:var(--verify-muted) !important;
+  font-size:.9rem !important;
+  line-height:1.35 !important;
+  font-weight:500 !important;
+}
+
+@media (max-width: 1120px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+    grid-template-columns:1fr !important;
+    gap:24px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(190px, 1fr) minmax(120px, .7fr) minmax(210px, 1fr) minmax(190px, 1fr) minmax(120px, .7fr) !important;
+    gap:18px !important;
+  }
+}
+
+@media (max-width: 760px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:28px 22px 34px !important;
+    border-radius:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    justify-items:center !important;
+    gap:22px !important;
+    padding-bottom:28px !important;
+    text-align:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+    font-size:1.52rem !important;
+    line-height:1.18 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+    display:block !important;
+    max-width:360px !important;
+    margin-top:12px !important;
+    font-size:1.02rem !important;
+    line-height:1.42 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-actions{
+    justify-self:end !important;
+    margin-top:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open] .review-flight-manifest-hint::after,
+  html body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest:not([open]) .review-flight-manifest-hint::after{
+    content:"Details" !important;
+    font-size:.92rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    gap:28px !important;
+    padding:34px 26px 30px !important;
+    border-left:1px solid var(--verify-border) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+    display:grid !important;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1.08fr) !important;
+    align-items:start !important;
+    gap:20px 18px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-group,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-group{
+    display:contents !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+    grid-column:1 !important;
+    grid-row:1 !important;
+    align-self:start !important;
+    padding:10px 12px !important;
+    font-size:.82rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline{
+    grid-column:2 !important;
+    grid-row:1 !important;
+    grid-template-columns:68px minmax(0, 1fr) !important;
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+    width:60px !important;
+    height:32px !important;
+    min-width:60px !important;
+    min-height:32px !important;
+    max-width:60px !important;
+    max-height:32px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy{
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+    font-size:1rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta{
+    gap:9px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+    gap:0 !important;
+    font-size:.82rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span{
+    margin-left:0 !important;
+    padding-left:14px !important;
+    border-left:0 !important;
+    position:relative !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span::before,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span::before{
+    content:"•" !important;
+    position:absolute !important;
+    left:0 !important;
+    color:var(--verify-muted) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+    grid-column:1 / -1 !important;
+    grid-row:2 !important;
+    grid-template-columns:minmax(0, 1fr) minmax(96px, .8fr) minmax(0, 1fr) !important;
+    gap:16px !important;
+    padding-top:18px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point{
+    justify-items:center !important;
+    text-align:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:2.55rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point span{
+    display:block !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+    grid-template-columns:1fr 58px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+    width:58px !important;
+    height:58px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) minmax(92px, .48fr) minmax(0, 1fr) !important;
+    grid-template-areas:
+      "depart duration arrive"
+      "origin duration destination" !important;
+    align-items:stretch !important;
+    gap:0 !important;
+    padding:28px 24px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--depart{ grid-area:depart !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{ grid-area:arrive !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--origin{ grid-area:origin !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{ grid-area:destination !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration{ grid-area:duration !important; }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+    display:block !important;
+    padding:0 14px 22px 0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+    padding:0 0 22px 14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+    padding:18px 14px 0 0 !important;
+    border-left:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    padding:18px 0 0 14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+    justify-content:center !important;
+    padding:0 16px !important;
+    border-left:1px solid var(--verify-border) !important;
+    border-right:1px solid var(--verify-border) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+    flex-direction:column !important;
+    gap:12px !important;
+    min-height:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon{
+    width:48px !important;
+    height:48px !important;
+    padding:12px !important;
+    border-radius:999px !important;
+    color:var(--verify-purple) !important;
+    background:linear-gradient(135deg, rgba(139, 108, 255, .28), rgba(58, 31, 157, .7)) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.55rem !important;
+  }
+}
+
+@media (max-width: 480px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:24px 16px 30px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    padding:28px 18px 24px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+    grid-template-columns:minmax(0, .8fr) minmax(0, 1.2fr) !important;
+    gap:20px 10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline{
+    grid-template-columns:54px minmax(0, 1fr) !important;
+    gap:10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+    width:50px !important;
+    height:28px !important;
+    min-width:50px !important;
+    min-height:28px !important;
+    max-width:50px !important;
+    max-height:28px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+    font-size:.95rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route{
+    grid-template-columns:minmax(0, 1fr) minmax(74px, .72fr) minmax(0, 1fr) !important;
+    gap:10px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:2.15rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+    grid-template-columns:1fr 50px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+    width:50px !important;
+    height:50px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) 78px minmax(0, 1fr) !important;
+    padding:24px 16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+    font-size:.78rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row{
+    flex-wrap:wrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.32rem !important;
+  }
+}
+
+/* Final site-scale lock. This intentionally comes last. */
+html body.results-page.review-page .review-flight-manifest,
+html body.results-page.review-page .review-flight-manifest[open],
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+  max-width:960px !important;
+  padding:18px !important;
+  border-radius:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head{
+  padding-bottom:16px !important;
+  gap:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head h2{
+  font-size:1.18rem !important;
+  line-height:1.18 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-flight-manifest-head p{
+  margin-top:5px !important;
+  font-size:.82rem !important;
+  line-height:1.35 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+  gap:16px !important;
+  padding:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+  grid-template-columns:minmax(220px, .42fr) minmax(280px, .58fr) !important;
+  gap:24px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+  padding:7px 9px !important;
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill .review-svg-icon{
+  width:16px !important;
+  height:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route{
+  grid-template-columns:auto minmax(48px, 1fr) auto !important;
+  gap:12px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+  font-size:1.75rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+  grid-template-columns:1fr 34px 1fr !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+  width:34px !important;
+  height:34px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line .review-svg-icon{
+  width:16px !important;
+  height:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline{
+  grid-template-columns:56px minmax(0, 1fr) !important;
+  gap:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+  width:52px !important;
+  height:30px !important;
+  min-width:52px !important;
+  min-height:30px !important;
+  max-width:52px !important;
+  max-height:30px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+  font-size:.96rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+  font-size:.75rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+  grid-template-columns:minmax(150px, .95fr) minmax(88px, .62fr) minmax(150px, 1.1fr) minmax(150px, .95fr) minmax(88px, .62fr) !important;
+  gap:14px !important;
+  padding:16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time{
+  grid-template-columns:36px minmax(0, 1fr) !important;
+  gap:10px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge{
+  width:36px !important;
+  height:36px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge .review-svg-icon{
+  width:18px !important;
+  height:18px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+  font-size:.7rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+  font-size:1.08rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html body.results-page.review-page .review-flight-manifest .review-verify-date,
+html body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+html body.results-page.review-page .review-flight-manifest .review-verify-airport small{
+  font-size:.72rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport strong{
+  font-size:.96rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+  min-height:34px !important;
+  gap:7px !important;
+  padding:0 16px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill .review-svg-icon{
+  width:17px !important;
+  height:17px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill strong{
+  font-size:.82rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-duration > small{
+  font-size:.7rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+  order:5 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+  order:4 !important;
+}
+
+@media (max-width: 760px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+    gap:14px 12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route{
+    grid-template-columns:minmax(0, 1fr) minmax(64px, .7fr) minmax(0, 1fr) !important;
+    gap:10px !important;
+    padding-top:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:1.9rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+    grid-template-columns:1fr 40px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+    width:40px !important;
+    height:40px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) 72px minmax(0, 1fr) !important;
+    padding:16px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.18rem !important;
+  }
+}
+
+@media (max-width: 480px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:1.62rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) 62px minmax(0, 1fr) !important;
+    padding:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1.05rem !important;
+  }
+}
+
+/* Final arrival alignment: destination left, divider, arrival time right. */
+@media (min-width: 761px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(150px, .95fr) minmax(88px, .62fr) minmax(150px, 1.1fr) minmax(118px, .68fr) minmax(150px, .95fr) !important;
+    align-items:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    order:4 !important;
+    padding-left:0 !important;
+    padding-right:14px !important;
+    border-left:0 !important;
+    justify-items:end !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+    order:5 !important;
+    grid-template-columns:36px minmax(0, 1fr) !important;
+    padding-left:14px !important;
+    border-left:1px solid var(--verify-border) !important;
+    align-items:start !important;
+    justify-items:end !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row{
+    flex-wrap:nowrap !important;
+    align-items:baseline !important;
+    justify-content:flex-end !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row em,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-clock-row em{
+    order:-1 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-main,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-main{
+    justify-items:end !important;
+    text-align:right !important;
+  }
+}
+
+/* Inline takeoff/landing icons beside timeline labels. */
+html body.results-page.review-page .review-flight-manifest .review-verify-time,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+  grid-template-columns:minmax(0, 1fr) !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-icon-badge,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-icon-badge{
+  display:none !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:.42em !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-label .review-svg-icon{
+  width:1em !important;
+  height:1em !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive .review-verify-time-label{
+  justify-content:flex-end !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-time-label,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time-label{
+  font-size:.78rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+  font-size:1.18rem !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row em,
+html body.results-page.review-page .review-flight-manifest .review-verify-date,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-date{
+  font-size:.78rem !important;
+}
+
+/* Airline meta should read like supporting metadata, not a second headline. */
+html body.results-page.review-page .review-flight-manifest .review-verify-airline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline{
+  grid-template-columns:36px minmax(0, max-content) !important;
+  align-items:center !important;
+  justify-content:start !important;
+  gap:9px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline .flight-brand-mark--logo{
+  width:34px !important;
+  height:24px !important;
+  min-width:34px !important;
+  min-height:24px !important;
+  max-width:34px !important;
+  max-height:24px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy{
+  gap:3px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong{
+  font-size:.72rem !important;
+  line-height:1.1 !important;
+  font-weight:850 !important;
+  letter-spacing:.02em !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta{
+  gap:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+  gap:5px !important;
+  font-size:.72rem !important;
+  line-height:1.1 !important;
+  font-weight:750 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span + span{
+  margin-left:10px !important;
+  padding-left:10px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon{
+  width:1em !important;
+  height:1em !important;
+}
+
+/* Airline meta belongs beside the outbound/return pill, with the route below. */
+html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head{
+  display:block !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route-group,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-group{
+  display:grid !important;
+  gap:14px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-topline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:16px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline{
+  display:grid !important;
+  grid-template-columns:42px minmax(0, max-content) !important;
+  align-items:center !important;
+  gap:9px !important;
+  min-width:0 !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo{
+  width:40px !important;
+  height:34px !important;
+  min-width:40px !important;
+  min-height:34px !important;
+  max-width:40px !important;
+  max-height:34px !important;
+}
+
+/* Final airline logo lock: match the height of the two-line airline meta. */
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline{
+  grid-template-columns:30px minmax(0, max-content) !important;
+  gap:8px !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo{
+  width:30px !important;
+  height:28px !important;
+  min-width:30px !important;
+  min-height:28px !important;
+  max-width:30px !important;
+  max-height:28px !important;
+  overflow:hidden !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark img,
+html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo img,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark img,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo img{
+  width:100% !important;
+  height:100% !important;
+  max-width:30px !important;
+  max-height:28px !important;
+  object-fit:contain !important;
+}
+
+html body.results-page.review-page .review-flight-manifest .review-verify-route,
+html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+  width:min(100%, 420px) !important;
+}
+
+@media (max-width: 760px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-topline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline{
+    display:grid !important;
+    grid-template-columns:auto minmax(0, 1fr) !important;
+    gap:12px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+    width:100% !important;
+  }
+}
+
+/* Equalize duration endpoint spacing around the center pill. */
+@media (min-width: 761px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+    width:230px !important;
+    justify-self:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+    left:0 !important;
+    right:0 !important;
+    grid-template-columns:1fr 96px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line b{
+    width:96px !important;
+  }
+}
+
+/* Clean center route detail spacing: airports and duration get their own lanes. */
+@media (min-width: 761px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(175px, .9fr) minmax(160px, .78fr) 280px minmax(160px, .78fr) minmax(175px, .9fr) !important;
+    gap:24px !important;
+    overflow:hidden !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+    min-width:0 !important;
+    max-width:180px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--origin,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--origin{
+    justify-self:start !important;
+    padding-left:18px !important;
+    padding-right:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    justify-self:end !important;
+    max-width:190px !important;
+    padding-left:0 !important;
+    padding-right:18px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport strong,
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport span,
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport small,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport small{
+    max-width:100% !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+    width:280px !important;
+    align-self:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+    top:17px !important;
+    grid-template-columns:1fr 112px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line b{
+    width:112px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+    min-width:112px !important;
+    justify-content:center !important;
+  }
+}
+
+/* Last fix: fluid timeline columns so the right side cannot be pushed off-card. */
+@media (min-width: 761px){
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    grid-template-columns:minmax(0, 1fr) minmax(0, .82fr) minmax(180px, 1.2fr) minmax(0, .82fr) minmax(0, 1fr) !important;
+    gap:18px !important;
+    overflow:visible !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+    max-width:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--origin,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--origin{
+    padding-left:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    padding-right:14px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+    width:min(100%, 240px) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+    grid-template-columns:1fr 104px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line b,
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+    min-width:104px !important;
+    width:104px !important;
+  }
+}
+
+/* Final small-viewport lock for the verify component. */
+@media (max-width: 760px){
+  html body.results-page.review-page .review-flight-manifest,
+  html body.results-page.review-page .review-flight-manifest[open],
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest[open]{
+    padding:14px !important;
+    max-width:100% !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment{
+    padding:14px !important;
+    gap:16px !important;
+    overflow:hidden !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-segment-head,
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-group,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-group{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-topline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline{
+    display:grid !important;
+    grid-template-columns:auto minmax(0, 1fr) !important;
+    align-items:center !important;
+    gap:10px !important;
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-leg-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-leg-pill{
+    grid-column:auto !important;
+    grid-row:auto !important;
+    padding:7px 9px !important;
+    font-size:.72rem !important;
+    white-space:nowrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline{
+    grid-template-columns:28px minmax(0, 1fr) !important;
+    gap:8px !important;
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+  html body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-topline .review-verify-airline .flight-brand-mark--logo{
+    width:28px !important;
+    height:24px !important;
+    min-width:28px !important;
+    min-height:24px !important;
+    max-width:28px !important;
+    max-height:24px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy{
+    gap:3px !important;
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airline-copy > strong,
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta > span{
+    font-size:.68rem !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    min-width:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-flight-meta .review-svg-icon{
+    display:inline-block !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route{
+    width:100% !important;
+    grid-column:auto !important;
+    grid-row:auto !important;
+    grid-template-columns:minmax(0, 1fr) minmax(52px, .58fr) minmax(0, 1fr) !important;
+    gap:8px !important;
+    padding-top:4px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point{
+    justify-items:center !important;
+    text-align:center !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point strong{
+    font-size:1.55rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-point span,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-point span{
+    display:block !important;
+    font-size:.72rem !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line{
+    grid-template-columns:1fr 36px 1fr !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-route-line b,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-route-line b{
+    width:36px !important;
+    height:36px !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-timeline,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-timeline{
+    display:grid !important;
+    grid-template-columns:minmax(0, 1fr) 64px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "depart duration arrive"
+      "origin duration destination" !important;
+    gap:0 !important;
+    padding:14px !important;
+    overflow:hidden !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--depart{ grid-area:depart !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{ grid-area:arrive !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--origin{ grid-area:origin !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{ grid-area:destination !important; }
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration{ grid-area:duration !important; }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time{
+    display:block !important;
+    padding:0 10px 12px 0 !important;
+    border-left:0 !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-time--arrive,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-time--arrive{
+    padding:0 0 12px 10px !important;
+    text-align:right !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport{
+    padding:12px 10px 0 0 !important;
+    border-left:0 !important;
+    max-width:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-airport--destination,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-airport--destination{
+    padding:12px 0 0 10px !important;
+    text-align:right !important;
+    justify-items:end !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration{
+    width:auto !important;
+    padding:0 10px !important;
+    border-left:1px solid var(--verify-border) !important;
+    border-right:1px solid var(--verify-border) !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-line,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-line{
+    display:none !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-duration-pill,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-duration-pill{
+    width:auto !important;
+    min-width:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row{
+    flex-wrap:wrap !important;
+  }
+
+  html body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong,
+  html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
+    font-size:1rem !important;
+  }
 }

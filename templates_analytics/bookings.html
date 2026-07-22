@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Bookings{% endblock %}
+{% block page_title %}Bookings{% endblock %}
+{% block topbar_meta %}<span class="topbar-meta">{{ bookings|length }} records{% if search %} matching "{{ search }}"{% endif %}</span>{% endblock %}
+
+{% block topbar_actions %}
+<form class="search-bar" method="get" action="/bookings">
+  <input type="hidden" name="days" value="{{ days }}">
+  <input class="search-input" type="search" name="q" value="{{ search }}" placeholder="Search by email, reference, route…">
+  <button class="btn btn-primary" type="submit">Search</button>
+  {% if search %}<a class="btn btn-ghost" href="/bookings">Clear</a>{% endif %}
+</form>
+<form class="day-picker" method="get" action="/bookings" style="margin-left:0.5rem">
+  <input type="hidden" name="q" value="{{ search }}">
+  <select name="days" onchange="this.form.submit()">
+    {% for opt in day_options %}
+      <option value="{{ opt }}" {% if opt == days %}selected{% endif %}>Last {{ opt }} days</option>
+    {% endfor %}
+  </select>
+</form>
+{% endblock %}
+
+{% block content %}
+<!-- KPI row -->
+<div class="kpi-grid four-col">
+  <div class="kpi-card accent-green">
+    <p class="kpi-label">Total Revenue</p>
+    <p class="kpi-value">${{ "{:,.2f}".format(revenue.total_revenue) }}</p>
+    <p class="kpi-sub">last {{ days }} days</p>
+  </div>
+  <div class="kpi-card">
+    <p class="kpi-label">Total Bookings</p>
+    <p class="kpi-value">{{ revenue.total_bookings }}</p>
+    <p class="kpi-sub">completed orders</p>
+  </div>
+  <div class="kpi-card">
+    <p class="kpi-label">Avg Booking Value</p>
+    <p class="kpi-value">${{ "{:,.2f}".format(revenue.avg_booking_value) }}</p>
+    <p class="kpi-sub">per transaction</p>
+  </div>
+  <div class="kpi-card accent-amber">
+    <p class="kpi-label">Max Booking</p>
+    <p class="kpi-value">${{ "{:,.2f}".format(revenue.max_booking_value) }}</p>
+    <p class="kpi-sub">highest single booking</p>
+  </div>
+</div>
+
+<!-- Bookings table -->
+<div class="card mt-md">
+  <div class="card-head">
+    <h2>All Bookings</h2>
+    <div class="card-actions">
+      <button class="btn btn-ghost btn-sm" onclick="NGF.exportTable('bookingsTable', 'bookings.csv')">Export CSV</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table sortable" id="bookingsTable">
+      <thead>
+        <tr>
+          <th data-sort="text">Reference</th>
+          <th data-sort="text">Account</th>
+          <th data-sort="text">Route</th>
+          <th data-sort="text">Trip Type</th>
+          <th data-sort="num">Amount</th>
+          <th data-sort="text">Currency</th>
+          <th data-sort="text">Country</th>
+          <th data-sort="text">Booked At</th>
+          <th data-sort="text">Provider</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td>
+            {% if b.booking_reference %}
+              <span class="mono tag">{{ b.booking_reference }}</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if b.account_email %}
+              <a class="link" href="/accounts?q={{ b.account_email }}">{{ b.account_email }}</a>
+            {% else %}
+              <span class="muted">anonymous</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if b.origin and b.destination %}
+              <span class="route-tag">{{ b.origin }}</span>
+              <span class="route-arrow">→</span>
+              <span class="route-tag">{{ b.destination }}</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ b.trip_type or "—" }}</td>
+          <td class="num-cell">
+            {% if b.booking_amount is not none %}
+              ${{ "{:,.2f}".format(b.booking_amount) }}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ b.currency or "—" }}</td>
+          <td>{{ b.location_country or "—" }}</td>
+          <td class="mono text-sm">{{ b.occurred_at[:16] if b.occurred_at else "—" }}</td>
+          <td>{{ b.provider or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="empty-cell">
+            {% if search %}No bookings matching "{{ search }}".{% else %}No bookings recorded yet.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if has_more or offset > 0 %}
+  <div class="pagination">
+    {% if offset > 0 %}
+      <a class="btn btn-ghost btn-sm" href="/bookings?q={{ search }}&days={{ days }}&limit={{ limit }}&offset={{ [offset - limit, 0]|max }}">← Previous</a>
+    {% endif %}
+    {% if has_more %}
+      <a class="btn btn-ghost btn-sm" href="/bookings?q={{ search }}&days={{ days }}&limit={{ limit }}&offset={{ offset + limit }}">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

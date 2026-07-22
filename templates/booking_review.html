@@ -74,8 +74,8 @@
             <details class="review-card review-flight-manifest" aria-label="Complete flight details" open>
               <summary class="review-flight-manifest-head">
                 <div>
-                  <h2>Flight details to verify</h2>
-                  <p>Please confirm your flight information</p>
+                  <h2>Verify flight information</h2>
+                  <p>Confirm the airline, flight number, airports, and times before checkout.</p>
                 </div>
                 <div class="review-flight-manifest-actions">
                   <span class="review-flight-manifest-hint">Show details</span>
@@ -96,74 +96,106 @@
                     <article class="review-manifest-slice">
                       <div class="review-segment-detail-stack">
                         {% for segment in trip_segments %}
-                          <section class="review-segment-detail-card">
-                            <header class="review-segment-detail-head">
-                              <div class="review-segment-route-banner">
-                                <span class="review-segment-leg-label">
-                                  <span class="review-svg-icon review-svg-icon--plane-takeoff review-leg-icon" aria-hidden="true"></span>
-                                  {{ trip_slice.label }}
-                                </span>
-                                <strong>{{ segment.origin_code }} <span aria-hidden="true">→</span> {{ segment.destination_code }}</strong>
-                              </div>
-
-                              <div class="review-segment-airline-row">
-                                <div class="review-segment-carrier">
-                                  {% with logo_url=segment.airline_logo_url, fallback_text=segment.airline_mark_fallback, modifier_class='flight-brand-mark--segment' %}
-                                    {% include "partials/airline_brand_mark.html" %}
-                                  {% endwith %}
-                                  <div>
-                                    {% set aircraft_full = segment.aircraft or "Aircraft not provided" %}
-                                    {% set aircraft_short = segment.aircraft_short or aircraft_full %}
-                                    <strong>{{ segment.carrier_name }}</strong>
-                                    <span class="review-segment-operator-line">
-                                      <small>Operated by {{ segment.operating_carrier or segment.carrier_name }}</small>
-                                      <span class="review-segment-flight-tags">
+                          <section class="review-segment-detail-card review-verify-segment">
+                            {% set aircraft_full = segment.aircraft or "Aircraft not provided" %}
+                            {% set aircraft_short = segment.aircraft_short or aircraft_full %}
+                            <header class="review-verify-segment-head">
+                              <div class="review-verify-route-group">
+                                <div class="review-verify-topline">
+                                  <span class="review-verify-leg-pill">
+                                    <span class="review-svg-icon review-svg-icon--plane-takeoff" aria-hidden="true"></span>
+                                    {{ trip_slice.label }}
+                                  </span>
+                                  <div class="review-verify-airline">
+                                    {% with logo_url=segment.airline_logo_url, fallback_text=segment.airline_mark_fallback, modifier_class='flight-brand-mark--segment' %}
+                                      {% include "partials/airline_brand_mark.html" %}
+                                    {% endwith %}
+                                    <div class="review-verify-airline-copy">
+                                      <strong>{{ segment.carrier_name }}</strong>
+                                      <div class="review-verify-flight-meta">
                                         <span>
-                                          <span class="review-svg-icon review-svg-icon--plane-takeoff review-flight-tag-icon" aria-hidden="true"></span>
-                                          Flight {{ segment.flight_number or "not provided" }}
+                                          <span class="review-svg-icon review-svg-icon--plane-takeoff" aria-hidden="true"></span>
+                                          {{ segment.flight_number or "Flight not provided" }}
                                         </span>
                                         <span title="{{ aircraft_full }}">
-                                          <span class="review-svg-icon review-svg-icon--plane review-flight-tag-icon" aria-hidden="true"></span>
+                                          <span class="review-svg-icon review-svg-icon--plane" aria-hidden="true"></span>
                                           {{ aircraft_short }}
                                         </span>
-                                      </span>
-                                    </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="review-verify-route">
+                                  <div class="review-verify-route-point">
+                                    <strong>{{ segment.origin_code }}</strong>
+                                    <span>{{ segment.origin_city }}</span>
+                                  </div>
+                                  <div class="review-verify-route-line" aria-hidden="true">
+                                    <span></span>
+                                    <b><span class="review-svg-icon review-svg-icon--plane" aria-hidden="true"></span></b>
+                                    <span></span>
+                                  </div>
+                                  <div class="review-verify-route-point review-verify-route-point--arrival">
+                                    <strong>{{ segment.destination_code }}</strong>
+                                    <span>{{ segment.destination_city }}</span>
                                   </div>
                                 </div>
                               </div>
                             </header>
 
-                            <div class="review-segment-route-detail">
-                              <div class="review-segment-timepoint">
-                                <span class="review-segment-timepoint-label">Departs</span>
-                                <div class="review-segment-time-row">
-                                  <strong>{{ segment.depart_time or "Time unavailable" }}</strong>
-                                  {% if segment.depart_timezone_label %}<em>{{ segment.depart_timezone_label }}</em>{% endif %}
+                            <div class="review-verify-timeline">
+                              <section class="review-verify-time review-verify-time--depart">
+                                <div class="review-verify-time-main">
+                                  <span class="review-verify-time-label">
+                                    Departs
+                                    <span class="review-svg-icon review-svg-icon--plane-takeoff" aria-hidden="true"></span>
+                                  </span>
+                                  <div class="review-verify-clock-row">
+                                    <strong>{{ segment.depart_time or "Time unavailable" }}</strong>
+                                    {% if segment.depart_timezone_label %}<em>{{ segment.depart_timezone_label }}</em>{% endif %}
+                                  </div>
+                                  <span class="review-verify-date">{{ segment.depart_date_full or segment.depart_label }}</span>
                                 </div>
-                                <span>{{ segment.depart_date_full or segment.depart_label }}</span>
-                                <b>{{ segment.origin_code }} · {{ segment.origin_city }}</b>
+                              </section>
+
+                              <section class="review-verify-airport review-verify-airport--origin">
+                                <strong>{{ segment.origin_code }}</strong>
+                                <span>{{ segment.origin_city }}</span>
                                 {% if segment.origin_airport_name %}<small>{{ segment.origin_airport_name }}</small>{% endif %}
-                              </div>
+                              </section>
 
-                              <div class="review-segment-midline">
-                                <div class="review-segment-flight-arc" aria-hidden="true">
-                                  <span class="review-segment-flight-arc-line"></span>
-                                  <span class="review-svg-icon review-svg-icon--plane review-segment-flight-arc-plane"></span>
+                              <section class="review-verify-duration">
+                                <div class="review-verify-duration-line" aria-hidden="true">
+                                  <span></span>
+                                  <b></b>
+                                  <span></span>
                                 </div>
-                                <span>{{ segment.duration_label or "Duration unavailable" }}</span>
+                                <div class="review-verify-duration-pill">
+                                  <span class="review-svg-icon review-svg-icon--clock" aria-hidden="true"></span>
+                                  <strong>{{ segment.duration_label or "Duration unavailable" }}</strong>
+                                </div>
                                 <small>Total duration</small>
-                              </div>
+                              </section>
 
-                              <div class="review-segment-timepoint review-segment-timepoint--arrival">
-                                <span class="review-segment-timepoint-label">Arrives</span>
-                                <div class="review-segment-time-row">
-                                  <strong>{{ segment.arrive_time or "Time unavailable" }}</strong>
-                                  {% if segment.arrive_timezone_label %}<em>{{ segment.arrive_timezone_label }}</em>{% endif %}
+                              <section class="review-verify-time review-verify-time--arrive">
+                                <div class="review-verify-time-main">
+                                  <span class="review-verify-time-label">
+                                    <span class="review-svg-icon review-svg-icon--landing" aria-hidden="true"></span>
+                                    Arrives
+                                  </span>
+                                  <div class="review-verify-clock-row">
+                                    <strong>{{ segment.arrive_time or "Time unavailable" }}</strong>
+                                    {% if segment.arrive_timezone_label %}<em>{{ segment.arrive_timezone_label }}</em>{% endif %}
+                                  </div>
+                                  <span class="review-verify-date">{{ segment.arrive_date_full or segment.arrive_label }}</span>
                                 </div>
-                                <span>{{ segment.arrive_date_full or segment.arrive_label }}</span>
-                                <b>{{ segment.destination_code }} · {{ segment.destination_city }}</b>
+                              </section>
+
+                              <section class="review-verify-airport review-verify-airport--destination">
+                                <strong>{{ segment.destination_code }}</strong>
+                                <span>{{ segment.destination_city }}</span>
                                 {% if segment.destination_airport_name %}<small>{{ segment.destination_airport_name }}</small>{% endif %}
-                              </div>
+                              </section>
                             </div>
                           </section>
 
@@ -176,6 +208,17 @@
                           {% endif %}
                         {% endfor %}
                       </div>
+                      {% if loop.last and first_segment.depart_timezone_label %}
+                        <div class="review-verify-note">
+                          <span class="review-verify-note-icon" aria-hidden="true">
+                            <span class="review-svg-icon review-svg-icon--info"></span>
+                          </span>
+                          <div>
+                            <strong>Times shown are in {{ first_segment.depart_timezone_label }}</strong>
+                            <span>Please verify all details before continuing.</span>
+                          </div>
+                        </div>
+                      {% endif %}
                     </article>
                   {% endif %}
                 {% endfor %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block topbar_meta %}<span class="topbar-meta">Last {{ days }} days</span>{% endblock %}
+
+{% block topbar_actions %}
+<form class="day-picker" method="get" action="/overview">
+  <select name="days" onchange="this.form.submit()">
+    {% for opt in day_options %}
+      <option value="{{ opt }}" {% if opt == days %}selected{% endif %}>Last {{ opt }} days</option>
+    {% endfor %}
+  </select>
+</form>
+{% endblock %}
+
+{% block content %}
+<!-- KPI row -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <p class="kpi-label">Total Bookings</p>
+    <p class="kpi-value">{{ overview.bookings }}</p>
+    <p class="kpi-sub">in {{ days }}-day window</p>
+  </div>
+  <div class="kpi-card accent-green">
+    <p class="kpi-label">Total Revenue</p>
+    <p class="kpi-value">${{ "{:,.2f}".format(revenue.total_revenue) }}</p>
+    <p class="kpi-sub">avg ${{ "{:,.2f}".format(revenue.avg_booking_value) }} / booking</p>
+  </div>
+  <div class="kpi-card">
+    <p class="kpi-label">Total Searches</p>
+    <p class="kpi-value">{{ overview.total_searches }}</p>
+    <p class="kpi-sub">{{ overview.successful_searches }} successful</p>
+  </div>
+  <div class="kpi-card accent-amber">
+    <p class="kpi-label">Conversion Rate</p>
+    <p class="kpi-value">{{ overview.search_to_booking_rate }}%</p>
+    <p class="kpi-sub">search → booking</p>
+  </div>
+  <div class="kpi-card">
+    <p class="kpi-label">Signed-in Users</p>
+    <p class="kpi-value">{{ overview.signed_in_users }}</p>
+    <p class="kpi-sub">{{ overview.unique_anonymous_users }} anonymous</p>
+  </div>
+  <div class="kpi-card">
+    <p class="kpi-label">Total Events</p>
+    <p class="kpi-value">{{ overview.total_events }}</p>
+    <p class="kpi-sub">all event types</p>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="chart-grid two-col">
+  <div class="card">
+    <div class="card-head">
+      <h2>Daily Activity</h2>
+      <span class="badge">searches &amp; bookings</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chartTrends"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h2>Revenue Over Time</h2>
+      <span class="badge">booking revenue</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chartRevenue"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Revenue currency breakdown -->
+{% if revenue.currencies %}
+<div class="card mt-md">
+  <div class="card-head">
+    <h2>Revenue by Currency</h2>
+    <span class="badge">{{ days }}-day window</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Currency</th>
+        <th>Bookings</th>
+        <th>Revenue</th>
+        <th>Avg / Booking</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in revenue.currencies %}
+      <tr>
+        <td><span class="tag">{{ c.currency }}</span></td>
+        <td>{{ c.bookings }}</td>
+        <td>${{ "{:,.2f}".format(c.revenue) }}</td>
+        <td>${{ "{:,.2f}".format(c.revenue / c.bookings if c.bookings else 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  NGF.loadTrends('chartTrends', {{ days }});
+  NGF.loadRevenue('chartRevenue', {{ days }});
+</script>
+{% endblock %}

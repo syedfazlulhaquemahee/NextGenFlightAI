@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block topbar_meta %}<span class="topbar-meta">Last {{ days }} days</span>{% endblock %}
+
+{% block topbar_actions %}
+<form class="day-picker" method="get" action="/analytics">
+  {% if journey_q %}
+  <input type="hidden" name="journey_q" value="{{ journey_q }}">
+  {% endif %}
+  <select name="days" onchange="this.form.submit()">
+    {% for opt in day_options %}
+      <option value="{{ opt }}" {% if opt == days %}selected{% endif %}>Last {{ opt }} days</option>
+    {% endfor %}
+  </select>
+</form>
+<button class="btn btn-danger btn-sm" type="button" onclick="NGF.clearBehavioralEvents()">Clear Logs</button>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <p class="kpi-label">Users Landed</p>
+    <p class="kpi-value">{{ funnel.landed_users or funnel.total_users }}</p>
+    <p class="kpi-sub">{{ funnel.total_users }} tracked users</p>
+  </div>
+  <div class="kpi-card accent-green">
+    <p class="kpi-label">Searched</p>
+    <p class="kpi-value">{{ funnel.search_rate }}%</p>
+    <p class="kpi-sub">{{ funnel.searched_users }} users</p>
+  </div>
+  <div class="kpi-card accent-amber">
+    <p class="kpi-label">Clicked Flights</p>
+    <p class="kpi-value">{{ funnel.click_rate }}%</p>
+    <p class="kpi-sub">{{ funnel.clicked_users }} users</p>
+  </div>
+  <div class="kpi-card accent-red">
+    <p class="kpi-label">Booking Intent</p>
+    <p class="kpi-value">{{ funnel.intent_rate }}%</p>
+    <p class="kpi-sub">{{ funnel.intent_users }} users</p>
+  </div>
+</div>
+
+<div class="card mt-md ai-story-card">
+  <div class="card-head">
+    <h2>AI Story</h2>
+    <span class="badge">{{ "Gemini validated" if ai_story.source == "gemini_validated" else "Data-backed fallback" }}</span>
+  </div>
+  <div class="ai-story-body">
+    <p class="ai-story-text">{{ ai_story.overall_summary }}</p>
+  </div>
+</div>
+
+<div class="chart-grid two-col mt-md">
+  <div class="card">
+    <div class="card-head">
+      <h2>Funnel</h2>
+      <span class="badge">user progression</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Users</th>
+          <th>Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Landed</td>
+          <td>{{ funnel.landed_users or funnel.total_users }}</td>
+          <td>100%</td>
+        </tr>
+        <tr>
+          <td>Searched</td>
+          <td>{{ funnel.searched_users }}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar" style="width:{{ funnel.search_rate }}%"></div>
+              <span>{{ funnel.search_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Viewed Results</td>
+          <td>{{ funnel.results_users }}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar" style="width:{{ funnel.results_view_rate }}%"></div>
+              <span>{{ funnel.results_view_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Clicked Flight</td>
+          <td>{{ funnel.clicked_users }}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar" style="width:{{ funnel.click_rate }}%"></div>
+              <span>{{ funnel.click_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Booking Intent</td>
+          <td>{{ funnel.intent_users }}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar" style="width:{{ funnel.intent_rate }}%"></div>
+              <span>{{ funnel.intent_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Booked</td>
+          <td>{{ funnel.booked_users }}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar" style="width:{{ funnel.booking_rate }}%"></div>
+              <span>{{ funnel.booking_rate }}%</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Drop-Offs</h2>
+      <span class="badge">where users stall</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Gap</th>
+          <th>Users</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Searched without clicking a flight</td>
+          <td>{{ funnel.dropoff_search_no_click }}</td>
+        </tr>
+        <tr>
+          <td>Clicked a flight without checkout intent</td>
+          <td>{{ funnel.dropoff_click_no_intent }}</td>
+        </tr>
+        <tr>
+          <td>Reached checkout intent without booking</td>
+          <td>{{ funnel.dropoff_intent_no_booking }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="preference-grid">
+      <div class="preference-pill">
+        <span class="preference-label">Top route</span>
+        <strong>{{ preferences.top_route or "—" }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Top airline</span>
+        <strong>{{ preferences.top_airline or "—" }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Nonstop lean</span>
+        <strong>
+          {% if preferences.nonstop_preference is none %}
+            —
+          {% elif preferences.nonstop_preference %}
+            Yes
+          {% else %}
+            No
+          {% endif %}
+        </strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Typical high-intent cap</span>
+        <strong>{% if preferences.price_cap %}${{ "{:,.0f}".format(preferences.price_cap) }}{% else %}—{% endif %}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-md">
+  <div class="card-head">
+    <h2>Top Routes</h2>
+    <span class="badge">search volume</span>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="chartRoutes"></canvas>
+  </div>
+  <table class="data-table mt-sm sortable" id="routesTable">
+    <thead>
+      <tr>
+        <th data-sort="text">Route</th>
+        <th data-sort="num">Searches</th>
+        <th data-sort="num">Successful</th>
+        <th data-sort="num">Success Rate</th>
+        <th data-sort="num">Avg Results</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in top_routes %}
+      <tr>
+        <td>
+          <span class="route-tag">{{ r.origin }}</span>
+          <span class="route-arrow">→</span>
+          <span class="route-tag">{{ r.destination }}</span>
+        </td>
+        <td>{{ r.searches }}</td>
+        <td>{{ r.successful_searches }}</td>
+        <td>{{ r.success_rate }}%</td>
+        <td>{{ r.avg_results }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty-cell">No route data yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="chart-grid two-col mt-md">
+  <div class="card">
+    <div class="card-head">
+      <h2>Updated Results</h2>
+      <span class="badge">explicit refine clicks only</span>
+    </div>
+    <p class="ai-story-text">{{ results_update_story }}</p>
+    <div class="preference-grid">
+      <div class="preference-pill">
+        <span class="preference-label">Update events</span>
+        <strong>{{ results_updates.total_updates }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Users updating</span>
+        <strong>{{ results_updates.users_updating }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Nonstop on</span>
+        <strong>{{ results_updates.nonstop_enabled_updates }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Nonstop off</span>
+        <strong>{{ results_updates.nonstop_disabled_updates }}</strong>
+      </div>
+    </div>
+    <table class="data-table mt-sm">
+      <thead>
+        <tr>
+          <th>What Changed Most</th>
+          <th>Updates</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results_updates.top_changed_fields %}
+        <tr>
+          <td>{{ row.field }}</td>
+          <td>{{ row.updates }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="empty-cell">No update-result activity yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <table class="data-table mt-sm">
+      <thead>
+        <tr>
+          <th>Most Common New Values</th>
+          <th>Updates</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results_updates.top_changed_values %}
+        <tr>
+          <td>{{ row.change }}</td>
+          <td>{{ row.updates }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="empty-cell">No refined value changes yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Results Clicks</h2>
+      <span class="badge">what users choose</span>
+    </div>
+    <p class="ai-story-text">{{ results_click_story }}</p>
+    <div class="preference-grid">
+      <div class="preference-pill">
+        <span class="preference-label">Click events</span>
+        <strong>{{ results_clicks.total_clicks }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Users clicking</span>
+        <strong>{{ results_clicks.users_clicking }}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Avg clicked price</span>
+        <strong>{% if results_clicks.average_price %}${{ "{:,.2f}".format(results_clicks.average_price) }}{% else %}—{% endif %}</strong>
+      </div>
+      <div class="preference-pill">
+        <span class="preference-label">Nonstop share</span>
+        <strong>{{ results_clicks.nonstop_share }}%</strong>
+      </div>
+    </div>
+    <table class="data-table mt-sm">
+      <thead>
+        <tr>
+          <th>Top Clicked Routes</th>
+          <th>Clicks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results_clicks.top_routes %}
+        <tr>
+          <td>{{ row.route }}</td>
+          <td>{{ row.clicks }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="empty-cell">No clicked-flight activity yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <table class="data-table mt-sm">
+      <thead>
+        <tr>
+          <th>Top Clicked Airlines</th>
+          <th>Clicks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in results_clicks.top_airlines %}
+        <tr>
+          <td>{{ row.airline }}</td>
+          <td>{{ row.clicks }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="empty-cell">No airline click data yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mt-md">
+  <div class="card-head">
+    <h2>Next Pages</h2>
+    <span class="badge">review to booking</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Page Section</th>
+        <th>Users</th>
+        <th>Events</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in next_pages %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.users }}</td>
+        <td>{{ row.events }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="empty-cell">No downstream page activity yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card mt-md">
+  <div class="card-head card-head-stack">
+    <div>
+      <h2>User Journeys</h2>
+      <span class="badge">AI explains what each user did</span>
+    </div>
+    <form class="search-bar" method="get" action="/analytics">
+      <input type="hidden" name="days" value="{{ days }}">
+      <input type="search" class="search-input" name="journey_q" value="{{ journey_q }}" placeholder="Search user, city, route">
+      <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+      {% if journey_q %}
+      <a class="btn btn-ghost btn-sm" href="/analytics?days={{ days }}">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table sortable" id="journeysTable">
+      <thead>
+        <tr>
+          <th data-sort="text">User</th>
+          <th data-sort="text">Location</th>
+          <th data-sort="text">Journey</th>
+          <th data-sort="text">Top Route</th>
+          <th data-sort="num">Events</th>
+          <th data-sort="text">AI Summary</th>
+          <th data-sort="text">Last Seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in journeys %}
+        <tr>
+          <td>
+            {% if j.account_email %}
+            <a class="link mono" href="/accounts?q={{ j.account_email }}">{{ j.account_email }}</a>
+            {% else %}
+            <span class="tag tag-anon" title="{{ j.anon_id }}">{{ j.anon_label }}</span>
+            {% endif %}
+          </td>
+          <td>{{ j.city or j.region or "—" }}{% if j.country %}, {{ j.country }}{% endif %}</td>
+          <td>{{ j.journey_path }}</td>
+          <td>{{ j.top_route }}</td>
+          <td>{{ j.events_count }}</td>
+          <td class="journey-summary-cell">{{ j.ai_summary }}</td>
+          <td class="mono text-sm">{{ j.last_seen[:16] if j.last_seen else "—" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-cell">No user journeys yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if journey_has_more %}
+  <div class="pagination">
+    <a class="btn btn-ghost btn-sm" href="/analytics?days={{ days }}&journey_q={{ journey_q }}&journey_limit={{ journey_limit }}&journey_offset={{ journey_offset + journey_limit }}">Load more</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card mt-md">
+  <div class="card-head">
+    <h2>City Activity</h2>
+    <span class="badge">coarse location only</span>
+  </div>
+  <table class="data-table sortable" id="citiesTable">
+    <thead>
+      <tr>
+        <th data-sort="text">City</th>
+        <th data-sort="text">Country</th>
+        <th data-sort="num">Events</th>
+        <th data-sort="num">Searching Users</th>
+        <th data-sort="num">Intent Users</th>
+        <th data-sort="num">Booked Users</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cities %}
+      <tr>
+        <td>{{ c.city }}</td>
+        <td><span class="tag">{{ c.country }}</span></td>
+        <td>{{ c.events }}</td>
+        <td>{{ c.searching_users }}</td>
+        <td>{{ c.intent_users }}</td>
+        <td>{{ c.booked_users }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty-cell">No city data yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  NGF.renderRoutes('chartRoutes', {{ top_routes|tojson }});
+</script>
+{% endblock %}

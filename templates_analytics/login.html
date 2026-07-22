@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ngf-csrf-token" content="{{ csrf_token }}">
+  <title>Admin Login — Skairova Manager Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='20260428a') }}">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-card">
+      <div class="login-head">
+        <p class="login-kicker">Skairova</p>
+        <h1>Analytics Admin Login</h1>
+        <p class="login-sub">Use the admin email and app password from your <code>.env</code> file.</p>
+      </div>
+
+      {% if error %}
+      <div class="login-alert">{{ error }}</div>
+      {% endif %}
+      {% if not credentials_configured %}
+      <div class="login-hint">Set <code>NGF_ANALYTICS_ADMIN_EMAIL</code> and <code>NGF_ANALYTICS_ADMIN_APP_PASSWORD</code> (or SMTP fallback variables) and try again.</div>
+      {% endif %}
+
+      <form method="post" action="/login" class="login-form" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ next_path }}">
+
+        <label class="field-row" for="admin-email">
+          <span>Email</span>
+          <input id="admin-email" class="field-input" type="email" name="email" maxlength="120" required>
+        </label>
+
+        <label class="field-row" for="admin-password">
+          <span>App password</span>
+          <input id="admin-password" class="field-input" type="password" name="password" required>
+        </label>
+
+        <button class="btn btn-primary login-submit" type="submit" {% if not credentials_configured %}disabled{% endif %}>Sign in</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

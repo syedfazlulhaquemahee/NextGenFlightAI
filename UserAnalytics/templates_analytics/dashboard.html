@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skairova Analytics</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker">Internal Analytics</p>
+        <h1>Search Behavior Intelligence</h1>
+        <p class="subtitle">Backend-collected events for cold-start routing, anonymous learning, and personalization readiness.</p>
+      </div>
+      <form class="days-form" method="get" action="/">
+        <label for="days">Window</label>
+        <select id="days" name="days" onchange="this.form.submit()">
+          {% for option in day_options %}
+            <option value="{{ option }}" {% if option == days %}selected{% endif %}>Last {{ option }} days</option>
+          {% endfor %}
+        </select>
+      </form>
+    </section>
+
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <p class="kpi-label">Total Events</p>
+        <p class="kpi-value">{{ overview.total_events }}</p>
+      </article>
+      <article class="kpi-card">
+        <p class="kpi-label">Searches</p>
+        <p class="kpi-value">{{ overview.total_searches }}</p>
+      </article>
+      <article class="kpi-card">
+        <p class="kpi-label">Successful Searches</p>
+        <p class="kpi-value">{{ overview.successful_searches }}</p>
+      </article>
+      <article class="kpi-card">
+        <p class="kpi-label">Bookings</p>
+        <p class="kpi-value">{{ overview.bookings }}</p>
+      </article>
+      <article class="kpi-card">
+        <p class="kpi-label">Search to Booking</p>
+        <p class="kpi-value">{{ overview.search_to_booking_rate }}%</p>
+      </article>
+      <article class="kpi-card">
+        <p class="kpi-label">Anonymous Profiles</p>
+        <p class="kpi-value">{{ overview.unique_anonymous_users }}</p>
+      </article>
+    </section>
+
+    <section class="panel-grid">
+      <article class="panel">
+        <header class="panel-head">
+          <h2>Top Routes</h2>
+          <span>{{ days }} day view</span>
+        </header>
+        <div class="rows">
+          {% for row in top_routes %}
+            <div class="row">
+              <div class="row-main">
+                <p class="row-title">{{ row.route }}</p>
+                <p class="row-meta">{{ row.searches }} searches • {{ row.success_rate }}% successful • avg {{ row.avg_results }} results</p>
+              </div>
+              <div class="row-bar-wrap"><span class="row-bar" style="width: {{ row.bar_pct }}%"></span></div>
+            </div>
+          {% else %}
+            <p class="empty">No route data collected yet.</p>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel-head">
+          <h2>Search Mode Mix</h2>
+          <span>Standard vs AI vs Flex</span>
+        </header>
+        <div class="rows">
+          {% for row in mode_breakdown %}
+            <div class="row">
+              <div class="row-main">
+                <p class="row-title">{{ row.mode|upper }}</p>
+                <p class="row-meta">{{ row.searches }} searches • {{ row.success_rate }}% successful</p>
+              </div>
+              <div class="row-bar-wrap"><span class="row-bar mode-bar" style="width: {{ row.bar_pct }}%"></span></div>
+            </div>
+          {% else %}
+            <p class="empty">No mode breakdown available yet.</p>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+
+    <section class="panel-grid">
+      <article class="panel">
+        <header class="panel-head">
+          <h2>Popular Routes By Country</h2>
+          <span>Cold-start recommendation seed</span>
+        </header>
+        <div class="rows">
+          {% for row in routes_by_location %}
+            <div class="row">
+              <div class="row-main">
+                <p class="row-title">{{ row.country }} • {{ row.route }}</p>
+                <p class="row-meta">{{ row.searches }} searches</p>
+              </div>
+              <div class="row-bar-wrap"><span class="row-bar country-bar" style="width: {{ row.bar_pct }}%"></span></div>
+            </div>
+          {% else %}
+            <p class="empty">No location data captured yet.</p>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel-head">
+          <h2>Personalization Readiness</h2>
+          <span>Anonymous profile maturity</span>
+        </header>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Anon ID</th>
+                <th>Country</th>
+                <th>Searches</th>
+                <th>Successful</th>
+                <th>Stage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in readiness %}
+                <tr>
+                  <td class="mono">{{ row.anon_id }}</td>
+                  <td>{{ row.country }}</td>
+                  <td>{{ row.searches }}</td>
+                  <td>{{ row.successful_searches }}</td>
+                  <td><span class="stage stage-{{ row.stage }}">{{ row.stage_label }}</span></td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5" class="empty-cell">No anonymous profile data yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <header class="panel-head">
+        <h2>Recent Events</h2>
+        <span>Generated {{ generated_at }} UTC</span>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Mode</th>
+              <th>Route</th>
+              <th>Success</th>
+              <th>Results</th>
+              <th>Context</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in recent_events %}
+              <tr>
+                <td class="mono">{{ event.occurred_at }}</td>
+                <td>{{ event.event_type }}</td>
+                <td>{{ event.search_mode or '-' }}</td>
+                <td>{{ (event.origin ~ ' -> ' ~ event.destination) if event.origin and event.destination else '-' }}</td>
+                <td>{{ 'yes' if event.success else 'no' }}</td>
+                <td>{{ event.result_count }}</td>
+                <td>{{ event.metadata_preview }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="7" class="empty-cell">No events collected yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

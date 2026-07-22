@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Accounts{% endblock %}
+{% block page_title %}Accounts{% endblock %}
+{% block topbar_meta %}<span class="topbar-meta">{{ accounts|length }} users{% if search %} matching "{{ search }}"{% endif %}</span>{% endblock %}
+
+{% block topbar_actions %}
+<form class="search-bar" method="get" action="/accounts">
+  <input class="search-input" type="search" name="q" value="{{ search }}" placeholder="Search by name or email…">
+  <button class="btn btn-primary" type="submit">Search</button>
+  {% if search %}<a class="btn btn-ghost" href="/accounts">Clear</a>{% endif %}
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-head">
+    <h2>Registered Accounts</h2>
+    <div class="card-actions">
+      <button class="btn btn-ghost btn-sm" onclick="NGF.exportTable('accountsTable', 'accounts.csv')">Export CSV</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table sortable" id="accountsTable">
+      <thead>
+        <tr>
+          <th data-sort="text">Name</th>
+          <th data-sort="text">Email</th>
+          <th data-sort="text">DOB</th>
+          <th data-sort="text">Member Since</th>
+          <th data-sort="text">Last Login</th>
+          <th data-sort="num">Saved Searches</th>
+          <th data-sort="num">Linked Bookings</th>
+          <th>Price Alerts</th>
+          <th>Route Tracking</th>
+          <th>Admin Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for acc in accounts %}
+        <tr data-email="{{ acc.email }}">
+          <td>
+            <div class="account-name">
+              <span class="avatar">{{ acc.first_name[0]|upper if acc.first_name else acc.email[0]|upper }}</span>
+              <span class="editable-field" data-field="full_name">{{ acc.full_name }}</span>
+            </div>
+          </td>
+          <td class="mono text-sm">{{ acc.email }}</td>
+          <td>{{ acc.dob or "—" }}</td>
+          <td class="text-sm">{{ acc.created_at[:10] if acc.created_at else "—" }}</td>
+          <td class="text-sm mono">{{ acc.last_login_at[:16] if acc.last_login_at else "—" }}</td>
+          <td class="num-cell">{{ acc.saved_searches_count }}</td>
+          <td class="num-cell">{{ acc.linked_bookings_count }}</td>
+          <td>
+            <label class="toggle-wrap">
+              <input type="checkbox" class="account-toggle" data-field="price_alerts_enabled" data-email="{{ acc.email }}"
+                     {% if acc.price_alerts_enabled %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </td>
+          <td>
+            <label class="toggle-wrap">
+              <input type="checkbox" class="account-toggle" data-field="route_tracking_enabled" data-email="{{ acc.email }}"
+                     {% if acc.route_tracking_enabled %}checked{% endif %}>
+              <span class="toggle-track"></span>
+            </label>
+          </td>
+          <td>
+            <div class="action-wrap">
+              <button class="btn btn-ghost btn-sm" onclick='NGF.openEditModal({{ acc.email|tojson }}, {{ acc.first_name|tojson }}, {{ acc.last_name|tojson }})'>Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick='NGF.clearSavedSearches({{ acc.email|tojson }})'>Clear Saved</button>
+              <button class="btn btn-ghost btn-sm" onclick='NGF.clearAccountSearches({{ acc.email|tojson }})'>Clear Searches</button>
+              <button class="btn btn-ghost btn-sm" onclick='NGF.requestAccountReset({{ acc.email|tojson }})'>Send Reset</button>
+              <button class="btn btn-danger btn-sm" onclick='NGF.deleteAccount({{ acc.email|tojson }})'>Delete Account</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="empty-cell">
+            {% if search %}No accounts matching "{{ search }}".{% else %}No accounts registered yet.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if has_more or offset > 0 %}
+  <div class="pagination">
+    {% if offset > 0 %}
+      <a class="btn btn-ghost btn-sm" href="/accounts?q={{ search }}&limit={{ limit }}&offset={{ [offset - limit, 0]|max }}">← Previous</a>
+    {% endif %}
+    {% if has_more %}
+      <a class="btn btn-ghost btn-sm" href="/accounts?q={{ search }}&limit={{ limit }}&offset={{ offset + limit }}">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-backdrop" id="editModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Edit Account</h3>
+      <button class="modal-close" onclick="NGF.closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editEmail">
+      <div class="field-row">
+        <label for="editFirstName">First Name</label>
+        <input class="field-input" id="editFirstName" type="text" maxlength="80">
+      </div>
+      <div class="field-row">
+        <label for="editLastName">Last Name</label>
+        <input class="field-input" id="editLastName" type="text" maxlength="80">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="NGF.closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="NGF.saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
