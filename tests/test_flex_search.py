@@ -447,6 +447,215 @@ class HolidaySeasonInferenceTests(unittest.TestCase):
         self.assertEqual(pair[0], "2026-08-05")
         self.assertEqual(pair[1], "2026-08-19")
 
+    def test_on_thanksgiving_day_with_next_day_return_is_honored(self):
+        from datetime import date
+
+        anchor = date(2026, 7, 22)
+        pair = flight_app._infer_holiday_season_round_trip(
+            "I want to fly to detroit from nyc on Thanksgiving day and come back the next day",
+            anchor=anchor,
+            parsed={},
+        )
+        self.assertIsNotNone(pair)
+        thanksgiving = flight_app._us_thanksgiving(2026).isoformat()
+        self.assertEqual(pair[0], thanksgiving)
+        self.assertEqual(pair[1], "2026-11-27")
+
+    def test_default_thanksgiving_window_unaffected_without_explicit_pin(self):
+        from datetime import date
+
+        pair = flight_app._infer_holiday_season_round_trip(
+            "JFK to LAX for Thanksgiving", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertEqual(pair, ("2026-11-25", "2026-11-29"))
+
+    def test_same_day_return_collapses_window_to_single_day(self):
+        from datetime import date
+
+        pair = flight_app._infer_holiday_season_round_trip(
+            "flights for christmas, same day return", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertIsNotNone(pair)
+        self.assertEqual(pair[0], pair[1])
+
+    def test_explicit_days_later_return_overrides_default_window(self):
+        from datetime import date
+
+        pair = flight_app._infer_holiday_season_round_trip(
+            "trip for diwali, returning 5 days later", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertIsNotNone(pair)
+        d0 = flight_app._to_date(pair[0])
+        d1 = flight_app._to_date(pair[1])
+        self.assertEqual((d1 - d0).days, 5)
+
+    def test_lunar_new_year_is_not_shadowed_by_generic_new_year_match(self):
+        from datetime import date
+
+        pair = flight_app._infer_holiday_season_round_trip(
+            "flights to seoul for lunar new year", anchor=date(2026, 7, 22), parsed={}
+        )
+        plain_new_year = flight_app._infer_holiday_season_round_trip(
+            "flights for new years", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertIsNotNone(pair)
+        self.assertNotEqual(pair, plain_new_year)
+
+    def test_eid_al_adha_is_not_shadowed_by_bare_eid_match(self):
+        from datetime import date
+
+        adha_pair = flight_app._infer_holiday_season_round_trip(
+            "flights to mecca for eid al adha", anchor=date(2026, 7, 22), parsed={}
+        )
+        fitr_pair = flight_app._infer_holiday_season_round_trip(
+            "flights to istanbul for eid", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertIsNotNone(adha_pair)
+        self.assertIsNotNone(fitr_pair)
+        self.assertNotEqual(adha_pair, fitr_pair)
+
+    def test_hanukkah_returns_a_future_window(self):
+        from datetime import date
+
+        pair = flight_app._infer_holiday_season_round_trip(
+            "flights to tel aviv for hanukkah", anchor=date(2026, 7, 22), parsed={}
+        )
+        self.assertIsNotNone(pair)
+        d0, d1 = pair
+        self.assertLess(d0, d1)
+
+    def test_explicit_calendar_dates_are_not_overridden_by_holiday_keyword(self):
+        # If the model already extracted real dates (day precision present in
+        # the text), the holiday keyword shouldn't silently clobber them.
+        class FakeResponse:
+            text = json.dumps({
+                "origin": "JFK",
+                "destination": "LAX",
+                "depart_date": "2026-11-20",
+                "return_date": "2026-11-27",
+                "passengers": 1,
+                "cabin": "ECONOMY",
+                "nonstop": False,
+                "max_price": None,
+                "sort": "recommended",
+            })
+
+        class FakeModel:
+            def generate_content(self, _prompt):
+                return FakeResponse()
+
+        with patch.object(flight_app, "model", FakeModel()):
+            parsed = flight_app.parse_ai_flight_request(
+                "JFK to LAX, Thanksgiving week, November 20 to November 27"
+            )
+
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["depart_date"], "2026-11-20")
+        self.assertEqual(parsed["return_date"], "2026-11-27")
+
+
+class TravelerContextTests(unittest.TestCase):
+    def test_detects_companion_and_longer_layover_preference(self):
+        context = flight_app._extract_ai_traveler_context(
+            "I want to fly with my mom, prefer a longer layover"
+        )
+        self.assertIn("mom", context["companion_labels"])
+        self.assertTrue(context["has_senior_or_child_companion"])
+        self.assertTrue(context["prefers_longer_layover"])
+        self.assertFalse(context["prefers_shorter_layover"])
+
+    def test_detects_shorter_layover_preference_with_kids(self):
+        context = flight_app._extract_ai_traveler_context(
+            "traveling with my kids, want a short layover"
+        )
+        self.assertIn("kids", context["companion_labels"])
+        self.assertTrue(context["prefers_shorter_layover"])
+
+    def test_solo_traveler_has_no_companion_context(self):
+        context = flight_app._extract_ai_traveler_context("just me flying to austin")
+        self.assertEqual(context["companion_labels"], [])
+        self.assertFalse(context["has_senior_or_child_companion"])
+
+    def test_parse_ai_flight_request_attaches_traveler_context(self):
+        class FakeResponse:
+            text = json.dumps({
+                "origin": "JFK",
+                "destination": "LAX",
+                "depart_date": "2099-08-10",
+                "return_date": "2099-08-17",
+                "passengers": 2,
+                "cabin": "ECONOMY",
+                "nonstop": False,
+                "max_price": None,
+                "sort": "recommended",
+            })
+
+        class FakeModel:
+            def generate_content(self, _prompt):
+                return FakeResponse()
+
+        with patch.object(flight_app, "model", FakeModel()):
+            parsed = flight_app.parse_ai_flight_request(
+                "JFK to LAX Aug 10 to Aug 17, flying with my mom, prefer a longer layover"
+            )
+
+        self.assertIsNotNone(parsed)
+        self.assertIn("traveler_context", parsed)
+        self.assertIn("mom", parsed["traveler_context"]["companion_labels"])
+        self.assertTrue(parsed["traveler_context"]["prefers_longer_layover"])
+
+
+class SmartBadgeReasoningTests(unittest.TestCase):
+    def test_top_pick_reasoning_is_dynamic_not_generic(self):
+        flights = [
+            {"price": 420.0, "_sort_total_duration": 300, "out_stops": 0, "in_stops": 0,
+             "_airline_key": "AA", "out_layovers": [], "in_layovers": []},
+            {"price": 380.0, "_sort_total_duration": 340, "out_stops": 1, "in_stops": 1,
+             "_airline_key": "AA", "out_layovers": [{"minutes": 95}], "in_layovers": [{"minutes": 100}]},
+            {"price": 500.0, "_sort_total_duration": 280, "out_stops": 0, "in_stops": 0,
+             "_airline_key": "DL", "out_layovers": [], "in_layovers": []},
+        ]
+        params = {"max_price": 450, "nonstop": False}
+        flight_app._assign_smart_badges(flights, "recommended", params=params)
+
+        reasoning = flights[0]["badge_reasoning"]
+        self.assertNotEqual(reasoning, "Optimized for price, duration, and timing")
+        self.assertIn("budget", reasoning.lower())
+
+    def test_top_pick_reasoning_mentions_companion_context(self):
+        flights = [
+            {"price": 400.0, "_sort_total_duration": 400, "out_stops": 1, "in_stops": 1,
+             "_airline_key": "AA", "out_layovers": [{"minutes": 100}], "in_layovers": [{"minutes": 90}]},
+            {"price": 400.0, "_sort_total_duration": 400, "out_stops": 1, "in_stops": 1,
+             "_airline_key": "DL", "out_layovers": [{"minutes": 300}], "in_layovers": [{"minutes": 300}]},
+        ]
+        params = {
+            "traveler_context": {
+                "companion_labels": ["kids"],
+                "has_senior_or_child_companion": True,
+                "prefers_shorter_layover": True,
+                "prefers_longer_layover": False,
+            }
+        }
+        flight_app._assign_smart_badges(flights, "recommended", params=params)
+        self.assertIn("kids", flights[0]["badge_reasoning"].lower())
+
+    def test_top_pick_reasoning_falls_back_when_no_signal(self):
+        # flights[0] is deliberately the pricier, slower, connecting option so
+        # none of the "why this one" signals fire and the generic fallback
+        # copy is used instead.
+        flights = [
+            {"price": 500.0, "_sort_total_duration": 400, "out_stops": 1, "in_stops": 1,
+             "_airline_key": "AA", "out_layovers": [{"minutes": 90}], "in_layovers": [{"minutes": 90}]},
+            {"price": 300.0, "_sort_total_duration": 300, "out_stops": 0, "in_stops": 0,
+             "_airline_key": "DL", "out_layovers": [], "in_layovers": []},
+        ]
+        flight_app._assign_smart_badges(flights, "recommended", params=None)
+        self.assertEqual(
+            flights[0]["badge_reasoning"],
+            "Best overall balance of price, duration, and flight timing for this search",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

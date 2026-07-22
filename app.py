@@ -2435,6 +2435,45 @@ def _extract_ai_relative_depart_date(user_text: str) -> str | None:
     return None
 
 
+def _extract_ai_relative_return_offset_days(user_text: str) -> int | None:
+    """
+    Detect an explicit "how long after departure do you come back" signal,
+    e.g. "come back the next day", "returning the following day", "same day
+    return", "back in 3 days". Returns the number of days between depart and
+    return the user actually asked for, or None if they didn't say.
+
+    This exists so phrasing like "...and come back the next day" always wins
+    over a generic default window (e.g. the standard Thanksgiving weekend
+    default), instead of being silently discarded.
+    """
+    txt = (user_text or "").strip().lower()
+    if not txt:
+        return None
+
+    return_verbs = r"(?:come\s+back|coming\s+back|comes\s+back|return(?:ing)?|head(?:ing)?\s+back|fly(?:ing)?\s+back|be\s+back|get\s+back)"
+    next_day_phrase = r"(?:the\s+)?(?:next|following)\s+day"
+
+    if re.search(rf"\b{return_verbs}\b[^.?!]{{0,25}}\b{next_day_phrase}\b", txt):
+        return 1
+    if re.search(rf"\b{next_day_phrase}\b[^.?!]{{0,25}}\b{return_verbs}\b", txt):
+        return 1
+    if re.search(rf"\b{return_verbs}\b[^.?!]{{0,20}}\ba\s+day\s+(?:after|later)\b", txt):
+        return 1
+    if re.search(r"\bsame[\s-]day\s+(?:return|round[\s-]?trip)\b", txt) or re.search(
+        r"\bthere\s+and\s+back\s+in\s+a\s+day\b", txt
+    ):
+        return 0
+
+    m = re.search(rf"\b{return_verbs}\b[^.?!]{{0,20}}\bin\s+(\d{{1,2}})\s+days?\b", txt)
+    if m:
+        return int(m.group(1))
+    m = re.search(rf"\b{return_verbs}\b[^.?!]{{0,20}}\b(\d{{1,2}})\s+days?\s+later\b", txt)
+    if m:
+        return int(m.group(1))
+
+    return None
+
+
 def _us_thanksgiving(year: int) -> date:
     """Fourth Thursday of November (US)."""
     nov1 = date(year, 11, 1)
@@ -2477,13 +2516,153 @@ def _last_weekday_of_month(year: int, month: int, weekday: int) -> date:
     return last - timedelta(days=delta)
 
 
-def _next_round_trip_window(anchor: date, build: Callable[[int], tuple[date, date]]) -> tuple[str, str] | None:
+# Movable lunar/lunisolar holidays don't have a closed-form formula, so they're
+# tracked as a lookup table (civil-calendar approximations; Islamic dates in
+# particular can shift by a day depending on regional moon sighting). Extend
+# these tables periodically as new years approach.
+_DIWALI_DATES: dict[int, date] = {
+    2025: date(2025, 10, 20), 2026: date(2026, 11, 8), 2027: date(2027, 10, 29),
+    2028: date(2028, 10, 17), 2029: date(2029, 11, 5), 2030: date(2030, 10, 26),
+    2031: date(2031, 11, 14), 2032: date(2032, 11, 2),
+}
+_LUNAR_NEW_YEAR_DATES: dict[int, date] = {
+    2025: date(2025, 1, 29), 2026: date(2026, 2, 17), 2027: date(2027, 2, 6),
+    2028: date(2028, 1, 26), 2029: date(2029, 2, 13), 2030: date(2030, 2, 3),
+    2031: date(2031, 1, 23), 2032: date(2032, 2, 11),
+}
+_EID_AL_FITR_DATES: dict[int, date] = {
+    2025: date(2025, 3, 30), 2026: date(2026, 3, 20), 2027: date(2027, 3, 9),
+    2028: date(2028, 2, 26), 2029: date(2029, 2, 14), 2030: date(2030, 2, 4),
+    2031: date(2031, 1, 24), 2032: date(2032, 1, 13),
+}
+_EID_AL_ADHA_DATES: dict[int, date] = {
+    2025: date(2025, 6, 6), 2026: date(2026, 5, 27), 2027: date(2027, 5, 16),
+    2028: date(2028, 5, 5), 2029: date(2029, 4, 24), 2030: date(2030, 4, 13),
+    2031: date(2031, 4, 2), 2032: date(2032, 3, 21),
+}
+_HANUKKAH_START_DATES: dict[int, date] = {
+    2025: date(2025, 12, 14), 2026: date(2026, 12, 4), 2027: date(2027, 12, 24),
+    2028: date(2028, 12, 12), 2029: date(2029, 12, 1), 2030: date(2030, 12, 20),
+    2031: date(2031, 12, 9), 2032: date(2032, 11, 27),
+}
+
+
+def _diwali_date(year: int) -> date | None:
+    return _DIWALI_DATES.get(year)
+
+
+def _lunar_new_year_date(year: int) -> date | None:
+    return _LUNAR_NEW_YEAR_DATES.get(year)
+
+
+def _eid_al_fitr_date(year: int) -> date | None:
+    return _EID_AL_FITR_DATES.get(year)
+
+
+def _eid_al_adha_date(year: int) -> date | None:
+    return _EID_AL_ADHA_DATES.get(year)
+
+
+def _hanukkah_start_date(year: int) -> date | None:
+    return _HANUKKAH_START_DATES.get(year)
+
+
+# Phrases like "on Thanksgiving day" or "on Diwali" are an explicit signal
+# that the user wants to depart on the holiday's actual date, overriding the
+# generic "day before / days after" default windows below (which exist only
+# because most defaults assume the traveler wants the holiday itself in the
+# middle of the trip, e.g. flying in the eve of Thanksgiving).
+_SINGLE_DAY_HOLIDAY_PIN_PATTERNS: list[tuple[re.Pattern, Callable[[int], date | None]]] = [
+    (re.compile(r"\bon\s+(?:the\s+)?thanksgiving(?:\s+day)?\b"), _us_thanksgiving),
+    (re.compile(r"\bon\s+(?:the\s+)?(?:christmas|xmas)(?:\s+day)?\b"), lambda y: date(y, 12, 25)),
+    (re.compile(r"\bon\s+halloween\b"), lambda y: date(y, 10, 31)),
+    (
+        re.compile(r"\bon\s+(?:the\s+)?(?:4th|fourth)\s+of\s+july\b|\bon\s+independence\s+day\b"),
+        lambda y: date(y, 7, 4),
+    ),
+    (re.compile(r"\bon\s+new\s+year'?s?\s+(?:day|eve)?\b"), lambda y: date(y, 1, 1)),
+    (re.compile(r"\bon\s+valentine'?s(?:\s+day)?\b"), lambda y: date(y, 2, 14)),
+    (re.compile(r"\bon\s+veterans?\s+day\b"), lambda y: date(y, 11, 11)),
+    (re.compile(r"\bon\s+labor\s+day\b"), lambda y: _nth_weekday_of_month(y, 9, 0, 1)),
+    (re.compile(r"\bon\s+memorial\s+day\b"), lambda y: _last_weekday_of_month(y, 5, 0)),
+    (re.compile(r"\bon\s+(?:mlk|martin\s+luther\s+king)(?:\s+day)?\b"), lambda y: _nth_weekday_of_month(y, 1, 0, 3)),
+    (re.compile(r"\bon\s+presidents?\s+day\b"), lambda y: _nth_weekday_of_month(y, 2, 0, 3)),
+    (re.compile(r"\bon\s+easter(?:\s+sunday)?\b"), _western_easter_sunday),
+    (re.compile(r"\bon\s+diwali\b"), _diwali_date),
+    (re.compile(r"\bon\s+(?:lunar\s+new\s+year|chinese\s+new\s+year)\b"), _lunar_new_year_date),
+    (re.compile(r"\bon\s+eid\s+al[\s-]?adha\b"), _eid_al_adha_date),
+    (re.compile(r"\bon\s+eid(?:\s+al[\s-]?fitr)?\b"), _eid_al_fitr_date),
+    (re.compile(r"\bon\s+hanukkah\b"), _hanukkah_start_date),
+    (re.compile(r"\bon\s+bastille\s+day\b"), lambda y: date(y, 7, 14)),
+    (re.compile(r"\bon\s+canada\s+day\b"), lambda y: date(y, 7, 1)),
+    (re.compile(r"\bon\s+australia\s+day\b"), lambda y: date(y, 1, 26)),
+    (re.compile(r"\bon\s+anzac\s+day\b"), lambda y: date(y, 4, 25)),
+    (re.compile(r"\bon\s+cinco\s+de\s+mayo\b"), lambda y: date(y, 5, 5)),
+]
+
+
+def _explicit_holiday_day_pin_date(user_text: str, *, anchor: date) -> date | None:
+    txt = (user_text or "").strip().lower()
+    if not txt:
+        return None
+    for pattern, date_fn in _SINGLE_DAY_HOLIDAY_PIN_PATTERNS:
+        if not pattern.search(txt):
+            continue
+        for y in range(anchor.year, anchor.year + 5):
+            try:
+                candidate = date_fn(y)
+            except Exception:
+                candidate = None
+            if candidate and candidate >= anchor:
+                return candidate
+        return None
+    return None
+
+
+def _finalize_holiday_pair(
+    pair: tuple[str, str] | None, user_text: str, anchor: date
+) -> tuple[str, str] | None:
     """
-    build(year) -> (depart, return) for that calendar year's primary occurrence.
-    Picks the first future window (departure may snap to anchor if we are already inside it).
+    Applies explicit user overrides on top of a default holiday round-trip
+    window: pinning departure to the holiday's actual date ("on Thanksgiving
+    day") and/or an explicit return offset ("come back the next day", "same
+    day return", "back in 3 days"). Without these, the generic default window
+    is returned unchanged.
     """
-    for y in range(anchor.year, anchor.year + 4):
-        d0, d1 = build(y)
+    if not pair:
+        return pair
+
+    dep_date = _to_date(pair[0])
+    ret_date = _to_date(pair[1])
+
+    pinned = _explicit_holiday_day_pin_date(user_text, anchor=anchor)
+    if pinned and pinned != dep_date:
+        shift_days = (pinned - dep_date).days
+        dep_date = pinned
+        ret_date = ret_date + timedelta(days=shift_days)
+
+    return_offset = _extract_ai_relative_return_offset_days(user_text)
+    if return_offset is not None:
+        ret_date = dep_date + timedelta(days=max(0, return_offset))
+
+    if ret_date < dep_date:
+        ret_date = dep_date
+
+    return dep_date.isoformat(), ret_date.isoformat()
+
+
+def _next_round_trip_window(anchor: date, build: Callable[[int], tuple[date, date] | None]) -> tuple[str, str] | None:
+    """
+    build(year) -> (depart, return) for that calendar year's primary occurrence,
+    or None if that year isn't covered (e.g. a lookup table doesn't extend that
+    far). Picks the first future window (departure may snap to anchor if we
+    are already inside it).
+    """
+    for y in range(anchor.year, anchor.year + 6):
+        built = build(y)
+        if built is None:
+            continue
+        d0, d1 = built
         if d0 > d1:
             d0, d1 = d1, d0
         if d1 < anchor:
@@ -2634,80 +2813,185 @@ def _infer_holiday_season_round_trip(
         mg = _western_easter_sunday(y) - timedelta(days=47)
         return mg - timedelta(days=2), mg + timedelta(days=1)
 
+    def carnival_rt(y: int) -> tuple[date, date]:
+        mg = _western_easter_sunday(y) - timedelta(days=47)
+        return mg - timedelta(days=4), mg + timedelta(days=1)
+
+    def semana_santa_rt(y: int) -> tuple[date, date]:
+        e = _western_easter_sunday(y)
+        return e - timedelta(days=6), e + timedelta(days=1)
+
+    def diwali_rt(y: int) -> tuple[date, date] | None:
+        d = _diwali_date(y)
+        if d is None:
+            return None
+        return d - timedelta(days=1), d + timedelta(days=3)
+
+    def lunar_new_year_rt(y: int) -> tuple[date, date] | None:
+        d = _lunar_new_year_date(y)
+        if d is None:
+            return None
+        return d - timedelta(days=1), d + timedelta(days=4)
+
+    def eid_al_fitr_rt(y: int) -> tuple[date, date] | None:
+        d = _eid_al_fitr_date(y)
+        if d is None:
+            return None
+        return d - timedelta(days=1), d + timedelta(days=3)
+
+    def eid_al_adha_rt(y: int) -> tuple[date, date] | None:
+        d = _eid_al_adha_date(y)
+        if d is None:
+            return None
+        return d - timedelta(days=1), d + timedelta(days=3)
+
+    def hanukkah_rt(y: int) -> tuple[date, date] | None:
+        d = _hanukkah_start_date(y)
+        if d is None:
+            return None
+        return d - timedelta(days=1), d + timedelta(days=6)
+
+    def golden_week_rt(y: int) -> tuple[date, date]:
+        return date(y, 4, 29), date(y, 5, 5)
+
+    def bastille_day_rt(y: int) -> tuple[date, date]:
+        d = date(y, 7, 14)
+        return d - timedelta(days=1), d + timedelta(days=1)
+
+    def canada_day_rt(y: int) -> tuple[date, date]:
+        d = date(y, 7, 1)
+        return d - timedelta(days=1), d + timedelta(days=1)
+
+    def australia_day_rt(y: int) -> tuple[date, date]:
+        d = date(y, 1, 26)
+        return d - timedelta(days=1), d + timedelta(days=1)
+
+    def anzac_day_rt(y: int) -> tuple[date, date]:
+        d = date(y, 4, 25)
+        return d - timedelta(days=1), d + timedelta(days=1)
+
+    def cinco_de_mayo_rt(y: int) -> tuple[date, date]:
+        d = date(y, 5, 5)
+        return d - timedelta(days=1), d + timedelta(days=1)
+
+    def day_of_the_dead_rt(y: int) -> tuple[date, date]:
+        return date(y, 10, 31), date(y, 11, 3)
+
+    def oktoberfest_rt(y: int) -> tuple[date, date]:
+        start = _nth_weekday_of_month(y, 9, 5, 3)  # 3rd Saturday of September (approx. start)
+        return start - timedelta(days=1), start + timedelta(days=6)
+
+    def songkran_rt(y: int) -> tuple[date, date]:
+        return date(y, 4, 12), date(y, 4, 16)
+
     if re.search(r"\bthanksgiving\b", txt):
-        return _next_round_trip_window(anchor, tg_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, tg_rt), user_text, anchor)
     if re.search(r"\bblack\s+friday\b", txt):
-        return _next_round_trip_window(anchor, tg_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, tg_rt), user_text, anchor)
+    if re.search(r"\bboxing\s+day\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, xmas_rt), user_text, anchor)
     if re.search(r"\b(christmas|xmas)\b", txt) or re.search(r"\bholiday\s+season\b", txt):
-        return _next_round_trip_window(anchor, xmas_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, xmas_rt), user_text, anchor)
+    if re.search(r"\b(?:lunar\s+new\s+year|chinese\s+new\s+year)\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, lunar_new_year_rt), user_text, anchor)
     if re.search(r"\bnew\s+year'?s?\b", txt) or re.search(r"\bnew\s+year\b", txt):
-        return _next_round_trip_window(anchor, new_year_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, new_year_rt), user_text, anchor)
+    if re.search(r"\bdiwali\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, diwali_rt), user_text, anchor)
+    if re.search(r"\beid\s+al[\s-]?adha\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, eid_al_adha_rt), user_text, anchor)
+    if re.search(r"\beid(?:\s+al[\s-]?fitr)?\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, eid_al_fitr_rt), user_text, anchor)
+    if re.search(r"\bhanukkah\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, hanukkah_rt), user_text, anchor)
+    if re.search(r"\bgolden\s+week\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, golden_week_rt), user_text, anchor)
+    if re.search(r"\bbastille\s+day\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, bastille_day_rt), user_text, anchor)
+    if re.search(r"\bcanada\s+day\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, canada_day_rt), user_text, anchor)
+    if re.search(r"\baustralia\s+day\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, australia_day_rt), user_text, anchor)
+    if re.search(r"\banzac\s+day\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, anzac_day_rt), user_text, anchor)
+    if re.search(r"\bcinco\s+de\s+mayo\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, cinco_de_mayo_rt), user_text, anchor)
+    if re.search(r"\b(?:day\s+of\s+the\s+dead|d[ií]a\s+de\s+(?:los\s+)?muertos)\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, day_of_the_dead_rt), user_text, anchor)
+    if re.search(r"\boktoberfest\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, oktoberfest_rt), user_text, anchor)
+    if re.search(r"\bsongkran\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, songkran_rt), user_text, anchor)
+    if re.search(r"\b(?:rio\s+)?carnival\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, carnival_rt), user_text, anchor)
+    if re.search(r"\bsemana\s+santa\b|\bholy\s+week\b", txt):
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, semana_santa_rt), user_text, anchor)
     if re.search(r"\bbank\s+holiday\b", txt):
         if re.search(r"\beaster\b", txt) and use_uk_profile:
-            return _next_round_trip_window(anchor, easter_monday_bank_holiday_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, easter_monday_bank_holiday_rt), user_text, anchor)
         if re.search(r"\baug(?:ust)?\b", txt):
-            return _next_round_trip_window(anchor, late_august_bank_holiday_rt)
-        return _next_round_trip_window(anchor, may_bank_holiday_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, late_august_bank_holiday_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, may_bank_holiday_rt), user_text, anchor)
     if re.search(r"\bspring\s+break\b", txt) or re.search(r"\bspringbreak\b", txt):
         if use_uk_profile:
-            return _next_round_trip_window(anchor, uk_spring_break_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, uk_spring_break_rt), user_text, anchor)
         if use_continental_eu_profile:
-            return _next_round_trip_window(anchor, eu_spring_break_rt)
-        return _next_round_trip_window(anchor, spring_break_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_spring_break_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, spring_break_rt), user_text, anchor)
     if re.search(r"\bhalf\s*term\b", txt):
         if re.search(r"\boct(?:ober)?\b|\bautumn\b|\bfall\b", txt):
-            return _next_round_trip_window(anchor, eu_fall_rt if use_eu_profile else fall_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_fall_rt if use_eu_profile else fall_rt), user_text, anchor)
         if re.search(r"\bmay\b|\bspring\b", txt):
-            return _next_round_trip_window(anchor, may_bank_holiday_rt if use_eu_profile else spring_generic_rt)
-        return _next_round_trip_window(anchor, eu_fall_rt if use_eu_profile else fall_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, may_bank_holiday_rt if use_eu_profile else spring_generic_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_fall_rt if use_eu_profile else fall_rt), user_text, anchor)
     if re.search(r"\bmlk\b", txt) or re.search(r"\bmartin\s+luther\s+king\b", txt):
-        return _next_round_trip_window(anchor, mlk_weekend_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, mlk_weekend_rt), user_text, anchor)
     if re.search(r"\bpresidents?\s+day\b", txt):
-        return _next_round_trip_window(anchor, presidents_weekend_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, presidents_weekend_rt), user_text, anchor)
     if re.search(r"\bvalentine'?s\b", txt):
-        return _next_round_trip_window(anchor, valentine_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, valentine_rt), user_text, anchor)
     if re.search(r"\bmardi\s+gras\b", txt):
-        return _next_round_trip_window(anchor, mardi_gras_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, mardi_gras_rt), user_text, anchor)
     if re.search(r"\beaster\b", txt):
-        return _next_round_trip_window(anchor, easter_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, easter_rt), user_text, anchor)
     if re.search(r"\bmemorial\s+day\b", txt):
-        return _next_round_trip_window(anchor, memorial_weekend_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, memorial_weekend_rt), user_text, anchor)
     if re.search(r"\b(4th\s+of\s+july|fourth\s+of\s+july|independence\s+day)\b", txt):
-        return _next_round_trip_window(anchor, july4_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, july4_rt), user_text, anchor)
     if re.search(r"\blabor\s+day\b", txt):
-        return _next_round_trip_window(anchor, labor_day_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, labor_day_rt), user_text, anchor)
     if re.search(r"\b(columbus\s+day|indigenous\s+peoples'?(\s+day)?)\b", txt):
-        return _next_round_trip_window(anchor, columbus_day_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, columbus_day_rt), user_text, anchor)
     if re.search(r"\bhalloween\b", txt):
-        return _next_round_trip_window(anchor, halloween_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, halloween_rt), user_text, anchor)
     if re.search(r"\bveterans?\s+day\b", txt):
-        return _next_round_trip_window(anchor, veterans_day_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, veterans_day_rt), user_text, anchor)
     if re.search(r"\bsummer\b", txt):
         if use_uk_profile:
-            return _next_round_trip_window(anchor, uk_summer_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, uk_summer_rt), user_text, anchor)
         if use_continental_eu_profile:
-            return _next_round_trip_window(anchor, eu_summer_rt)
-        return _next_round_trip_window(anchor, summer_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_summer_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, summer_rt), user_text, anchor)
     if re.search(r"\bsummer\s+holiday\b", txt) or re.search(r"\bschool\s+holiday\b", txt):
         if use_uk_profile:
-            return _next_round_trip_window(anchor, uk_summer_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, uk_summer_rt), user_text, anchor)
         if use_continental_eu_profile:
-            return _next_round_trip_window(anchor, eu_summer_rt)
-        return _next_round_trip_window(anchor, summer_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_summer_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, summer_rt), user_text, anchor)
     if re.search(r"\b(fall|autumn)\b", txt):
         if use_uk_profile:
-            return _next_round_trip_window(anchor, uk_fall_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, uk_fall_rt), user_text, anchor)
         if use_continental_eu_profile:
-            return _next_round_trip_window(anchor, eu_fall_rt)
-        return _next_round_trip_window(anchor, fall_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_fall_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, fall_rt), user_text, anchor)
     if re.search(r"\bwinter\b", txt) and not re.search(r"\bchristmas\b", txt):
-        return _next_round_trip_window(anchor, winter_rt)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, winter_rt), user_text, anchor)
     if re.search(r"\bspring\b", txt):
         if use_uk_profile:
-            return _next_round_trip_window(anchor, uk_spring_break_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, uk_spring_break_rt), user_text, anchor)
         if use_continental_eu_profile:
-            return _next_round_trip_window(anchor, eu_spring_break_rt)
-        return _next_round_trip_window(anchor, spring_generic_rt)
+            return _finalize_holiday_pair(_next_round_trip_window(anchor, eu_spring_break_rt), user_text, anchor)
+        return _finalize_holiday_pair(_next_round_trip_window(anchor, spring_generic_rt), user_text, anchor)
 
     return None
 
@@ -2765,6 +3049,70 @@ def _extract_route_chain_from_text(user_text: str) -> list[str]:
             codes.append(code)
     return codes if len(codes) >= 3 else []
 
+_TRAVELER_COMPANION_TERMS: dict[str, str] = {
+    "mom": "mom", "mother": "mom", "dad": "dad", "father": "dad",
+    "grandma": "grandma", "grandmother": "grandma", "grandpa": "grandpa", "grandfather": "grandpa",
+    "wife": "wife", "husband": "husband", "spouse": "spouse", "partner": "partner",
+    "kids": "kids", "kid": "kid", "children": "children", "child": "child",
+    "baby": "baby", "infant": "infant", "toddler": "toddler",
+    "son": "son", "daughter": "daughter", "parents": "parents",
+    "girlfriend": "girlfriend", "boyfriend": "boyfriend",
+    "fiancee": "fiancee", "fiance": "fiance",
+}
+_SENIOR_OR_CHILD_COMPANION_LABELS = {
+    "mom", "dad", "grandma", "grandpa", "kids", "kid", "children", "child",
+    "baby", "infant", "toddler", "parents",
+}
+
+
+def _extract_ai_traveler_context(user_text: str) -> dict[str, Any]:
+    """
+    Detect mentions of travel companions ("my mom", "with my kids") and comfort
+    preferences ("longer layover", "quick connection") that the sort/ranking
+    and result explanations should reflect. This never changes passenger
+    counts by itself — that stays under the LLM's explicit `passengers` field
+    since it directly affects how many seats get booked. This only powers
+    softer ranking nudges and "why this is the top pick" copy.
+    """
+    txt = (user_text or "").strip().lower()
+    context: dict[str, Any] = {
+        "companion_labels": [],
+        "has_senior_or_child_companion": False,
+        "prefers_longer_layover": False,
+        "prefers_shorter_layover": False,
+    }
+    if not txt:
+        return context
+
+    found_labels: list[str] = []
+    for term, label in _TRAVELER_COMPANION_TERMS.items():
+        if re.search(rf"\b(?:my|our)\s+{re.escape(term)}\b", txt) or re.search(
+            rf"\b(?:with|and)\s+(?:my|our)\s+{re.escape(term)}\b", txt
+        ):
+            if label not in found_labels:
+                found_labels.append(label)
+
+    if re.search(r"\belderly\b", txt) or re.search(r"\bsenior\s+citizen\b", txt) or re.search(r"\bwheelchair\b", txt):
+        if "elderly/assistance" not in found_labels:
+            found_labels.append("elderly/assistance")
+
+    context["companion_labels"] = found_labels
+    context["has_senior_or_child_companion"] = bool(
+        found_labels and (set(found_labels) & _SENIOR_OR_CHILD_COMPANION_LABELS or "elderly/assistance" in found_labels)
+    )
+
+    if re.search(r"\b(?:long|longer|extra|extended)\s+(?:layover|stopover|connection)\b", txt) or re.search(
+        r"\bstopover\s+in\b", txt
+    ) or re.search(r"\btime\s+to\s+explore\b", txt):
+        context["prefers_longer_layover"] = True
+    if re.search(r"\b(?:short|shorter|quick|minimal|tight)\s+(?:layover|stopover|connection)\b", txt) or re.search(
+        r"\bavoid\s+long\s+layovers?\b", txt
+    ):
+        context["prefers_shorter_layover"] = True
+
+    return context
+
+
 def parse_ai_flight_request(user_text: str) -> dict | None:
     if not model or not user_text:
         return None
@@ -2797,7 +3145,9 @@ Rules:
 - If a city is mentioned, infer the main airport (e.g., Dhaka -> DAC)
 - Dates must be ISO format (YYYY-MM-DD)
 - If the user gives a date without a year, assume the next future occurrence
-- If the user mentions holiday/season timing (for example Thanksgiving, Black Friday, Christmas, New Year's, spring break, Easter, Mardi Gras, Memorial Day, 4th of July, Labor Day, Halloween, summer, fall, winter, or spring) without exact dates, set depart_date and return_date to null; the server applies default round-trip windows the user can edit.
+- If the user mentions holiday/season timing without exact calendar dates, set depart_date and return_date to null; the server applies default round-trip windows the user can edit. This includes (but is not limited to): Thanksgiving, Black Friday, Christmas, Boxing Day, New Year's, spring break, Easter, Semana Santa/Holy Week, Mardi Gras, Carnival, Memorial Day, 4th of July/Independence Day, Labor Day, Columbus Day, Halloween, Day of the Dead, Veterans Day, MLK Day, Presidents Day, Valentine's Day, summer/fall/winter/spring, Diwali, Lunar New Year/Chinese New Year, Eid al-Fitr, Eid al-Adha, Hanukkah, Golden Week, Bastille Day, Canada Day, Australia Day, ANZAC Day, Cinco de Mayo, Oktoberfest, and Songkran.
+- If the user gives an explicit relative return instruction (e.g. "come back the next day", "same day return", "back in 3 days"), still set return_date to null when paired with a holiday/season name — the server resolves the exact combination of holiday date + relative return instruction.
+- Count every traveler implied by the request into `passengers`, not just the speaker: "me and my mom" or "my wife and I" is 2, "my family of four" is 4, "traveling with my two kids" (plus the speaker) is 3, etc. Only default to 1 when no companions are mentioned.
 - For multi-city requests, include legs in order.
 - Today is {today}
 - Only return JSON
@@ -2880,7 +3230,12 @@ User request:
 
         holiday_rt = _infer_holiday_season_round_trip(user_text, anchor=date.today(), parsed=parsed)
         holiday_dates_applied = False
-        if holiday_rt:
+        already_has_explicit_dates = (
+            _is_valid_iso_date(parsed.get("depart_date"))
+            and _is_valid_iso_date(parsed.get("return_date"))
+            and _user_text_has_explicit_day_precision(user_text)
+        )
+        if holiday_rt and not already_has_explicit_dates:
             dep_iso, ret_iso = holiday_rt
             parsed["depart_date"] = dep_iso
             parsed["return_date"] = ret_iso
@@ -2890,6 +3245,10 @@ User request:
         combination_mode = _extract_ai_combination_mode(user_text)
         if combination_mode:
             parsed["combination_mode"] = combination_mode
+
+        traveler_context = _extract_ai_traveler_context(user_text)
+        if traveler_context.get("companion_labels") or traveler_context.get("prefers_longer_layover") or traveler_context.get("prefers_shorter_layover"):
+            parsed["traveler_context"] = traveler_context
 
         if _looks_like_ai_flex_request(user_text, parsed) and not holiday_dates_applied:
             parsed["search_mode"] = "flex"
@@ -3484,6 +3843,19 @@ def _slice_duration_floor_minutes(
     total += sum(int(layover.get("minutes", 0) or 0) for layover in (layovers or []))
     return total
 
+def _traveler_context_cache_sig(params: dict[str, Any]) -> tuple:
+    """
+    Hashable fingerprint of the soft ranking/reasoning preferences so two
+    requests that differ only by "flying with my mom" or a layover
+    preference don't share a cached result set with stale badge reasoning.
+    """
+    traveler_context = params.get("traveler_context") or {}
+    return (
+        tuple(traveler_context.get("companion_labels") or ()),
+        bool(traveler_context.get("prefers_longer_layover")),
+        bool(traveler_context.get("prefers_shorter_layover")),
+    )
+
 def _normalize_search_key(params: dict[str, Any], detailed: bool) -> tuple:
     legs_sig = tuple(
         (
@@ -3507,6 +3879,7 @@ def _normalize_search_key(params: dict[str, Any], detailed: bool) -> tuple:
         params.get("sort", "recommended"),
         params.get("max_price"),
         bool(detailed),
+        _traveler_context_cache_sig(params),
     )
 
 def _normalize_cheapest_snapshot_key(params: dict[str, Any]) -> tuple:
@@ -3669,7 +4042,7 @@ def _fallback_flights_from_snapshot(params: dict[str, Any]) -> list[dict[str, An
 
     sort_mode = params.get("sort", "recommended")
     flights = _sort_flights(flights, sort_mode, params=params)
-    _assign_smart_badges(flights, sort_mode)
+    _assign_smart_badges(flights, sort_mode, params=params)
     _annotate_comparison_metrics(flights)
     flights = _decorate_flights_for_display(flights, params)
     return _clean_flights_for_render(flights)
@@ -5233,9 +5606,17 @@ def _percentile(values: list[float], p: float) -> float:
     idx = max(0, min(len(vals) - 1, idx))
     return vals[idx]
 
-def _apply_recommended_scoring(flights: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _apply_recommended_scoring(
+    flights: list[dict[str, Any]], *, params: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     if not flights:
         return flights
+
+    traveler_context = (params or {}).get("traveler_context") or {}
+    prefers_longer_layover = bool(traveler_context.get("prefers_longer_layover"))
+    prefers_shorter_layover = bool(
+        traveler_context.get("prefers_shorter_layover") or traveler_context.get("has_senior_or_child_companion")
+    )
 
     prices = [float(f.get("price", 0) or 0) for f in flights if float(f.get("price", 0) or 0) > 0]
     durations = [int(f.get("_sort_total_duration", 0) or 0) for f in flights if int(f.get("_sort_total_duration", 0) or 0) > 0]
@@ -5311,6 +5692,14 @@ def _apply_recommended_scoring(flights: list[dict[str, Any]]) -> list[dict[str, 
             elif 75 <= shortest <= 180: layover_score += 3.0
             if longest > 300:   layover_score -= 6.0
             elif longest > 240: layover_score -= 3.0
+
+            # Soft nudges from explicit traveler preferences. The <45min
+            # missed-connection penalty above still applies regardless —
+            # that's a real risk, not a preference.
+            if prefers_longer_layover and 90 <= longest <= 240:
+                layover_score += 4.0
+            if prefers_shorter_layover and longest > 150:
+                layover_score -= 4.0
 
         # ── Duration bonus (0–4 pts) — only for meaningfully faster flights
         # Cap is intentionally tiny so a faster-but-expensive flight can't
@@ -5620,7 +6009,77 @@ def _apply_google_like_airline_mix(flights: list[dict[str, Any]], *, params: dic
     )
     return mixed
 
-def _assign_smart_badges(flights: list[dict[str, Any]], sort: str) -> None:
+def _describe_recommended_top_pick(
+    flight: dict[str, Any], flights: list[dict[str, Any]], params: dict[str, Any] | None
+) -> str:
+    """
+    Builds a concrete, request-specific explanation for why this flight is
+    the top pick, grounded in real numbers from this search plus anything the
+    user explicitly asked for (budget, nonstop, cabin, traveling with family,
+    layover comfort) — never a static, one-size-fits-all caption.
+    """
+    params = params or {}
+    prices = [float(f.get("price", 0) or 0) for f in flights if f.get("price")]
+    durations = [int(f.get("_sort_total_duration", 0) or 0) for f in flights if f.get("_sort_total_duration")]
+    price = float(flight.get("price", 0) or 0)
+    duration = int(flight.get("_sort_total_duration", 0) or 0)
+    stops = int(flight.get("out_stops", 0) or 0) + int(flight.get("in_stops", 0) or 0)
+    currency = flight.get("currency") or flight.get("total_currency") or "USD"
+
+    reasons: list[str] = []
+
+    if prices and price <= min(prices) + 0.01:
+        reasons.append("the lowest fare in this search")
+    elif prices:
+        avg_price = sum(prices) / len(prices)
+        if price < avg_price - 1:
+            reasons.append(f"~{currency} {avg_price - price:,.0f} below the average fare for this search")
+
+    max_price_raw = params.get("max_price")
+    try:
+        max_price_val = float(max_price_raw) if max_price_raw not in (None, "") else None
+    except (TypeError, ValueError):
+        max_price_val = None
+    if max_price_val and price and price <= max_price_val:
+        reasons.append(f"stays within your {currency} {max_price_val:,.0f} budget")
+
+    if params.get("nonstop") and stops == 0:
+        reasons.append("nonstop, as requested")
+    elif stops == 0 and durations and duration <= min(durations) + 15:
+        reasons.append("nonstop and one of the fastest options here")
+    elif stops == 0:
+        reasons.append("nonstop")
+
+    traveler_context = params.get("traveler_context") or {}
+    companions = traveler_context.get("companion_labels") or []
+    layover_minutes = [
+        int(x.get("minutes", 0) or 0)
+        for x in [*(flight.get("out_layovers") or []), *(flight.get("in_layovers") or [])]
+    ]
+    if traveler_context.get("prefers_longer_layover") and layover_minutes and max(layover_minutes) >= 90:
+        reasons.append("gives you extra time during the layover, like you asked")
+    elif (
+        (traveler_context.get("prefers_shorter_layover") or traveler_context.get("has_senior_or_child_companion"))
+        and stops >= 1
+        and layover_minutes
+        and max(layover_minutes) <= 150
+    ):
+        who = companions[0] if companions else "your group"
+        reasons.append(f"keeps the connection short, easier for traveling with {who}")
+
+    cabin = str(params.get("cabin") or "").upper()
+    if cabin and cabin != "ECONOMY":
+        reasons.append(f"booked in {cabin.replace('_', ' ').title()}")
+
+    if not reasons:
+        return "Best overall balance of price, duration, and flight timing for this search"
+    joined = "; ".join(reasons[:3])
+    return joined[0].upper() + joined[1:]
+
+
+def _assign_smart_badges(
+    flights: list[dict[str, Any]], sort: str, *, params: dict[str, Any] | None = None
+) -> None:
     if not flights:
         return
 
@@ -5674,7 +6133,7 @@ def _assign_smart_badges(flights: list[dict[str, Any]], sort: str) -> None:
         assign(fastest_idx, "Fastest", "Shortest total travel time")
         return
 
-    assign(0, "Top pick", "Optimized for price, duration, and timing")
+    assign(0, "Top pick", _describe_recommended_top_pick(flights[0], flights, params))
     assign(cheapest_idx, "Cheapest", "Lowest fare available")
     assign(fastest_idx, "Fastest", "Shortest total travel time")
     assign(alt_airline_idx, "Alternative option", "Different carrier for this route")
@@ -5729,7 +6188,7 @@ def _sort_flights(flights: list[dict[str, Any]], sort: str, *, params: dict[str,
         flights.sort(key=lambda x: (x.get("out_stops", 0), x.get("in_stops", 0) or 0, x["price"], x.get("_sort_total_duration", 0)))
         flights = _apply_google_like_airline_mix(flights, params=params)
     else:
-        flights = _apply_recommended_scoring(flights)
+        flights = _apply_recommended_scoring(flights, params=params)
         flights = _diversify_recommended_flights(flights)
         flights = _rebalance_recommended_flights(flights, RECOMMENDED_RESULTS_LIMIT)
         flights = _ensure_recommended_airline_variety(flights, RECOMMENDED_RESULTS_LIMIT)
@@ -5777,7 +6236,7 @@ def search_flights(
         flights = _sort_flights(flights, sort_mode, params=params)
         flights = flights[:RESULTS_PAGE_LIMIT]
 
-    _assign_smart_badges(flights, sort_mode)
+    _assign_smart_badges(flights, sort_mode, params=params)
     _annotate_comparison_metrics(flights)
     flights = _decorate_flights_for_display(flights, params)
     flights = _clean_flights_for_render(flights)
@@ -5875,7 +6334,7 @@ def _flex_final_offers_with_stream(
         flights = _collect_best_presentations(raw, final_params, detailed=True)
         flights = _sort_flights(flights, sort_mode, params=final_params)
         flights = flights[:RESULTS_PAGE_LIMIT]
-        _assign_smart_badges(flights, sort_mode)
+        _assign_smart_badges(flights, sort_mode, params=final_params)
         _annotate_comparison_metrics(flights)
         flights = _decorate_flights_for_display(flights, final_params)
         flights = _clean_flights_for_render(flights)
@@ -6489,7 +6948,7 @@ def _flex_provisional_preview_from_scan_hit(
     if not flights:
         return None
     flights = _sort_flights(flights, "cheapest", params=params)
-    _assign_smart_badges(flights, "cheapest")
+    _assign_smart_badges(flights, "cheapest", params=params)
     _annotate_comparison_metrics(flights)
     flights = _decorate_flights_for_display(flights, params)
     flights = _clean_flights_for_render(flights)

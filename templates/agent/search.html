@@ -530,7 +530,7 @@
                 {% elif f.metric_is_fastest %}
                 <small>Fastest</small>
                 {% elif f.smart_badge %}
-                <small>{{ f.smart_badge }}</small>
+                <small title="{{ f.badge_reasoning or '' }}">{{ f.smart_badge }}</small>
                 {% endif %}
               </div>
               <div class="fare-actions">

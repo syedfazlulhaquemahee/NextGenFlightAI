@@ -179,7 +179,7 @@
               </div>
             {% endif %}
             {% if rank == 1 and featured and f.smart_badge %}
-              <div class="fc-ai-note">Top 5% for this route</div>
+              <div class="fc-ai-note">{{ f.badge_reasoning or 'Top 5% for this route' }}</div>
             {% endif %}
           </div>
         </div>
