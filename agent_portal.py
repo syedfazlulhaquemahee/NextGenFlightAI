@@ -1115,7 +1115,7 @@ def search():
 @require_agent_auth("agent.dashboard.view")
 def checkout_offer(offer_id: str):
     consumer_app = _shared_search_module()
-    mode_error = consumer_app._booking_mode_error()
+    mode_error = consumer_app._demo_checkout_lock_error() or consumer_app._booking_mode_error()
     if mode_error:
         return _render_agent(
             "agent/checkout.html",

@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 
 import analytics_store
 import email_service
+from destinations_data import CATEGORIES, DESTINATIONS, destinations_for_category, get_destination, get_destination_by_code
 from agent_portal import agent_bp
 from duffel_booking import (
     build_checkout_page_model,
@@ -51,6 +52,11 @@ from duffel_booking import (
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+# Demo safeguard: keeps the checkout/booking flow visible and browsable but
+# blocks it from actually creating an order. On by default since this build
+# is a live public demo; set NGF_DEMO_BOOKING_LOCK=0 to allow real checkouts
+# (e.g. once this stops being a demo, or for local testing of the flow).
+NGF_DEMO_BOOKING_LOCK = os.getenv("NGF_DEMO_BOOKING_LOCK", "1").strip().lower() not in ("0", "false", "no")
 DUFFEL_ACCESS_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN", "").strip()
 DUFFEL_BASE = os.getenv("DUFFEL_BASE", "https://api.duffel.com").strip() or "https://api.duffel.com"
 DUFFEL_VERSION = os.getenv("DUFFEL_VERSION", "v2").strip() or "v2"
@@ -7568,6 +7574,20 @@ def _booking_lookup_error() -> str | None:
     return None
 
 
+def _demo_checkout_lock_error() -> str | None:
+    """
+    Demo safeguard for the final checkout/payment step specifically — the
+    review-trip and seat-selection pages before it stay fully browsable.
+    """
+    if not NGF_DEMO_BOOKING_LOCK:
+        return None
+    return (
+        "This is a demo build of Skairova, so checkout and payment are turned off here — no real "
+        "orders can be created. Feel free to search, browse flights, and go through the flow up to "
+        "this point."
+    )
+
+
 def _booking_mode_error() -> str | None:
     if not DUFFEL_ACCESS_TOKEN:
         return "Duffel booking is not configured yet. Add DUFFEL_ACCESS_TOKEN to your .env file and try again."
@@ -8975,7 +8995,7 @@ def checkout_ancillaries_to_session(offer_id: str):
 
 @app.route("/checkout/<offer_id>/details", methods=["GET", "POST"])
 def checkout_details(offer_id: str):
-    mode_error = _booking_mode_error()
+    mode_error = _demo_checkout_lock_error() or _booking_mode_error()
     if mode_error:
         return render_template(
             "checkout.html",
@@ -11362,6 +11382,8 @@ def index():
         ai_suggestion_chips=AI_HOME_SUGGESTION_CHIPS,
         global_notice=_pop_global_notice(),
         edit_search_fields=_pop_edit_search_fields(),
+        destinations=DESTINATIONS,
+        destination_categories=CATEGORIES,
     )
 
 
@@ -11395,6 +11417,123 @@ def deals():
         feature_label="Travel deals",
         feature_description="Smart fare drops, bundle savings, and trip-worthy offers are being prepared.",
     )
+
+
+@app.route("/destinations/<slug>")
+def destination_landing(slug: str):
+    destination = get_destination(slug)
+    if not destination:
+        return redirect(url_for("index"))
+
+    _track_analytics_event(
+        event_type="destination_landing_viewed",
+        search_mode="browse",
+        success=True,
+        metadata={"destination": destination["slug"]},
+    )
+
+    related = [
+        d for d in DESTINATIONS
+        if d["slug"] != destination["slug"] and set(d["categories"]) & set(destination["categories"])
+    ][:3]
+    if len(related) < 3:
+        filler = [d for d in DESTINATIONS if d["slug"] != destination["slug"] and d not in related]
+        related = (related + filler)[:3]
+
+    return render_template(
+        "destination.html",
+        destination=destination,
+        related=related,
+        all_destinations=DESTINATIONS,
+    )
+
+
+def _next_upcoming_weekend(anchor: date) -> tuple[date, date]:
+    """
+    The next Friday-to-Sunday window from `anchor` (today's own Fri/Sat/Sun
+    counts as "this weekend" rather than skipping ahead a full week).
+    """
+    days_until_friday = (4 - anchor.weekday()) % 7
+    friday = anchor + timedelta(days=days_until_friday)
+    sunday = friday + timedelta(days=2)
+    return friday, sunday
+
+
+def _destination_price_lookup(origin: str, dest_code: str, depart_date: str, return_date: str) -> dict[str, Any] | None:
+    params = {
+        "origin": origin,
+        "destination": dest_code,
+        "depart_date": depart_date,
+        "return_date": return_date,
+        "trip_type": "roundtrip",
+        "passengers": 1,
+        "cabin": "ECONOMY",
+        "nonstop": False,
+    }
+    try:
+        snapshot = _cheapest_offer_snapshot(params)
+    except Exception as exc:
+        print("DESTINATION PRICE LOOKUP ERROR:", dest_code, repr(exc))
+        return None
+    if not snapshot:
+        return None
+    price = _safe_float(snapshot.get("scan_price_total"))
+    if price <= 0:
+        return None
+    return {"price": round(price), "currency": snapshot.get("scan_currency") or "USD"}
+
+
+@app.route("/api/destination-prices", methods=["POST"])
+def destination_prices():
+    """
+    Real, live fares for the homepage destination cards, for the next actual
+    upcoming Friday-to-Sunday weekend — queried through the same
+    flight-search backend (and 15-minute cache) the rest of the app uses.
+    Never fabricates a number: a destination with no live result is simply
+    omitted from the response so the card can hide its price line. The
+    response includes the exact depart/return dates so the UI can show (and
+    search) those specific dates rather than a bare price.
+    """
+    payload = request.get_json(silent=True) or {}
+    origin = _normalize_airport_input(str(payload.get("origin") or "").strip()) or "JFK"
+
+    requested_codes = payload.get("destinations") or []
+    codes: list[str] = []
+    for raw_code in requested_codes:
+        code = str(raw_code or "").strip().upper()
+        if code and get_destination_by_code(code) and code not in codes:
+            codes.append(code)
+    codes = codes[:16]
+    if not codes:
+        return jsonify({"origin": origin, "prices": {}})
+
+    friday, sunday = _next_upcoming_weekend(date.today())
+    depart_date = friday.isoformat()
+    return_date = sunday.isoformat()
+
+    prices: dict[str, Any] = {}
+    workers = min(8, len(codes))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        future_to_code = {
+            executor.submit(_destination_price_lookup, origin, code, depart_date, return_date): code
+            for code in codes
+        }
+        for future in as_completed(future_to_code):
+            code = future_to_code[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                print("DESTINATION PRICE FUTURE ERROR:", code, repr(exc))
+                continue
+            if result:
+                prices[code] = result
+
+    return jsonify({
+        "origin": origin,
+        "depart_date": depart_date,
+        "return_date": return_date,
+        "prices": prices,
+    })
 
 
 @app.route("/results/<token>", methods=["GET"])

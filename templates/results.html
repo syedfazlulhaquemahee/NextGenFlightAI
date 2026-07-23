@@ -23,8 +23,8 @@
   <title>Results • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/monthSelect.css', v='4.6.13') }}">
   {% include "partials/theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260529-border-only-focus') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260514-slim2') }}" />
   {% if flex_streaming or search_pending %}
@@ -1488,9 +1488,8 @@
           const dateInput = row.querySelector('input[name="leg_date"]');
           if (!dateInput) return;
           const prevDate = idx === 0 ? "" : (rows[idx - 1]?.querySelector('input[name="leg_date"]')?.value || "").trim();
-          const minDate = prevDate || "today";
-          if (dateInput._flatpickr) {
-            dateInput._flatpickr.set("minDate", minDate);
+          if (dateInput._nxDatePicker) {
+            dateInput._nxDatePicker.setMinDate(prevDate || "");
           }
           const current = (dateInput.value || "").trim();
           if (prevDate && current && /^\d{4}-\d{2}-\d{2}$/.test(current) && current < prevDate) {
@@ -1805,9 +1804,9 @@
           input.value = "";
           if (input.name === "leg_date") {
             input.removeAttribute("data-calendar-bound");
-            if (input._flatpickr) {
-              try { input._flatpickr.destroy(); } catch (e) {}
-              input._flatpickr = null;
+            if (input._nxDatePicker) {
+              try { input._nxDatePicker.destroy(); } catch (e) {}
+              input._nxDatePicker = null;
             }
           }
         });
@@ -2647,10 +2646,10 @@
     })();
   </script>
   <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
-  <script src="{{ url_for('static', filename='vendor/flatpickr/monthSelect.js', v='4.6.13') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='vendor/cally/cally.js', v='0.9.2') }}"></script>
   <script src="{{ url_for('static', filename='search-validation.js') }}"></script>
   <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
-  <script src="{{ url_for('static', filename='calendar.js', v='20260513-local-positioned-calendar') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260722-cally') }}"></script>
   <script>
   /* ── SRB inline-edit panel controller ── */
   (function () {

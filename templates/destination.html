@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ destination.city }} Travel Guide • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='destination.css', v='20260723-launch') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="destination-page">
+  {% include "partials/platform_header.html" %}
+
+  <main class="destination-main">
+    <section class="destination-hero">
+      <img class="destination-hero-img" src="{{ url_for('static', filename='img/destinations/' ~ destination.photo) }}" alt="{{ destination.alt }}" />
+      <div class="destination-hero-overlay">
+        <p class="destination-hero-kicker">Destination guide</p>
+        <h1 class="destination-hero-title">{{ destination.flag }} {{ destination.city }}<span>{{ destination.country }}</span></h1>
+        <p class="destination-hero-hook">{{ destination.hook }}</p>
+        <a class="destination-hero-cta" href="{{ url_for('index') }}?dest={{ destination.code }}">Search flights to {{ destination.city }}</a>
+      </div>
+    </section>
+
+    <section class="destination-facts">
+      <div class="destination-fact-card">
+        <span class="destination-fact-label">Best time to visit</span>
+        <span class="destination-fact-value">{{ destination.best_time }}</span>
+      </div>
+      <div class="destination-fact-card">
+        <span class="destination-fact-label">Live fares</span>
+        <button type="button" class="destination-fact-value destination-fact-price" data-price-slot data-dest-code="{{ destination.code }}" data-dest-city="{{ destination.city }}" disabled>Checking real fares…</button>
+      </div>
+      <div class="destination-fact-card">
+        <span class="destination-fact-label">Entry requirements</span>
+        <span class="destination-fact-value destination-fact-value--small">{{ destination.visa_note }}</span>
+      </div>
+    </section>
+
+    <section class="destination-budget">
+      <h2 class="destination-section-title">What it typically costs</h2>
+      <p class="destination-section-sub">General accommodation ranges per night — a starting point for planning, not a live quote.</p>
+      <div class="destination-budget-grid">
+        <div class="destination-budget-tier">
+          <span class="destination-budget-label">Budget</span>
+          <span class="destination-budget-value">{{ destination.budget_guide.budget }}</span>
+        </div>
+        <div class="destination-budget-tier">
+          <span class="destination-budget-label">Mid-range</span>
+          <span class="destination-budget-value">{{ destination.budget_guide.mid }}</span>
+        </div>
+        <div class="destination-budget-tier">
+          <span class="destination-budget-label">Luxury</span>
+          <span class="destination-budget-value">{{ destination.budget_guide.luxury }}</span>
+        </div>
+      </div>
+    </section>
+
+    {% if related %}
+    <section class="destination-related">
+      <h2 class="destination-section-title">You might also like</h2>
+      <div class="destination-related-grid">
+        {% for r in related %}
+        <a class="destination-related-card" href="{{ url_for('destination_landing', slug=r.slug) }}">
+          <img src="{{ url_for('static', filename='img/destinations/' ~ r.photo) }}" alt="{{ r.alt }}" loading="lazy" width="500" height="375" />
+          <span class="destination-related-overlay">
+            <span class="destination-related-city">{{ r.flag }} {{ r.city }}</span>
+            <span class="destination-related-country">{{ r.country }}</span>
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="destination-back">
+      <a href="{{ url_for('index') }}">← Back to all destinations</a>
+    </div>
+  </main>
+
+  <footer class="footer destination-footer">
+    <span class="muted"><a href="{{ url_for('terms_and_conditions') }}">Terms &amp; Conditions</a></span>
+  </footer>
+
+  {% include "partials/theme_scripts.html" %}
+  <script>
+  (function () {
+    var slot = document.querySelector("[data-price-slot]");
+    if (!slot) return;
+    var code = slot.getAttribute("data-dest-code");
+    var city = slot.getAttribute("data-dest-city");
+    var origin = "";
+    try {
+      var raw = localStorage.getItem("skair_recent_searches");
+      var list = raw ? JSON.parse(raw) : [];
+      for (var i = 0; i < list.length; i += 1) {
+        if (list[i] && list[i].mode === "manual" && list[i].origin) { origin = list[i].origin; break; }
+      }
+    } catch (e) {}
+
+    function formatMoney(amount, currency) {
+      try {
+        return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount);
+      } catch (e) {
+        return "$" + amount;
+      }
+    }
+
+    function formatWeekendLabel(departIso, returnIso) {
+      function short(iso) {
+        var parts = iso.split("-").map(Number);
+        var d = new Date(parts[0], parts[1] - 1, parts[2]);
+        return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(d);
+      }
+      return short(departIso) + " – " + short(returnIso);
+    }
+
+    /* Straight to real live results for this destination + the exact
+       weekend the price was quoted for — no visible search form on this
+       page, so build one and submit it directly. */
+    function goToLiveResults(departIso, returnIso) {
+      var form = document.createElement("form");
+      form.method = "POST";
+      form.action = "{{ url_for('search_shell') }}";
+      form.style.display = "none";
+      var fields = {
+        mode: "standard",
+        search_submitted: "1",
+        trip_type: "roundtrip",
+        origin: origin || "JFK",
+        destination: city,
+        depart_date: departIso,
+        return_date: returnIso,
+        passengers: "1",
+        cabin: "ECONOMY",
+      };
+      Object.keys(fields).forEach(function (name) {
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = fields[name];
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    fetch("/api/destination-prices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ origin: origin, destinations: [code] }),
+    })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        var info = data && data.prices && data.prices[code];
+        if (info && info.price) {
+          var dateLabel = formatWeekendLabel(data.depart_date, data.return_date);
+          slot.textContent = formatMoney(info.price, info.currency) + " roundtrip · " + dateLabel;
+          slot.disabled = false;
+          slot.classList.add("is-loaded");
+          slot.setAttribute("aria-label", "See live flight results for " + dateLabel);
+          slot.addEventListener("click", function () {
+            goToLiveResults(data.depart_date, data.return_date);
+          });
+        } else {
+          slot.textContent = "Fares vary — search to see live prices";
+        }
+      })
+      .catch(function () {
+        slot.textContent = "Fares vary — search to see live prices";
+      });
+  })();
+  </script>
+</body>
+</html>

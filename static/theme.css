@@ -1757,6 +1757,154 @@ html[data-theme="light"] body.home-page .manual-open-pill-arrow{
   color: #475569 !important;
 }
 
+/* Recent searches + popular destinations */
+html[data-theme="light"] body.home-page .home-recent-searches,
+html[data-theme="light"] body.home-page .home-popular-destinations{
+  border-top-color: rgba(15, 23, 42, 0.10) !important;
+}
+html[data-theme="light"] body.home-page .home-section-title{
+  color: #1e293b !important;
+}
+html[data-theme="light"] body.home-page .home-section-sub{
+  color: #64748b !important;
+}
+html[data-theme="light"] body.home-page .home-recent-card{
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+html[data-theme="light"] body.home-page .home-recent-card:hover,
+html[data-theme="light"] body.home-page .home-recent-card:focus-visible{
+  background: rgba(15, 23, 42, 0.06) !important;
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+html[data-theme="light"] body.home-page .home-recent-icon{
+  background: rgba(79, 126, 255, 0.10) !important;
+  color: #4f7eff !important;
+}
+html[data-theme="light"] body.home-page .home-recent-title{
+  color: #1e293b !important;
+}
+html[data-theme="light"] body.home-page .home-recent-sub{
+  color: #64748b !important;
+}
+html[data-theme="light"] body.home-page .home-destination-card{
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-card:hover,
+html[data-theme="light"] body.home-page .home-destination-card:focus-visible{
+  border-color: rgba(15, 23, 42, 0.22) !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-credit{
+  color: rgba(100, 116, 139, 0.62) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-tab{
+  background: rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: rgba(30, 41, 59, 0.78) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-tab:hover{
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-tab.is-active{
+  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+  color: #fff !important;
+}
+html[data-theme="light"] body.home-page .home-destination-viewall{
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-viewall:hover{
+  background: rgba(15, 23, 42, 0.05) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-hook{
+  color: rgba(51, 65, 85, 0.82) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-price{
+  color: #0891b2 !important;
+}
+html[data-theme="light"] body.home-page .home-destination-price-skeleton{
+  background: rgba(8, 145, 178, 0.16) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-besttime{
+  color: #64748b !important;
+}
+html[data-theme="light"] body.home-page .home-destination-explore{
+  color: #4f46e5 !important;
+}
+html[data-theme="light"] body.home-page .home-destination-compare-toggle{
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  color: rgba(51, 65, 85, 0.72) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-compare-toggle:hover{
+  background: rgba(15, 23, 42, 0.05) !important;
+}
+html[data-theme="light"] body.home-page .home-destination-compare-toggle.is-active{
+  background: rgba(79, 70, 229, 0.12) !important;
+  border-color: rgba(79, 70, 229, 0.35) !important;
+  color: #4338ca !important;
+}
+html[data-theme="light"] body.home-page .home-compare-bar{
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-bar-label{
+  color: #1e293b !important;
+}
+html[data-theme="light"] body.home-page .home-compare-bar-clear{
+  color: rgba(51, 65, 85, 0.7) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-bar-cta{
+  background: linear-gradient(135deg, #0f766e, #0891b2 54%, #2563eb) !important;
+  color: #fff !important;
+}
+html[data-theme="light"] body.home-page .home-compare-modal-inner{
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.99)) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-modal-close{
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: rgba(30, 41, 59, 0.8) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-editorial-note{
+  color: rgba(100, 116, 139, 0.72) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-head{
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-head-city{
+  color: #1e293b !important;
+}
+html[data-theme="light"] body.home-page .home-compare-head-country{
+  color: #64748b !important;
+}
+html[data-theme="light"] body.home-page .home-compare-row{
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-cell{
+  color: #b45309 !important;
+}
+html[data-theme="light"] body.home-page .home-compare-cell-label{
+  color: rgba(100, 116, 139, 0.8) !important;
+}
+html[data-theme="light"] body.home-page .home-compare-verdict{
+  background: rgba(79, 70, 229, 0.06) !important;
+  border-color: rgba(79, 70, 229, 0.18) !important;
+  color: #312e81 !important;
+}
+html[data-theme="light"] body.home-page .home-compare-explore{
+  border-color: rgba(79, 70, 229, 0.3) !important;
+  color: #4338ca !important;
+}
+html[data-theme="light"] body.home-page .home-compare-explore:hover{
+  background: rgba(79, 70, 229, 0.08) !important;
+}
+
 /* Trust stats */
 html[data-theme="light"] body.home-page .home-trust-stats{
   border-top-color: rgba(15, 23, 42, 0.10) !important;
@@ -9341,4 +9489,45 @@ html[data-theme="light"] body.results-page.review-page .review-flight-manifest .
   html[data-theme="light"] body.results-page.review-page .review-flight-manifest .review-verify-clock-row strong{
     font-size:1rem !important;
   }
+}
+
+/* Destination landing page */
+html[data-theme="light"] body.destination-page{
+  background: #f1f4f9 !important;
+  color: #1e293b !important;
+}
+html[data-theme="light"] .destination-fact-card,
+html[data-theme="light"] .destination-budget-tier{
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+html[data-theme="light"] .destination-fact-label{
+  color: #64748b !important;
+}
+html[data-theme="light"] .destination-fact-value{
+  color: #1e293b !important;
+}
+html[data-theme="light"] .destination-fact-price{
+  color: #0891b2 !important;
+}
+html[data-theme="light"] .destination-fact-value--small{
+  color: rgba(51, 65, 85, 0.82) !important;
+}
+html[data-theme="light"] .destination-section-title{
+  color: #1e293b !important;
+}
+html[data-theme="light"] .destination-section-sub{
+  color: #64748b !important;
+}
+html[data-theme="light"] .destination-budget-label{
+  color: #0891b2 !important;
+}
+html[data-theme="light"] .destination-budget-value{
+  color: rgba(51, 65, 85, 0.9) !important;
+}
+html[data-theme="light"] .destination-related-card{
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+html[data-theme="light"] .destination-back a{
+  color: #4f46e5 !important;
 }

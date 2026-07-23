@@ -8,12 +8,9 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260601-font-weights') }}" />
-  <!-- Flatpickr -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/monthSelect.css', v='4.6.13') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/themes/dark.css', v='4.6.13') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260723-recent-destinations') }}" />
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='calendar-standard.css', v='20260525-flatpickr-dark') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -234,7 +231,7 @@
               <input name="destination" class="gf-seg-input airport-input" placeholder="To?" maxlength="30" aria-label="To" />
             </div>
             <div class="gf-bar-sep" aria-hidden="true"></div>
-            <!-- Dates segment: invisible flatpickr inputs overlay on click -->
+            <!-- Dates segment: invisible date-picker inputs overlay on click -->
             <div class="gf-seg gf-seg--dates ms2-date-sort-row" id="gfDatesSeg" tabindex="0" role="button" aria-label="Select dates">
               {{ manual_search_icon('calendar', 'gf-seg-icon gf-seg-icon--standard') }}
               {{ manual_search_icon('month', 'gf-seg-icon gf-seg-icon--flex') }}
@@ -358,6 +355,77 @@
         </form>
       </div>
     </section>
+    </div>
+
+    <section class="home-recent-searches" id="recentSearchesSection" aria-label="Recent searches" hidden>
+      <div class="home-section-head">
+        <h2 class="home-section-title">Recent searches</h2>
+      </div>
+      <div class="home-recent-scroll" id="recentSearchesList" role="list"></div>
+    </section>
+
+    <section class="home-popular-destinations" aria-label="Popular destinations">
+      <div class="home-section-head">
+        <h2 class="home-section-title">Popular destinations</h2>
+        <p class="home-section-sub">Get inspired for your next trip — tap Compare on two to see them side by side</p>
+      </div>
+
+      <div class="home-destination-controls">
+        <div class="home-destination-tabs" role="tablist" aria-label="Filter destinations by trip type">
+          <button type="button" class="home-destination-tab is-active" role="tab" aria-selected="true" data-category="">All</button>
+          {% for cat in destination_categories %}
+          <button type="button" class="home-destination-tab" role="tab" aria-selected="false" data-category="{{ cat.slug }}">{{ cat.icon }} {{ cat.label }}</button>
+          {% endfor %}
+        </div>
+        <button type="button" class="home-destination-viewall" id="destinationViewAllToggle" aria-expanded="false" aria-controls="popularDestinationsGrid">
+          <span class="home-destination-viewall-label">View all</span>
+          <svg class="home-destination-viewall-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+      </div>
+
+      <div class="home-destination-grid" id="popularDestinationsGrid">
+        {% for d in destinations %}
+        <article class="home-destination-card" data-dest-slug="{{ d.slug }}" data-dest-code="{{ d.code }}" data-dest-city="{{ d.city }}" data-dest-categories="{{ d.categories|join(',') }}">
+          <div class="home-destination-photo">
+            <img class="home-destination-img" src="{{ url_for('static', filename='img/destinations/' ~ d.photo) }}" alt="{{ d.alt }}" loading="lazy" width="1000" height="750" />
+            <div class="home-destination-photo-overlay">
+              <span class="home-destination-city">{{ d.flag }} {{ d.city }}</span>
+              <span class="home-destination-country">{{ d.country }}</span>
+            </div>
+          </div>
+          <div class="home-destination-body">
+            <p class="home-destination-hook">{{ d.hook }}</p>
+            <div class="home-destination-facts">
+              <button type="button" class="home-destination-price" data-price-slot data-dest-code="{{ d.code }}" data-dest-city="{{ d.city }}" disabled></button>
+              <span class="home-destination-besttime">Best: {{ d.best_time }}</span>
+            </div>
+            <div class="home-destination-actions">
+              <a class="home-destination-explore" href="{{ url_for('destination_landing', slug=d.slug) }}">Explore {{ d.city }} →</a>
+              <button type="button" class="home-destination-compare-toggle" data-compare-toggle="{{ d.slug }}" aria-pressed="false">
+                <span aria-hidden="true">⇄</span> Compare
+              </button>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      <p class="home-destination-credit">Photos via Wikimedia Commons · Live prices from real fare search</p>
+      <script type="application/json" id="destinationsData">{{ destinations|tojson }}</script>
+    </section>
+
+    <div class="home-compare-bar" id="compareBar" hidden>
+      <span class="home-compare-bar-label" id="compareBarLabel">Select a destination to compare</span>
+      <div class="home-compare-bar-actions">
+        <button type="button" class="home-compare-bar-clear" id="compareBarClear">Clear</button>
+        <button type="button" class="home-compare-bar-cta" id="compareBarCta" disabled>Compare</button>
+      </div>
+    </div>
+
+    <div class="home-compare-modal" id="compareModal" hidden role="dialog" aria-modal="true" aria-label="Destination comparison">
+      <div class="home-compare-modal-inner">
+        <button type="button" class="home-compare-modal-close" id="compareModalClose" aria-label="Close comparison">✕</button>
+        <div class="home-compare-modal-body" id="compareModalBody"></div>
+      </div>
     </div>
 
     <section class="home-trust-stats" aria-label="Why Skairova">
@@ -821,15 +889,15 @@
           if (!dateInput) return;
           if (index === 0) {
             dateInput.min = "";
-            if (dateInput._flatpickr) {
-              dateInput._flatpickr.set("minDate", "today");
+            if (dateInput._nxDatePicker) {
+              dateInput._nxDatePicker.setMinDate("");
             }
             return;
           }
           const prevDate = legRows[index - 1]?.querySelector('input[name="leg_date"]')?.value || "";
           dateInput.min = prevDate || "";
-          if (dateInput._flatpickr) {
-            dateInput._flatpickr.set("minDate", prevDate || "today");
+          if (dateInput._nxDatePicker) {
+            dateInput._nxDatePicker.setMinDate(prevDate || "");
           }
           const current = (dateInput.value || "").trim();
           if (prevDate && current && /^\d{4}-\d{2}-\d{2}$/.test(current) && current < prevDate) {
@@ -924,9 +992,9 @@
           input.value = "";
           if (input.name === "leg_date") {
             input.removeAttribute("data-calendar-bound");
-            if (input._flatpickr) {
-              try { input._flatpickr.destroy(); } catch (e) {}
-              input._flatpickr = null;
+            if (input._nxDatePicker) {
+              try { input._nxDatePicker.destroy(); } catch (e) {}
+              input._nxDatePicker = null;
             }
           }
         });
@@ -946,7 +1014,7 @@
         if (fromInp && !(fromInp.value || "").trim()) return fromInp;
         if (toInp && !(toInp.value || "").trim()) return toInp;
         if (mode === "flex" && flexMonthPicker) return flexMonthPicker._monthRollerDisplay || flexMonthPicker;
-        // Never return departDisplay — focusing it triggers flatpickr to open the calendar
+        // Never return departDisplay — focusing it opens the date picker
         return null;
       }
 
@@ -1071,7 +1139,7 @@
 
       window.addEventListener("scroll", () => {
         const currentScrollY = getViewportScrollTop();
-        if (document.body.classList.contains("month-roller-open")) {
+        if (document.body.classList.contains("month-roller-open") || document.body.classList.contains("ndp-open")) {
           lastScrollY = currentScrollY;
           return;
         }
@@ -1613,12 +1681,13 @@
     })();
   </script>
 
-  <!-- Flatpickr -->
-  <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
-  <script src="{{ url_for('static', filename='vendor/flatpickr/monthSelect.js', v='4.6.13') }}"></script>
+  <!-- Cally calendar web components (date picker) -->
+  <script type="module" src="{{ url_for('static', filename='vendor/cally/cally.js', v='0.9.2') }}"></script>
   <script src="{{ url_for('static', filename='search-validation.js', v='20260513-month-roller-tight') }}"></script>
   <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
-  <script src="{{ url_for('static', filename='calendar.js', v='20260525-flex-month-mode') }}"></script>
+  <script src="{{ url_for('static', filename='calendar.js', v='20260722-cally') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260722-cally') }}"></script>
+  <script src="{{ url_for('static', filename='home-sections.js', v='20260723-recent-destinations') }}"></script>
   {% if edit_search_fields %}
     <script id="editSearchFieldsPayload" type="application/json">{{ edit_search_fields|tojson }}</script>
     <script>
@@ -1817,7 +1886,7 @@
         });
       }
 
-      /* Dates segment: click opens flatpickr on the invisible depart input */
+      /* Dates segment: click opens the date picker on the invisible depart input */
       if (datesSeg && departDisplay){
         datesSeg.addEventListener("click", (e) => {
           if (dateModeSelect?.value !== "flex") return;
@@ -1843,11 +1912,7 @@
             return;
           }
           if (e.target === departDisplay || e.target === returnDisplay) return;
-          if (departDisplay._flatpickr) {
-            departDisplay._flatpickr.open();
-          } else {
-            departDisplay.click();
-          }
+          departDisplay.click();
         });
         datesSeg.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); departDisplay.click(); }
@@ -1857,7 +1922,7 @@
         const watchDates = () => updateDatesDisplay();
         departDisplay.addEventListener("change", watchDates);
         if (returnDisplay) returnDisplay.addEventListener("change", watchDates);
-        /* Fallback: MutationObserver in case flatpickr sets value without firing change */
+        /* Fallback: MutationObserver in case the value is set without firing change */
         const mo = new MutationObserver(updateDatesDisplay);
         if (returnDisplay) mo.observe(returnDisplay, { attributes: true, attributeFilter: ["value"] });
       }
