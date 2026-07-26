@@ -9,6 +9,7 @@
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='agent-portal.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='agent-admin.css') }}">
+    {% include "partials/vercel_analytics.html" %}
     {% block extra_head %}{% endblock %}
   </head>
   <body class="agent-body {% block page_class %}{% endblock %}">
