@@ -20,7 +20,7 @@ import { AudioCapture, MicrophonePermissionError } from "./audio-capture.js";
 import { DeepgramSocket, VoiceRateLimitedError } from "./deepgram-socket.js";
 import { WaveformCanvas } from "./waveform-canvas.js";
 import { AIOrb } from "./ai-orb.js?v=20260728-reactbits-orb";
-import { parseTravelIntent, assessConfidence, TravelParseFailedError } from "./travel-intent-bridge.js";
+import { parseTravelIntent, assessConfidence, TravelParseFailedError } from "./travel-intent-bridge.js?v=20260728-smarter";
 
 const LISTENING_MESSAGES = [
   "Listening…",
@@ -35,14 +35,25 @@ const PROCESSING_MESSAGES = [
   "Preparing search…",
 ];
 
-// Pre-speech grace period: if nobody says anything at all, stop gracefully
-// instead of leaving the mic open forever.
-const NO_SPEECH_TIMEOUT_MS = 8000;
+// Pre-speech grace period: if nothing is said in the first several seconds,
+// close the voice UI completely back to the default search bar (no error, no prompt).
+const NO_SPEECH_TIMEOUT_MS = 7000;
 // Client-side endpointing safety net (Deepgram's own endpointing/UtteranceEnd
 // is the primary mechanism — this only covers the case where the socket is
 // degraded and those events never arrive).
-const SILENCE_FALLBACK_MS = 1600;
+const SILENCE_FALLBACK_MS = 1400;
 const SILENCE_AMPLITUDE_THRESHOLD = 0.02;
+// Absolute ceiling from the moment listening begins. Whatever happens —
+// continuous noise, a wedged socket, a state that never advances — the mic
+// stops here. This is the hard guarantee that it can never stay open forever.
+const MAX_SESSION_MS = 15000;
+// How many times we'll *automatically* re-listen after a too-vague result
+// before we stop and wait for a deliberate tap. Keeps the clarify loop
+// conversational without ever looping forever.
+const MAX_AUTO_CLARIFY = 1;
+// A usable travel request needs at least this many words; anything shorter is
+// treated as "didn't catch a real trip" rather than sent to the parser.
+const MIN_TRANSCRIPT_WORDS = 2;
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -70,9 +81,13 @@ export class VoiceOverlayController {
     this._sessionGen = 0;
     this._rotationTimer = null;
     this._ampLoopId = null;
+    this._watchdogId = null;
     this._lowAmplitudeSince = null;
     this._speechEverDetected = false;
+    this._soundEverDetected = false;
     this._listenStartedAt = 0;
+    this._autoClarifyCount = 0;
+    this._autoRetryTimer = null;
     this._previouslyFocused = null;
 
     this._buildInlineDom();
@@ -113,7 +128,13 @@ export class VoiceOverlayController {
         <p class="voice-inline-status" aria-live="polite"></p>
         <div class="voice-inline-error" hidden>
           <span class="voice-inline-error-msg"></span>
-          <button type="button" class="voice-inline-btn voice-retry-btn">Try again</button>
+          <button type="button" class="voice-inline-icon-btn voice-retry-btn" aria-label="Retry voice search" title="Retry voice search">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+              <path d="M20 12v4"/>
+              <path d="M20 12h-4"/>
+            </svg>
+          </button>
           <button type="button" class="voice-inline-btn voice-inline-btn--ghost voice-use-anyway-btn" hidden>Use anyway</button>
         </div>
       </div>
@@ -240,9 +261,14 @@ export class VoiceOverlayController {
     }
   }
 
-  async startListening() {
+  async startListening(opts = {}) {
     if (this._busy) return; // guards rapid repeated clicks / double-invocation
     this._busy = true;
+    // A "fresh" start (mic tap, keyboard shortcut, manual Try-again) resets the
+    // auto-clarify budget; an internal conversational re-listen keeps it, so the
+    // back-and-forth stays bounded.
+    if (opts.fresh !== false) this._autoClarifyCount = 0;
+    this._clearAutoRetry();
     this.machine.hardReset();
     this.machine.send("START");
 
@@ -266,6 +292,8 @@ export class VoiceOverlayController {
     const mySession = ++this._sessionGen;
     this._abortController = new AbortController();
     this._speechEverDetected = false;
+    this._soundEverDetected = false;
+    this._soundTicks = 0;
     this._listenStartedAt = performance.now();
 
     const audio = new AudioCapture();
@@ -294,7 +322,7 @@ export class VoiceOverlayController {
     this.machine.send("GRANTED");
     this._analyser = audio.getAnalyser();
     this.waveform.start(this._analyser);
-    this._startAmpLoop();
+    this._startSensors();
     this._busy = false;
 
     this._wireSocketEvents(socket);
@@ -326,6 +354,7 @@ export class VoiceOverlayController {
 
   cancel() {
     this._sessionGen++;
+    this._clearAutoRetry();
     this._abortController?.abort();
     this._teardownAudioAndSocket();
     this.waveform.stop();
@@ -389,69 +418,140 @@ export class VoiceOverlayController {
     });
   }
 
-  /** requestAnimationFrame loop: feeds the orb real amplitude and runs the client-side silence fallback. */
-  _startAmpLoop() {
-    const step = () => {
-      if (!this._audio) return;
+  /**
+   * Start the two independent loops that run while the mic is open:
+   *
+   *  1. A requestAnimationFrame loop — PURELY VISUAL. It feeds the orb live
+   *     amplitude for a smooth reaction and does nothing else. rAF is the right
+   *     tool for smooth rendering, but the wrong tool for timing (it pauses in
+   *     background tabs and can be starved), which is exactly why the previous
+   *     "it got stuck" bug happened.
+   *
+   *  2. A setInterval watchdog — ALL TIMING. Running on a fixed interval it can
+   *     never be starved or paused, and it checks elapsed time directly rather
+   *     than depending on a per-state code path, so there is no state in which
+   *     the mic can stay open. This is the guarantee the rAF version lacked.
+   */
+  _startSensors() {
+    this._stopSensors();
+    // Anchor the listen clock to the moment we actually begin capturing, so a
+    // slow permission prompt can't eat into the 3-second no-sound window.
+    this._listenStartedAt = performance.now();
+    const visual = () => {
+      if (!this._audio) {
+        this._ampLoopId = null;
+        return;
+      }
       const amplitude = this._audio.getAmplitude();
       this.orb.setAmplitude(this.machine.is("TRANSCRIBING") ? amplitude : amplitude * 0.4);
-
-      const now = performance.now();
-      if (this.machine.state === "LISTENING" && !this._speechEverDetected) {
-        if (now - this._listenStartedAt > NO_SPEECH_TIMEOUT_MS) {
-          this.machine.send("SILENCE_TIMEOUT", {
-            error: { kind: "no_speech", message: "We didn't catch that.", retryable: true },
-          });
-          this._teardownAudioAndSocket();
-          this._ampLoopId = null;
-          return;
-        }
-      } else if (this.machine.state === "TRANSCRIBING") {
-        if (amplitude < SILENCE_AMPLITUDE_THRESHOLD) {
-          if (this._lowAmplitudeSince == null) this._lowAmplitudeSince = now;
-          else if (now - this._lowAmplitudeSince > SILENCE_FALLBACK_MS) {
-            this._beginProcessing();
-            this._ampLoopId = null;
-            return;
-          }
-        } else {
-          this._lowAmplitudeSince = null;
-        }
-      }
-      this._ampLoopId = requestAnimationFrame(step);
+      this._ampLoopId = requestAnimationFrame(visual);
     };
-    this._ampLoopId = requestAnimationFrame(step);
+    this._ampLoopId = requestAnimationFrame(visual);
+    this._watchdogId = setInterval(() => this._watchdogTick(), 200);
   }
 
-  _stopAmpLoop() {
+  _stopSensors() {
     if (this._ampLoopId) {
       cancelAnimationFrame(this._ampLoopId);
       this._ampLoopId = null;
     }
+    if (this._watchdogId) {
+      clearInterval(this._watchdogId);
+      this._watchdogId = null;
+    }
+  }
+
+  /** The single source of truth for "should we stop listening now?" */
+  _watchdogTick() {
+    if (!this._audio) {
+      this._stopSensors();
+      return;
+    }
+    const st = this.machine.state;
+    if (st !== "LISTENING" && st !== "TRANSCRIBING") return; // busy processing; nothing to police
+    const now = performance.now();
+    const amplitude = this._audio.getAmplitude();
+
+    // Any real sound (mic amplitude, not Deepgram events — those lag socket
+    // setup) cancels the auto-close. Require it to persist for a couple of
+    // checks (~400ms) so a single mic startup transient doesn't count as sound.
+    if (amplitude >= SILENCE_AMPLITUDE_THRESHOLD) {
+      this._soundTicks = (this._soundTicks || 0) + 1;
+      if (this._soundTicks >= 2) this._soundEverDetected = true;
+    } else {
+      this._soundTicks = 0;
+    }
+
+    // (1) Absolute ceiling — the ultimate anti-stuck stop. No matter the state,
+    // speech, silence, or socket health, we never stay open past this.
+    if (now - this._listenStartedAt > MAX_SESSION_MS) {
+      this._endUtterance();
+      return;
+    }
+
+    // (2) No sound at all in the first 3 seconds → close completely back to the
+    // default search bar. cancel() tears everything down and returns to IDLE,
+    // so there's no lingering error or prompt — exactly as if dismissed.
+    if (!this._soundEverDetected) {
+      if (now - this._listenStartedAt > NO_SPEECH_TIMEOUT_MS) this.cancel();
+      return;
+    }
+
+    // (3) Sound happened → end the utterance on sustained quiet (client-side
+    // endpoint; Deepgram's own endpointing is the primary path).
+    if (amplitude < SILENCE_AMPLITUDE_THRESHOLD) {
+      if (this._lowAmplitudeSince == null) this._lowAmplitudeSince = now;
+      else if (now - this._lowAmplitudeSince > SILENCE_FALLBACK_MS) this._endUtterance();
+    } else {
+      this._lowAmplitudeSince = null;
+    }
+  }
+
+  /** Enter processing. _beginProcessing() is idempotent (guards on state), so it's safe to call from any trigger. */
+  _endUtterance() {
+    this._beginProcessing();
   }
 
   _teardownAudioAndSocket() {
-    this._stopAmpLoop();
+    this._stopSensors();
+    this._lowAmplitudeSince = null;
     this._socket?.close();
     this._socket = null;
     this._audio?.stop();
     this._audio = null;
   }
 
+  _clearAutoRetry() {
+    if (this._autoRetryTimer) {
+      clearTimeout(this._autoRetryTimer);
+      this._autoRetryTimer = null;
+    }
+  }
+
   // ── Processing → parsing → search ───────────────────────────────────
 
   async _beginProcessing() {
-    this._stopAmpLoop();
+    // Re-entry guard: utterance-end, the silence fallback, and the max-utterance
+    // cap can all race to trigger this. Only the first one (while still
+    // listening) should run; the rest become no-ops.
+    if (!this.machine.is("LISTENING", "TRANSCRIBING")) return;
+
+    this._stopSensors();
     this._socket?.finalizeAndClose();
     this._audio?.stop();
     this._audio = null;
 
-    const transcript = this.machine.context.finalTranscript.trim();
+    // Include the not-yet-finalized interim words — otherwise a fast endpoint
+    // can drop the tail of what was just said.
+    const ctx = this.machine.context;
+    const transcript = `${ctx.finalTranscript} ${ctx.interimTranscript}`.trim();
     this.waveform.collapse();
 
-    if (!transcript) {
+    const wordCount = transcript ? transcript.split(/\s+/).filter(Boolean).length : 0;
+    if (wordCount < MIN_TRANSCRIPT_WORDS) {
+      // Too little to be a real trip — re-ask instead of firing an empty search.
       this.machine.send("EMPTY_TRANSCRIPT", {
-        error: { kind: "no_speech", message: "We didn't catch that.", retryable: true },
+        error: { kind: "no_speech", message: "Didn't catch a trip — try “Dhaka to Bangkok next Friday”.", retryable: true },
       });
       return;
     }
@@ -462,12 +562,7 @@ export class VoiceOverlayController {
       const { parseToken, preview } = await parseTravelIntent(transcript, this._abortController?.signal);
       const { confident, question } = assessConfidence(preview);
       if (!confident) {
-        this.machine.send("PARSE_LOW_CONFIDENCE", {
-          error: { kind: "low_confidence", message: question, retryable: true },
-          parsePreview: preview,
-          parseToken,
-        });
-        this.dom.useAnywayBtn.hidden = !(preview.origin || preview.destination || preview.flex_month);
+        this._handleVague(question, preview, parseToken);
         return;
       }
       this.machine.send("PARSE_OK", { parsePreview: preview, parseToken });
@@ -476,9 +571,37 @@ export class VoiceOverlayController {
       if (err && err.name === "AbortError") return;
       const message =
         err instanceof TravelParseFailedError
-          ? "Couldn't quite understand that trip."
-          : "Something went wrong understanding that.";
+          ? "Couldn't quite understand that trip — say it again?"
+          : "Something went wrong — tap to try again.";
       this.machine.send("PARSE_FAILED", { error: { kind: "parse_failed", message, retryable: true } });
+    }
+  }
+
+  /**
+   * Vague/incomplete request: never submit a half-formed search. Show the
+   * clarifying question right in the voice UI. The first time, we re-listen
+   * automatically after a beat so it feels like a conversation ("Which city
+   * are you flying from?" → they answer). After the auto-clarify budget is
+   * spent we stop and wait for a deliberate tap, so it can't loop or hang.
+   */
+  _handleVague(question, preview, parseToken) {
+    const hasPartial = !!(preview.origin || preview.destination || preview.flex_month);
+    this.machine.send("PARSE_LOW_CONFIDENCE", {
+      error: { kind: "low_confidence", message: question, retryable: true },
+      parsePreview: preview,
+      parseToken,
+    });
+    // Offer "Use anyway" only when there's at least a partial trip to run with.
+    this.dom.useAnywayBtn.hidden = !hasPartial;
+
+    if (this._autoClarifyCount < MAX_AUTO_CLARIFY) {
+      this._autoClarifyCount += 1;
+      this._clearAutoRetry();
+      this._autoRetryTimer = setTimeout(() => {
+        this._autoRetryTimer = null;
+        // Only auto re-listen if the user hasn't already moved on.
+        if (this.machine.state === "ERROR") this._retry({ fresh: false });
+      }, 1700);
     }
   }
 
@@ -497,16 +620,19 @@ export class VoiceOverlayController {
   }
 
   _useAnyway() {
-    const { finalTranscript } = this.machine.context;
-    const { parseToken } = this.machine.context;
-    this._commitSearch(finalTranscript.trim(), parseToken);
+    this._clearAutoRetry();
+    const { finalTranscript, interimTranscript, parseToken } = this.machine.context;
+    const transcript = `${finalTranscript} ${interimTranscript}`.trim();
+    this._commitSearch(transcript, parseToken);
   }
 
-  _retry() {
-    // startListening() already does a hardReset() + START from scratch, so
-    // it can restart cleanly from any prior state (including ERROR) without
-    // needing an explicit RETRY transition first.
-    this.startListening();
+  _retry(opts = {}) {
+    // startListening() already does a hardReset() + START from scratch, so it
+    // can restart cleanly from any prior state (including ERROR). A manual tap
+    // is a fresh start (resets the auto-clarify budget); an internal re-ask
+    // passes { fresh: false } to keep the conversation bounded.
+    this._clearAutoRetry();
+    this.startListening(opts);
   }
 
   // ── Error / permission rendering ────────────────────────────────────
@@ -547,16 +673,20 @@ export class VoiceOverlayController {
 
   _setStatus(text) {
     const el = this.dom.statusText;
+    if (el.textContent === text) return; // no-op: avoids a pointless fade flicker
     if (this.reducedMotion || !el.textContent) {
       el.textContent = text;
       return;
     }
-    // Subtle crossfade between rotating status lines instead of a hard text swap.
+    // Crossfade instead of a hard text swap. Guard the timer so back-to-back
+    // calls (fast rotation) can't stack and stutter.
+    if (this._statusFadeTimer) clearTimeout(this._statusFadeTimer);
     el.classList.add("is-fading");
-    setTimeout(() => {
+    this._statusFadeTimer = setTimeout(() => {
       el.textContent = text;
       el.classList.remove("is-fading");
-    }, 140);
+      this._statusFadeTimer = null;
+    }, 150);
   }
 
   _setTranscript(text) {
@@ -577,6 +707,10 @@ export class VoiceOverlayController {
     if (this._rotationTimer) {
       clearInterval(this._rotationTimer);
       this._rotationTimer = null;
+    }
+    if (this._statusFadeTimer) {
+      clearTimeout(this._statusFadeTimer);
+      this._statusFadeTimer = null;
     }
   }
 

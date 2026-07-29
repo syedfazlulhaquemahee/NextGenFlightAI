@@ -83,29 +83,47 @@ html[data-theme="light"] .voice-inline {
   display: block;
 }
 
-/* ── Center column (waveform + transcript + status + error) ── */
+/* ── Center area ──────────────────────────────────────────────────────
+   The three content layers (live = waveform+transcript, status, error) are
+   stacked absolutely and each fills the full center height with
+   align-items:center. That means whatever is visible — the waveform very much
+   included — is ALWAYS vertically centered in the bar, in every state. Only
+   opacity changes between states, so nothing pops or shifts. */
 .voice-inline-center {
+  position: relative;
+  align-self: stretch;
   flex: 1 1 auto;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  overflow: hidden;
 }
 
-.voice-inline-live {
+.voice-inline-live,
+.voice-inline-status,
+.voice-inline-error {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: center;      /* vertical centering — the key line */
+  justify-content: flex-start;
   min-width: 0;
+  margin: 0;
+}
+
+.voice-inline-live { gap: 10px; opacity: 0; pointer-events: none; }
+.voice-inline-error { gap: 10px; opacity: 0; pointer-events: none; }
+.voice-inline-status {
+  opacity: 1;
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .voice-inline-waveform {
   flex: none;
-  width: 84px;
+  width: 0;
   height: 26px;
-  display: none;
+  opacity: 0;
+  transform-origin: left center;
+  /* Animate width + opacity instead of toggling display, so the waveform
+     glides in/out rather than popping. */
+  transition: width 0.34s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s ease;
 }
 
 .voice-inline-transcript {
@@ -119,41 +137,39 @@ html[data-theme="light"] .voice-inline {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: none;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 html[data-theme="light"] .voice-inline-transcript { color: #1a1f30; }
 
 .voice-inline-status {
-  margin: 0;
   font-size: 15px;
   font-weight: 500;
   color: rgba(190, 204, 232, 0.82);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.16s ease, transform 0.16s ease;
 }
-.voice-inline-status.is-fading { opacity: 0; transform: translateY(2px); }
+.voice-inline-status.is-fading { opacity: 0; transform: translateY(3px); }
 html[data-theme="light"] .voice-inline-status { color: rgba(60, 70, 100, 0.78); }
 
-/* State-driven visibility (data-voice-state set by the controller). */
+/* State-driven visibility — pure opacity crossfades between the stacked layers. */
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-live,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-live { opacity: 1; pointer-events: auto; }
+
 .voice-inline[data-voice-state="LISTENING"] .voice-inline-waveform,
-.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-waveform { display: block; }
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-waveform { width: 84px; opacity: 1; }
 
-.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-transcript { display: block; }
-.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-status { display: none; }
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-transcript { opacity: 1; transform: none; }
 
-/* ── Error (compact, inline) ── */
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-status,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-status { opacity: 0; }
+
+/* ── Error (compact, inline) — replaces live/status when shown ── */
 .voice-inline.has-error .voice-inline-live,
-.voice-inline.has-error .voice-inline-status { display: none; }
-
-.voice-inline-error {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.voice-inline.has-error .voice-inline-error { display: flex; }
+.voice-inline.has-error .voice-inline-status { opacity: 0; pointer-events: none; }
+.voice-inline.has-error .voice-inline-error { opacity: 1; pointer-events: auto; }
 .voice-inline-error[hidden] { display: none; }
 
 .voice-inline-error-msg {
@@ -190,6 +206,29 @@ html[data-theme="light"] .voice-inline-error-msg { color: #7a2230; }
 }
 html[data-theme="light"] .voice-inline-btn--ghost { background: rgba(20, 30, 60, 0.08); color: #1a1f30; }
 
+.voice-inline-icon-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(230, 238, 252, 0.88);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.voice-inline-icon-btn:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.voice-inline-icon-btn:active { transform: scale(0.92); }
+html[data-theme="light"] .voice-inline-icon-btn {
+  background: rgba(20, 30, 60, 0.06);
+  color: rgba(40, 48, 70, 0.72);
+}
+html[data-theme="light"] .voice-inline-icon-btn:hover { background: rgba(20, 30, 60, 0.12); color: #10131f; }
+
 /* ── Close button ── */
 .voice-inline-close {
   flex: none;
@@ -199,7 +238,7 @@ html[data-theme="light"] .voice-inline-btn--ghost { background: rgba(20, 30, 60,
   display: grid;
   place-items: center;
   border: none;
-  border-radius: 10px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(230, 238, 252, 0.85);
   cursor: pointer;

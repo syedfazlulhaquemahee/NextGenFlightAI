@@ -68,14 +68,20 @@ export function assessConfidence(preview) {
   const destination = preview && preview.destination;
   const flexMonth = preview && preview.flex_month;
 
+  // Same city both ends is never a searchable trip — almost always a
+  // misheard/duplicated place name. Ask rather than search JFK → JFK.
+  if (origin && destination && String(origin).toUpperCase() === String(destination).toUpperCase()) {
+    return { confident: false, question: "Origin and destination sound the same — where to?" };
+  }
+
   if (origin && destination) return { confident: true, question: null };
   if (flexMonth && destination) return { confident: true, question: null };
 
   if (!origin && destination) {
-    return { confident: false, question: "Which city are you flying from?" };
+    return { confident: false, question: `Got ${destination} — which city are you flying from?` };
   }
   if (origin && !destination) {
-    return { confident: false, question: "Where would you like to fly to?" };
+    return { confident: false, question: `Leaving ${origin} — where do you want to go?` };
   }
-  return { confident: false, question: "Where would you like to travel?" };
+  return { confident: false, question: "Say where from and where to, like “Dhaka to London”." };
 }

@@ -765,6 +765,10 @@ body.home-page .ai-input-icon-btn:disabled{
   cursor: default;
 }
 
+body.home-page .ai-input-icon-btn.ai-input-voice-btn{
+  border-radius: 999px;
+}
+
 body.home-page .ai-input-icon-svg{
   display: block;
   width: 18px;

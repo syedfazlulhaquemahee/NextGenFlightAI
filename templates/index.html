@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260723-recent-destinations') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260728-reactbits-orb') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-wave-center') }}">
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -2129,7 +2129,7 @@
     window.SKAIR_VOICE_CONFIG = { enabled: {{ voice_ai_enabled | tojson }} };
   </script>
   <script type="module">
-    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260728-reactbits-orb') }}";
+    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260729-autoclose7') }}";
     initVoiceSearch();
   </script>
 </body>
