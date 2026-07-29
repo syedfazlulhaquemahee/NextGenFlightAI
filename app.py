@@ -370,6 +370,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.getenv("NGF_SESSION_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes"}
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
 
+# Absolute base URL of the backend API. When the frontend is served from a
+# different origin (e.g. Vercel) than the backend (e.g. Render), set this to the
+# backend URL so voice/session-token requests target the backend, not the
+# frontend origin. Empty string keeps requests same-origin.
+app.config["SKAIR_API_BASE_URL"] = os.getenv("SKAIR_API_BASE_URL", "").strip()
+
 app.jinja_env.auto_reload = True
 analytics_store.configure(db_path=ANALYTICS_DB_PATH, ip_salt=ANALYTICS_IP_SALT)
 app.register_blueprint(agent_bp)
