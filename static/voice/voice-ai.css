@@ -1,0 +1,237 @@
+/* ============================================================
+   Skairova Voice AI — INLINE experience.
+   The whole thing happens inside the existing AI search bar's gradient
+   ring: the normal input contents fade out, an orb + real-amplitude
+   waveform + live transcript fade in, in place. No modal, no new view.
+   Palette matches the AI ring: blue → indigo → purple.
+   ============================================================ */
+
+/* ── Mic button (in the input toolbar) ── */
+body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+  position: relative;
+}
+body.home-page .ai-input-icon-btn.ai-input-voice-btn.voice-active {
+  background: linear-gradient(135deg, rgba(79, 131, 255, 0.28), rgba(168, 97, 255, 0.28)) !important;
+  color: #dbe6ff !important;
+}
+
+/* Keep the mic ≥44px on touch layouts, matching the submit button. */
+@media (max-width: 760px) {
+  body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+    width: 44px !important; height: 44px !important; min-width: 44px !important;
+  }
+}
+@media (max-width: 480px) {
+  body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+    width: 42px !important; height: 42px !important; min-width: 42px !important;
+  }
+}
+@media (max-width: 380px) {
+  body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+    width: 40px !important; height: 40px !important; min-width: 40px !important;
+  }
+}
+
+/* ── Inline stage: absolutely fills the ring's inner (rounded) area ── */
+.voice-inline {
+  position: absolute;
+  inset: 1.5px; /* matches .ai-input-ring padding so it aligns to the inner pill */
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 12px;
+  border-radius: inherit;
+  background: rgba(11, 17, 32, 0.98);
+  opacity: 0;
+  transform: scale(0.985);
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-theme="light"] .voice-inline {
+  background: rgba(255, 255, 255, 0.99);
+}
+
+.ai-input-ring.voice-active-inline {
+  /* Brighten the gradient ring while active — reads as "live". */
+  background: linear-gradient(135deg, rgba(79, 131, 255, 0.9), rgba(168, 97, 255, 0.9)) !important;
+}
+.ai-input-ring.voice-active-inline .voice-inline {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+/* Fade the normal input contents out (kept in flow so the bar keeps its size). */
+.ai-input-ring.voice-active-inline .ai-input-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* ── Orb ── */
+.voice-inline-orb-wrap {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+}
+.voice-inline-orb {
+  width: 46px;
+  height: 46px;
+  display: block;
+}
+
+/* ── Center column (waveform + transcript + status + error) ── */
+.voice-inline-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.voice-inline-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.voice-inline-waveform {
+  flex: none;
+  width: 84px;
+  height: 26px;
+  display: none;
+}
+
+.voice-inline-transcript {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(232, 240, 255, 0.96);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: none;
+}
+html[data-theme="light"] .voice-inline-transcript { color: #1a1f30; }
+
+.voice-inline-status {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(190, 204, 232, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.voice-inline-status.is-fading { opacity: 0; transform: translateY(2px); }
+html[data-theme="light"] .voice-inline-status { color: rgba(60, 70, 100, 0.78); }
+
+/* State-driven visibility (data-voice-state set by the controller). */
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-waveform,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-waveform { display: block; }
+
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-transcript { display: block; }
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-status { display: none; }
+
+/* ── Error (compact, inline) ── */
+.voice-inline.has-error .voice-inline-live,
+.voice-inline.has-error .voice-inline-status { display: none; }
+
+.voice-inline-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.voice-inline.has-error .voice-inline-error { display: flex; }
+.voice-inline-error[hidden] { display: none; }
+
+.voice-inline-error-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(240, 224, 224, 0.94);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-theme="light"] .voice-inline-error-msg { color: #7a2230; }
+
+.voice-inline-btn {
+  flex: none;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #4f83ff, #7b61ff);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.voice-inline-btn:hover { filter: brightness(1.08); }
+.voice-inline-btn:active { transform: scale(0.95); }
+.voice-inline-btn--ghost {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(232, 240, 255, 0.92);
+}
+html[data-theme="light"] .voice-inline-btn--ghost { background: rgba(20, 30, 60, 0.08); color: #1a1f30; }
+
+/* ── Close button ── */
+.voice-inline-close {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(230, 238, 252, 0.85);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.voice-inline-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.voice-inline-close:active { transform: scale(0.92); }
+html[data-theme="light"] .voice-inline-close {
+  background: rgba(20, 30, 60, 0.06);
+  color: rgba(40, 48, 70, 0.72);
+}
+html[data-theme="light"] .voice-inline-close:hover { background: rgba(20, 30, 60, 0.12); color: #10131f; }
+
+/* ── Focus visibility ── */
+.voice-inline :is(button):focus-visible {
+  outline: 2px solid #9db4ff;
+  outline-offset: 2px;
+}
+
+/* ── Mobile tweaks ── */
+@media (max-width: 480px) {
+  .voice-inline { gap: 8px; padding: 0 6px 0 8px; }
+  .voice-inline-orb-wrap, .voice-inline-orb { width: 40px; height: 40px; }
+  .voice-inline-waveform { width: 60px; }
+  .voice-inline-transcript, .voice-inline-status { font-size: 14px; }
+  .voice-inline-close { width: 36px; height: 36px; min-width: 36px; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .voice-inline,
+  .ai-input-ring.voice-active-inline .ai-input-wrap,
+  .voice-inline-status { transition-duration: 0.01ms !important; }
+}
+.voice-inline.voice-reduced-motion { transform: none; }

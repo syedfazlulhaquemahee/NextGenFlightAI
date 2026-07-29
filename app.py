@@ -69,6 +69,15 @@ DUFFEL_SUPPLIER_TIMEOUT_MS = int(os.getenv("DUFFEL_SUPPLIER_TIMEOUT_MS", "20000"
 DUFFEL_HTTP_TIMEOUT = float(os.getenv("DUFFEL_HTTP_TIMEOUT", "28"))
 DUFFEL_PLACE_TIMEOUT = float(os.getenv("DUFFEL_PLACE_TIMEOUT", "6"))
 
+# Voice AI: Flask never talks to Deepgram directly — it only mints short-lived
+# JWTs that the voice_service/ proxy (a separate async process) verifies
+# before opening the real Deepgram streaming connection. Both processes must
+# share VOICE_PROXY_SECRET. See voice_service/main.py for the proxy itself.
+VOICE_PROXY_SECRET = os.getenv("VOICE_PROXY_SECRET", "").strip()
+VOICE_PROXY_WS_URL = os.getenv("VOICE_PROXY_WS_URL", "ws://localhost:8781/ws/voice").strip()
+VOICE_SESSION_TOKEN_TTL_SECONDS = int(os.getenv("VOICE_SESSION_TOKEN_TTL_SECONDS", "45"))
+VOICE_AI_ENABLED = bool(VOICE_PROXY_SECRET) and bool(os.getenv("DEEPGRAM_API_KEY", "").strip())
+
 BASE_DIR = os.path.dirname(__file__)
 AIRPORTS_CSV_PATH = os.getenv("NGF_AIRPORTS_CSV_PATH", os.path.join(BASE_DIR, "Data", "airports.csv")).strip() or os.path.join(BASE_DIR, "Data", "airports.csv")
 ACCOUNT_DB_PATH = os.getenv("NGF_ACCOUNTS_DB_PATH", os.path.join(BASE_DIR, "Data", "accounts.db")).strip() or os.path.join(BASE_DIR, "Data", "accounts.db")
@@ -11384,6 +11393,7 @@ def index():
         edit_search_fields=_pop_edit_search_fields(),
         destinations=DESTINATIONS,
         destination_categories=CATEGORIES,
+        voice_ai_enabled=VOICE_AI_ENABLED,
     )
 
 
@@ -12967,6 +12977,65 @@ def ai_filter():
         return jsonify({"filters": parsed})
     except Exception as e:
         return jsonify({"error": str(e), "filters": {}}), 200
+
+
+# ---------------------------------------------------------------------------
+# Voice AI  (/voice/*) — session-token minting for the Deepgram streaming proxy
+# ---------------------------------------------------------------------------
+
+VOICE_TOKEN_ATTEMPT_CACHE = TTLCache(maxsize=4096, ttl_seconds=60)
+VOICE_TOKEN_MAX_PER_MINUTE = 20  # one per listening attempt; generous but bounded
+
+
+def _voice_token_rate_key(ip: str) -> str:
+    return f"voicetoken:{(ip or 'unknown').strip()}"
+
+
+@app.route("/voice/session-token", methods=["POST"])
+def voice_session_token():
+    """Mint a short-lived JWT the browser hands to the voice proxy's WebSocket.
+
+    The token carries no Deepgram credentials — it only proves to the proxy
+    that this connection was authorized by Flask a few seconds ago. The
+    proxy (voice_service/main.py) verifies it with the same VOICE_PROXY_SECRET
+    and rejects anything expired, forged, or missing the expected claims.
+    """
+    if not VOICE_AI_ENABLED:
+        return jsonify({"ok": False, "error": "voice_unavailable"}), 503
+
+    caller_ip = _b2c_client_ip()
+    rate_key = _voice_token_rate_key(caller_ip)
+    attempts = int(VOICE_TOKEN_ATTEMPT_CACHE.get(rate_key) or 0)
+    if attempts >= VOICE_TOKEN_MAX_PER_MINUTE:
+        return jsonify({"ok": False, "error": "rate_limited"}), 429
+    VOICE_TOKEN_ATTEMPT_CACHE.set(rate_key, attempts + 1)
+
+    now = int(time.time())
+    session_id = secrets.token_urlsafe(16)
+    claims = {
+        "aud": "voice-proxy",
+        "sid": session_id,
+        "iat": now,
+        "exp": now + VOICE_SESSION_TOKEN_TTL_SECONDS,
+    }
+    token = pyjwt.encode(claims, VOICE_PROXY_SECRET, algorithm="HS256")
+
+    _track_analytics_event(
+        event_type="voice_session_started",
+        search_mode="voice",
+        success=True,
+        metadata={"session_id": session_id},
+    )
+
+    return jsonify(
+        {
+            "ok": True,
+            "token": token,
+            "ws_url": VOICE_PROXY_WS_URL,
+            "expires_in": VOICE_SESSION_TOKEN_TTL_SECONDS,
+            "session_id": session_id,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

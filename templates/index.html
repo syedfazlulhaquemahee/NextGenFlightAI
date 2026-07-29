@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260723-recent-destinations') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260728-reactbits-orb') }}">
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -136,6 +137,14 @@
                 <span class="ai-input-toolbar" role="group" aria-label="Input actions">
                   <span class="ai-input-count" id="aiInputCount" aria-live="polite">0 / 500</span>
                   <span class="ai-input-actions">
+<button type="button" class="ai-input-icon-btn ai-input-voice-btn" id="voiceMicBtn" aria-label="Search by voice" aria-pressed="false" title="Search by voice (Ctrl/⌘+Shift+Space)">
+                      <svg class="ai-input-icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                        <path d="M12 18v4"/>
+                        <path d="M9 22h6"/>
+                      </svg>
+                    </button>
 <button type="submit" class="ai-input-submit-btn" aria-label="Search with AI" title="Search with AI">
                       <svg class="ai-input-send-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="7"/>
@@ -2112,6 +2121,16 @@
       document.documentElement.style.opacity = "";
       document.documentElement.style.transition = "";
     });
+  </script>
+
+  <!-- Voice AI search — see static/voice/voice-overlay.js. Reuses #aiText /
+       #aiForm / #aiParseToken above; never opens its own search path. -->
+  <script>
+    window.SKAIR_VOICE_CONFIG = { enabled: {{ voice_ai_enabled | tojson }} };
+  </script>
+  <script type="module">
+    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260728-reactbits-orb') }}";
+    initVoiceSearch();
   </script>
 </body>
 </html>
