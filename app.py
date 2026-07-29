@@ -77,6 +77,11 @@ VOICE_PROXY_SECRET = os.getenv("VOICE_PROXY_SECRET", "").strip()
 VOICE_PROXY_WS_URL = os.getenv("VOICE_PROXY_WS_URL", "ws://localhost:8781/ws/voice").strip()
 VOICE_SESSION_TOKEN_TTL_SECONDS = int(os.getenv("VOICE_SESSION_TOKEN_TTL_SECONDS", "45"))
 VOICE_AI_ENABLED = bool(VOICE_PROXY_SECRET) and bool(os.getenv("DEEPGRAM_API_KEY", "").strip())
+VOICE_WEB_ALLOWED_ORIGINS = {
+    origin.strip()
+    for origin in os.getenv("VOICE_WEB_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+}
 
 BASE_DIR = os.path.dirname(__file__)
 AIRPORTS_CSV_PATH = os.getenv("NGF_AIRPORTS_CSV_PATH", os.path.join(BASE_DIR, "Data", "airports.csv")).strip() or os.path.join(BASE_DIR, "Data", "airports.csv")
@@ -393,6 +398,26 @@ def _apply_portal_no_cache(response: Response) -> Response:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+    return response
+
+
+@app.after_request
+def _apply_voice_cors(response: Response) -> Response:
+    if request.path != "/voice/session-token":
+        return response
+
+    origin = str(request.headers.get("Origin") or "").strip()
+    if not origin:
+      return response
+
+    if VOICE_WEB_ALLOWED_ORIGINS and origin not in VOICE_WEB_ALLOWED_ORIGINS:
+        return response
+
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Accept, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 

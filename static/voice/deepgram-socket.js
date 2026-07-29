@@ -26,11 +26,13 @@ export class VoiceRateLimitedError extends Error {
  * @returns {Promise<{token: string, wsUrl: string, sessionId: string}>}
  */
 async function fetchSessionToken(signal) {
+  const apiBaseUrl = (window.SKAIR_API_BASE_URL || "").trim();
+  const tokenUrl = apiBaseUrl ? new URL("/voice/session-token", apiBaseUrl).toString() : "/voice/session-token";
   let response;
   try {
-    response = await fetch("/voice/session-token", {
+    response = await fetch(tokenUrl, {
       method: "POST",
-      credentials: "same-origin",
+      credentials: apiBaseUrl ? "include" : "same-origin",
       headers: { Accept: "application/json" },
       signal,
     });

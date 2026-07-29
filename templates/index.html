@@ -2127,6 +2127,7 @@
        #aiForm / #aiParseToken above; never opens its own search path. -->
   <script>
     window.SKAIR_VOICE_CONFIG = { enabled: {{ voice_ai_enabled | tojson }} };
+    window.SKAIR_API_BASE_URL = {{ (config.get("SKAIR_API_BASE_URL", "") if config else "") | tojson }};
   </script>
   <script type="module">
     import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260729-autoclose7') }}";
