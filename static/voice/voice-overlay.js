@@ -35,6 +35,10 @@ const PROCESSING_MESSAGES = [
   "Preparing search…",
 ];
 
+// One-time "voice is in testing" disclaimer. Shown on the first mic tap only;
+// once acknowledged we remember it here and go straight to listening after.
+const DISCLAIMER_ACK_KEY = "skair_voice_disclaimer_ack_v1";
+
 // Pre-speech grace period: if nothing is said in the first several seconds,
 // close the voice UI completely back to the default search bar (no error, no prompt).
 const NO_SPEECH_TIMEOUT_MS = 7000;
@@ -89,6 +93,8 @@ export class VoiceOverlayController {
     this._autoClarifyCount = 0;
     this._autoRetryTimer = null;
     this._previouslyFocused = null;
+    this._inlineOpen = false;
+    this._disclaimerOpen = false;
 
     this._buildInlineDom();
     if (!this.ring) return; // search bar markup wasn't as expected — stay dormant
@@ -117,26 +123,33 @@ export class VoiceOverlayController {
     if (this.reducedMotion) stage.classList.add("voice-reduced-motion");
 
     stage.innerHTML = `
-      <span class="voice-inline-orb-wrap" aria-hidden="true">
-        <canvas class="voice-inline-orb"></canvas>
-      </span>
-      <div class="voice-inline-center">
-        <div class="voice-inline-live">
-          <canvas class="voice-inline-waveform" aria-hidden="true"></canvas>
-          <p class="voice-inline-transcript" aria-live="polite"></p>
-        </div>
+      <div class="voice-inline-disclaimer">
+        <span class="voice-inline-disclaimer-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"/><path d="M10 3v5.5L5.5 17a2 2 0 0 0 1.8 2.9h9.4A2 2 0 0 0 18.5 17L14 8.5V3"/><path d="M7.5 14h9"/>
+          </svg>
+        </span>
+        <span class="voice-inline-disclaimer-copy">
+          <span class="voice-inline-disclaimer-title">Voice search is in testing</span>
+          <span class="voice-inline-disclaimer-sub">Speak your trip out loud — it may not be 100% accurate yet.</span>
+        </span>
+        <button type="button" class="voice-inline-btn voice-disclaimer-start">Got it, start</button>
+      </div>
+      <div class="voice-inline-cluster" aria-hidden="true">
+        <span class="voice-inline-orb-wrap"><canvas class="voice-inline-orb"></canvas></span>
+        <canvas class="voice-inline-waveform" aria-hidden="true"></canvas>
         <p class="voice-inline-status" aria-live="polite"></p>
-        <div class="voice-inline-error" hidden>
-          <span class="voice-inline-error-msg"></span>
-          <button type="button" class="voice-inline-icon-btn voice-retry-btn" aria-label="Retry voice search" title="Retry voice search">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
-              <path d="M20 12v4"/>
-              <path d="M20 12h-4"/>
-            </svg>
-          </button>
-          <button type="button" class="voice-inline-btn voice-inline-btn--ghost voice-use-anyway-btn" hidden>Use anyway</button>
-        </div>
+      </div>
+      <div class="voice-inline-error" hidden>
+        <span class="voice-inline-error-msg"></span>
+        <button type="button" class="voice-inline-icon-btn voice-retry-btn" aria-label="Retry voice search" title="Retry voice search">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+            <path d="M20 12v4"/>
+            <path d="M20 12h-4"/>
+          </svg>
+        </button>
+        <button type="button" class="voice-inline-btn voice-inline-btn--ghost voice-use-anyway-btn" hidden>Use anyway</button>
       </div>
       <button type="button" class="voice-inline-close" aria-label="Cancel voice search" title="Cancel (Esc)">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
@@ -149,7 +162,8 @@ export class VoiceOverlayController {
       orbCanvas: stage.querySelector(".voice-inline-orb"),
       waveformCanvas: stage.querySelector(".voice-inline-waveform"),
       statusText: stage.querySelector(".voice-inline-status"),
-      transcript: stage.querySelector(".voice-inline-transcript"),
+      disclaimer: stage.querySelector(".voice-inline-disclaimer"),
+      disclaimerStart: stage.querySelector(".voice-disclaimer-start"),
       errorBox: stage.querySelector(".voice-inline-error"),
       errorMessage: stage.querySelector(".voice-inline-error-msg"),
       retryBtns: stage.querySelectorAll(".voice-retry-btn"),
@@ -161,6 +175,7 @@ export class VoiceOverlayController {
     this.waveform = new WaveformCanvas(this.dom.waveformCanvas);
 
     this.dom.closeBtn.addEventListener("click", () => this.cancel());
+    this.dom.disclaimerStart.addEventListener("click", () => this._ackAndStart());
     this.dom.retryBtns.forEach((btn) => btn.addEventListener("click", () => this._retry()));
     this.dom.useAnywayBtn.addEventListener("click", () => this._useAnyway());
   }
@@ -182,7 +197,7 @@ export class VoiceOverlayController {
         this.toggle();
         return;
       }
-      if (e.key === "Escape" && this.machine.isActive()) {
+      if (e.key === "Escape" && (this.machine.isActive() || this._disclaimerOpen)) {
         e.preventDefault();
         this.cancel();
       }
@@ -210,13 +225,14 @@ export class VoiceOverlayController {
           this._showError(false);
           this.orb.setState("listening");
           this._beginRotatingStatus(LISTENING_MESSAGES, 2400);
-          this._setTranscript("");
           break;
         case "TRANSCRIBING":
+          // One-way "speak to Skairova" model: we react (orb + waveform) but
+          // never echo the transcribed words back — it's a voice command, not
+          // a dictation field.
           this._clearRotatingStatus();
           this.orb.setState("speaking");
           this._setStatus("Listening…");
-          this._setTranscript((context.finalTranscript + " " + context.interimTranscript).trim());
           break;
         case "PROCESSING":
           this.orb.setState("thinking");
@@ -254,11 +270,60 @@ export class VoiceOverlayController {
   // ── Public control surface ──────────────────────────────────────────
 
   toggle() {
-    if (this.machine.isActive()) {
+    if (this.machine.isActive() || this._disclaimerOpen) {
       this.cancel();
+    } else {
+      this._beginFlow();
+    }
+  }
+
+  // ── Disclaimer gate ──────────────────────────────────────────────────
+  // First mic tap shows a one-time "voice is in testing" notice; tapping
+  // "Got it, start" is the user gesture that then opens the mic. After the
+  // first acknowledgement we skip straight to listening.
+
+  _beginFlow() {
+    const enabled = (window.SKAIR_VOICE_CONFIG || {}).enabled !== false;
+    if (enabled && !this._disclaimerAcknowledged()) {
+      this._showDisclaimer();
     } else {
       this.startListening();
     }
+  }
+
+  _disclaimerAcknowledged() {
+    try {
+      return localStorage.getItem(DISCLAIMER_ACK_KEY) === "1";
+    } catch (e) {
+      return false; // private mode / storage blocked — just show it each time
+    }
+  }
+
+  _setDisclaimerAcknowledged() {
+    try {
+      localStorage.setItem(DISCLAIMER_ACK_KEY, "1");
+    } catch (e) {}
+  }
+
+  _showDisclaimer() {
+    this._disclaimerOpen = true;
+    this._openInline();
+    this._showError(false);
+    this.dom.stage.classList.add("is-disclaimer");
+    this.dom.stage.dataset.voiceState = "DISCLAIMER";
+    this.micButton.classList.add("voice-active");
+    this.micButton.setAttribute("aria-pressed", "true");
+    // Idle orb so the disclaimer already feels alive before listening starts.
+    this.orb.setState("idle");
+    this.orb.start();
+    requestAnimationFrame(() => this.dom.disclaimerStart.focus());
+  }
+
+  _ackAndStart() {
+    this._setDisclaimerAcknowledged();
+    this.dom.stage.classList.remove("is-disclaimer");
+    this._disclaimerOpen = false;
+    this.startListening();
   }
 
   async startListening(opts = {}) {
@@ -391,7 +456,6 @@ export class VoiceOverlayController {
       } else {
         this.machine.send("INTERIM", { interimTranscript: transcript });
       }
-      this._setTranscript((this.machine.context.finalTranscript + " " + this.machine.context.interimTranscript).trim());
     });
 
     socket.addEventListener("utterance-end", () => {
@@ -547,6 +611,13 @@ export class VoiceOverlayController {
     const transcript = `${ctx.finalTranscript} ${ctx.interimTranscript}`.trim();
     this.waveform.collapse();
 
+    // Advance into PROCESSING so the orb switches to its "thinking" state and
+    // the processing status appears. Without this the machine stayed in
+    // TRANSCRIBING (SILENCE_END was never sent) and the whole processing phase
+    // was visually silent — the user couldn't tell anything was happening.
+    if (this.machine.is("LISTENING")) this.machine.send("SPEECH_DETECTED"); // → TRANSCRIBING
+    this.machine.send("SILENCE_END"); // TRANSCRIBING → PROCESSING
+
     const wordCount = transcript ? transcript.split(/\s+/).filter(Boolean).length : 0;
     if (wordCount < MIN_TRANSCRIPT_WORDS) {
       // Too little to be a real trip — re-ask instead of firing an empty search.
@@ -556,7 +627,7 @@ export class VoiceOverlayController {
       return;
     }
 
-    this.machine.send("HAS_TRANSCRIPT");
+    this.machine.send("HAS_TRANSCRIPT"); // PROCESSING → PARSING
 
     try {
       const { parseToken, preview } = await parseTravelIntent(transcript, this._abortController?.signal);
@@ -659,7 +730,6 @@ export class VoiceOverlayController {
     this.dom.errorMessage.textContent = error.message;
     this.dom.retryBtns.forEach((b) => (b.hidden = !error.retryable));
     this._setStatus("");
-    this._setTranscript("");
     const focusTarget = this.dom.stage.querySelector(".voice-retry-btn:not([hidden])") || this.dom.closeBtn;
     focusTarget.focus();
   }
@@ -687,10 +757,6 @@ export class VoiceOverlayController {
       el.classList.remove("is-fading");
       this._statusFadeTimer = null;
     }, 150);
-  }
-
-  _setTranscript(text) {
-    this.dom.transcript.textContent = text;
   }
 
   _beginRotatingStatus(messages, intervalMs) {
@@ -725,7 +791,11 @@ export class VoiceOverlayController {
   // ── Inline open / close ─────────────────────────────────────────────
 
   _openInline() {
-    this._previouslyFocused = document.activeElement;
+    // Capture focus only on the first open of a session — the disclaimer opens
+    // the stage first, then startListening() opens it again; we don't want the
+    // second call to overwrite the real pre-voice focus with a now-hidden button.
+    if (!this._inlineOpen) this._previouslyFocused = document.activeElement;
+    this._inlineOpen = true;
     this.dom.stage.setAttribute("aria-hidden", "false");
     // Toggling this class on the ring visually swaps the normal input contents
     // for the voice stage (CSS handles the crossfade + any height growth).
@@ -734,6 +804,13 @@ export class VoiceOverlayController {
   }
 
   _closeInline() {
+    this._inlineOpen = false;
+    this._disclaimerOpen = false;
+    this.dom.stage.classList.remove("is-disclaimer");
+    // The disclaimer path sets these directly (no state transition fires there),
+    // so clear them here to cover cancel-from-disclaimer.
+    this.micButton.classList.remove("voice-active");
+    this.micButton.setAttribute("aria-pressed", "false");
     this.ring.classList.remove("voice-active-inline");
     document.body.classList.remove("voice-inline-active");
     this.orb.stop();
@@ -741,7 +818,6 @@ export class VoiceOverlayController {
     const finish = () => {
       this.dom.stage.setAttribute("aria-hidden", "true");
       this._showError(false);
-      this._setTranscript("");
       this._setStatus("");
       this.dom.stage.dataset.voiceState = "IDLE";
     };
