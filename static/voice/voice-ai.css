@@ -1,12 +1,8 @@
 /* ============================================================
    Skairova Voice AI — INLINE experience.
    The whole thing happens inside the existing AI search bar's gradient
-   ring: the normal input contents fade out, and a centered orb + real-
-   amplitude waveform + status fade in, in place. No modal, no new view.
-
-   This is a ONE-WAY voice command surface — you speak *to* Skairova, it
-   reacts (orb + waveform) and acts (runs the search). It deliberately does
-   NOT echo a live transcript back: it's a voice query, not a dictation box.
+   ring: the normal input contents fade out, an orb + real-amplitude
+   waveform + live transcript fade in, in place. No modal, no new view.
    Palette matches the AI ring: blue → indigo → purple.
    ============================================================ */
 
@@ -41,6 +37,10 @@ body.home-page .ai-input-icon-btn.ai-input-voice-btn.voice-active {
   position: absolute;
   inset: 1.5px; /* matches .ai-input-ring padding so it aligns to the inner pill */
   z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 12px;
   border-radius: inherit;
   background: rgba(11, 17, 32, 0.98);
   opacity: 0;
@@ -69,45 +69,7 @@ html[data-theme="light"] .voice-inline {
   transition: opacity 0.2s ease;
 }
 
-/* ── Stacked layers ───────────────────────────────────────────────────
-   The cluster, disclaimer, and error all fill the stage and are centered.
-   Only one is visible at a time (opacity crossfade), so nothing pops or
-   shifts. Because every layer is centered, the bar never shows an awkward
-   half-empty gap regardless of state. */
-.voice-inline-cluster,
-.voice-inline-disclaimer,
-.voice-inline-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;   /* keep the content group optically centered */
-  gap: 12px;
-  padding: 0 52px;           /* leave room for the absolute close button */
-  margin: 0;
-  min-width: 0;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.24s ease;
-}
-
-/* ── Live cluster (orb + waveform + status), shown while a session runs ── */
-.voice-inline[data-voice-state="PERMISSION"] .voice-inline-cluster,
-.voice-inline[data-voice-state="LISTENING"] .voice-inline-cluster,
-.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-cluster,
-.voice-inline[data-voice-state="PROCESSING"] .voice-inline-cluster,
-.voice-inline[data-voice-state="PARSING"] .voice-inline-cluster,
-.voice-inline[data-voice-state="SEARCHING"] .voice-inline-cluster {
-  opacity: 1;
-  pointer-events: auto;
-}
-/* Disclaimer and error take over the whole stage when present. */
-.voice-inline.is-disclaimer .voice-inline-cluster,
-.voice-inline.has-error .voice-inline-cluster {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
+/* ── Orb ── */
 .voice-inline-orb-wrap {
   flex: none;
   width: 46px;
@@ -121,84 +83,97 @@ html[data-theme="light"] .voice-inline {
   display: block;
 }
 
+/* ── Center area ──────────────────────────────────────────────────────
+   The three content layers (live = waveform+transcript, status, error) are
+   stacked absolutely and each fills the full center height with
+   align-items:center. That means whatever is visible — the waveform very much
+   included — is ALWAYS vertically centered in the bar, in every state. Only
+   opacity changes between states, so nothing pops or shifts. */
+.voice-inline-center {
+  position: relative;
+  align-self: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.voice-inline-live,
+.voice-inline-status,
+.voice-inline-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;      /* vertical centering — the key line */
+  justify-content: flex-start;
+  min-width: 0;
+  margin: 0;
+}
+
+.voice-inline-live { gap: 10px; opacity: 0; pointer-events: none; }
+.voice-inline-error { gap: 10px; opacity: 0; pointer-events: none; }
+.voice-inline-status {
+  opacity: 1;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
 .voice-inline-waveform {
   flex: none;
   width: 0;
   height: 26px;
   opacity: 0;
-  transform-origin: center;
+  transform-origin: left center;
   /* Animate width + opacity instead of toggling display, so the waveform
      glides in/out rather than popping. */
   transition: width 0.34s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s ease;
 }
-.voice-inline[data-voice-state="LISTENING"] .voice-inline-waveform,
-.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-waveform {
-  width: 84px;
-  opacity: 1;
-}
 
-.voice-inline-status {
+.voice-inline-transcript {
   margin: 0;
   min-width: 0;
-  max-width: 60%;
+  flex: 1 1 auto;
   font-size: 15px;
   font-weight: 500;
-  color: rgba(190, 204, 232, 0.9);
+  line-height: 1.35;
+  color: rgba(232, 240, 255, 0.96);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-theme="light"] .voice-inline-transcript { color: #1a1f30; }
+
+.voice-inline-status {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(190, 204, 232, 0.82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .voice-inline-status.is-fading { opacity: 0; transform: translateY(3px); }
-html[data-theme="light"] .voice-inline-status { color: rgba(60, 70, 100, 0.82); }
+html[data-theme="light"] .voice-inline-status { color: rgba(60, 70, 100, 0.78); }
 
-/* ── Disclaimer gate (shown once, before the first listen) ── */
-.voice-inline.is-disclaimer .voice-inline-disclaimer {
-  opacity: 1;
-  pointer-events: auto;
-}
-.voice-inline-disclaimer-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  color: #dbe6ff;
-  background: linear-gradient(135deg, rgba(79, 131, 255, 0.35), rgba(168, 97, 255, 0.35));
-  box-shadow: inset 0 0 0 1px rgba(219, 230, 255, 0.18);
-}
-.voice-inline-disclaimer-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  text-align: left;
-}
-.voice-inline-disclaimer-title {
-  font-size: 14.5px;
-  font-weight: 650;
-  line-height: 1.2;
-  color: rgba(236, 242, 255, 0.98);
-}
-html[data-theme="light"] .voice-inline-disclaimer-title { color: #171b28; }
-.voice-inline-disclaimer-sub {
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.25;
-  color: rgba(180, 194, 224, 0.78);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-html[data-theme="light"] .voice-inline-disclaimer-sub { color: rgba(70, 80, 110, 0.75); }
+/* State-driven visibility — pure opacity crossfades between the stacked layers. */
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-live,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-live { opacity: 1; pointer-events: auto; }
 
-/* ── Error (compact, inline) — replaces the cluster when shown ── */
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-waveform,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-waveform { width: 84px; opacity: 1; }
+
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-transcript { opacity: 1; transform: none; }
+
+.voice-inline[data-voice-state="LISTENING"] .voice-inline-status,
+.voice-inline[data-voice-state="TRANSCRIBING"] .voice-inline-status { opacity: 0; }
+
+/* ── Error (compact, inline) — replaces live/status when shown ── */
+.voice-inline.has-error .voice-inline-live,
+.voice-inline.has-error .voice-inline-status { opacity: 0; pointer-events: none; }
 .voice-inline.has-error .voice-inline-error { opacity: 1; pointer-events: auto; }
 .voice-inline-error[hidden] { display: none; }
 
 .voice-inline-error-msg {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 13.5px;
   font-weight: 500;
@@ -210,11 +185,10 @@ html[data-theme="light"] .voice-inline-disclaimer-sub { color: rgba(70, 80, 110,
 }
 html[data-theme="light"] .voice-inline-error-msg { color: #7a2230; }
 
-/* ── Buttons ── */
 .voice-inline-btn {
   flex: none;
-  height: 34px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 14px;
   border: none;
   border-radius: 999px;
   font-size: 13px;
@@ -255,13 +229,9 @@ html[data-theme="light"] .voice-inline-icon-btn {
 }
 html[data-theme="light"] .voice-inline-icon-btn:hover { background: rgba(20, 30, 60, 0.12); color: #10131f; }
 
-/* ── Close button (absolute, top-right — never nudges the centered group) ── */
+/* ── Close button ── */
 .voice-inline-close {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
+  flex: none;
   width: 40px;
   height: 40px;
   min-width: 40px;
@@ -274,8 +244,8 @@ html[data-theme="light"] .voice-inline-icon-btn:hover { background: rgba(20, 30,
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.voice-inline-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; transform: translateY(-50%) scale(1.05); }
-.voice-inline-close:active { transform: translateY(-50%) scale(0.92); }
+.voice-inline-close:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.voice-inline-close:active { transform: scale(0.92); }
 html[data-theme="light"] .voice-inline-close {
   background: rgba(20, 30, 60, 0.06);
   color: rgba(40, 48, 70, 0.72);
@@ -290,15 +260,10 @@ html[data-theme="light"] .voice-inline-close:hover { background: rgba(20, 30, 60
 
 /* ── Mobile tweaks ── */
 @media (max-width: 480px) {
-  .voice-inline-cluster,
-  .voice-inline-disclaimer,
-  .voice-inline-error { gap: 9px; padding: 0 46px; }
+  .voice-inline { gap: 8px; padding: 0 6px 0 8px; }
   .voice-inline-orb-wrap, .voice-inline-orb { width: 40px; height: 40px; }
   .voice-inline-waveform { width: 60px; }
-  .voice-inline-status { font-size: 14px; }
-  .voice-inline-disclaimer-title { font-size: 13.5px; }
-  .voice-inline-disclaimer-sub { display: none; } /* keep the pill uncluttered on small screens */
-  .voice-inline-btn { height: 32px; padding: 0 13px; }
+  .voice-inline-transcript, .voice-inline-status { font-size: 14px; }
   .voice-inline-close { width: 36px; height: 36px; min-width: 36px; }
 }
 
@@ -306,9 +271,132 @@ html[data-theme="light"] .voice-inline-close:hover { background: rgba(20, 30, 60
 @media (prefers-reduced-motion: reduce) {
   .voice-inline,
   .ai-input-ring.voice-active-inline .ai-input-wrap,
-  .voice-inline-cluster,
-  .voice-inline-disclaimer,
-  .voice-inline-error,
   .voice-inline-status { transition-duration: 0.01ms !important; }
 }
 .voice-inline.voice-reduced-motion { transform: none; }
+
+/* ============================================================
+   Voice "in testing" disclaimer — a real modal pop-up (appended to
+   <body>, not inside the search bar). Shown once on the first mic tap.
+   ============================================================ */
+.voice-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000; /* above the sticky header and everything else */
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.voice-modal[hidden] { display: none; }
+body.voice-modal-open { overflow: hidden; } /* lock scroll behind the modal */
+
+.voice-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 22, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.voice-modal.is-open .voice-modal-backdrop { opacity: 1; }
+
+.voice-modal-card {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 30px 28px 24px;
+  border-radius: 22px;
+  text-align: center;
+  background: #0f1626;
+  color: #e8f0ff;
+  border: 1px solid rgba(140, 165, 235, 0.16);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(120, 150, 255, 0.08);
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.voice-modal.is-open .voice-modal-card { opacity: 1; transform: none; }
+html[data-theme="light"] .voice-modal-card {
+  background: #ffffff;
+  color: #141826;
+  border-color: rgba(40, 60, 120, 0.12);
+  box-shadow: 0 30px 80px rgba(20, 30, 60, 0.28);
+}
+
+.voice-modal-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  color: #dbe6ff;
+  background: linear-gradient(135deg, rgba(79, 131, 255, 0.9), rgba(168, 97, 255, 0.9));
+  box-shadow: 0 10px 26px rgba(96, 110, 255, 0.4);
+}
+
+.voice-modal-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.voice-modal-text {
+  margin: 0 0 22px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(198, 210, 236, 0.86);
+}
+html[data-theme="light"] .voice-modal-text { color: rgba(70, 80, 110, 0.82); }
+
+.voice-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.voice-modal-btn {
+  flex: 1 1 auto;
+  max-width: 190px;
+  height: 46px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.12s ease, background 0.15s ease;
+}
+.voice-modal-btn:active { transform: scale(0.97); }
+.voice-modal-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #4f83ff, #7b61ff);
+  box-shadow: 0 8px 22px rgba(96, 110, 255, 0.38);
+}
+.voice-modal-btn--primary:hover { filter: brightness(1.08); }
+.voice-modal-btn--ghost {
+  color: rgba(214, 224, 246, 0.9);
+  background: rgba(255, 255, 255, 0.07);
+}
+.voice-modal-btn--ghost:hover { background: rgba(255, 255, 255, 0.13); }
+html[data-theme="light"] .voice-modal-btn--ghost {
+  color: #35405c;
+  background: rgba(20, 30, 60, 0.06);
+}
+html[data-theme="light"] .voice-modal-btn--ghost:hover { background: rgba(20, 30, 60, 0.11); }
+
+.voice-modal :is(button):focus-visible {
+  outline: 2px solid #9db4ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .voice-modal-card { padding: 26px 20px 20px; border-radius: 20px; }
+  .voice-modal-title { font-size: 18px; }
+  .voice-modal-actions { flex-direction: column-reverse; }
+  .voice-modal-btn { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-modal-backdrop,
+  .voice-modal-card { transition-duration: 0.01ms !important; }
+}

@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260723-recent-destinations') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-oneway-disclaimer') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-modal-disclaimer') }}">
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -2130,7 +2130,7 @@
     window.SKAIR_API_BASE_URL = {{ (config.get("SKAIR_API_BASE_URL", "") if config else "") | tojson }};
   </script>
   <script type="module">
-    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260729-oneway-disclaimer') }}";
+    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260729-modal-disclaimer') }}";
     initVoiceSearch();
   </script>
 </body>
