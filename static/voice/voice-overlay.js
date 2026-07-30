@@ -330,7 +330,9 @@ export class VoiceOverlayController {
           break;
         case "PROCESSING":
           this.orb.setState("thinking");
-          this._beginRotatingStatus(PROCESSING_MESSAGES, 850);
+          // Advance through the steps at a readable pace and hold on the last
+          // one — no looping, so a slower parse doesn't cycle and look fake.
+          this._beginRotatingStatus(PROCESSING_MESSAGES, 1500, { loop: false });
           break;
         case "PARSING":
           this.orb.setState("thinking");
@@ -813,12 +815,23 @@ export class VoiceOverlayController {
     this.dom.transcript.textContent = text;
   }
 
-  _beginRotatingStatus(messages, intervalMs) {
+  _beginRotatingStatus(messages, intervalMs, { loop = true } = {}) {
     this._clearRotatingStatus();
     let i = 0;
     this._setStatus(messages[0]);
     this._rotationTimer = setInterval(() => {
-      i = (i + 1) % messages.length;
+      if (i >= messages.length - 1) {
+        // Reached the last message. Looping back (e.g. for the listening
+        // prompts) is fine, but for a progress sequence it makes a slow request
+        // look fake — so hold on the final message instead of cycling.
+        if (!loop) {
+          this._clearRotatingStatus();
+          return;
+        }
+        i = 0;
+      } else {
+        i += 1;
+      }
       this._setStatus(messages[i]);
     }, intervalMs);
   }
