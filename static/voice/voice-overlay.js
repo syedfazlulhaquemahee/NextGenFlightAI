@@ -432,16 +432,18 @@ export class VoiceOverlayController {
       this._busy = false;
       return;
     }
-
-    this.machine.send("GRANTED");
-    this._analyser = audio.getAnalyser();
-    this.waveform.start(this._analyser);
-    this._startSensors();
     this._busy = false;
 
+    // Connect the transcription socket BEFORE flipping to "Listening…". The
+    // voice proxy runs as its own process and, on a free tier, spins down when
+    // idle — so the first connect after a long gap can fail a couple of times
+    // while it cold-starts (~30–60s). Rather than dump the user into an error
+    // they have to tap through 5–10 times, we retry with backoff behind the
+    // "Getting ready…"/"Warming up…" status, and only surface a real failure
+    // once the proxy has had a fair chance to wake.
     this._wireSocketEvents(socket);
     try {
-      await socket.connect(this._abortController.signal);
+      await this._connectWithWarmup(socket, mySession);
     } catch (err) {
       if (mySession !== this._sessionGen) return; // cancelled mid-connect
       if (err && err.name === "AbortError") return;
@@ -463,7 +465,63 @@ export class VoiceOverlayController {
     if (mySession !== this._sessionGen) {
       // cancelled in the instant between connect() resolving and this check
       this._teardownAudioAndSocket();
+      return;
     }
+
+    this.machine.send("GRANTED");
+    this._analyser = audio.getAnalyser();
+    this.waveform.start(this._analyser);
+    this._startSensors();
+  }
+
+  /**
+   * Open the transcription socket, riding out a cold start.
+   *
+   * On a free tier the voice proxy sleeps when idle, so the first connect after
+   * a long gap can be refused (or hang, then 502) a few times while it wakes.
+   * We retry with a gentle backoff — the user stays on "Getting ready…" instead
+   * of tapping through repeated errors. A rate-limit (429) or an abort/cancel is
+   * NOT a cold start, so those bail immediately.
+   *
+   * @param {DeepgramSocket} socket
+   * @param {number} mySession
+   */
+  async _connectWithWarmup(socket, mySession) {
+    const BACKOFF_MS = [800, 1600, 2600, 4000]; // waits before attempts 2..5
+    const maxAttempts = BACKOFF_MS.length + 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (mySession !== this._sessionGen) throw new DOMException("cancelled", "AbortError");
+      try {
+        await socket.connect(this._abortController.signal);
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") throw err;
+        if (err instanceof VoiceRateLimitedError) throw err; // never hammer a 429
+        if (attempt === maxAttempts - 1) throw err; // out of retries — surface it
+        if (mySession !== this._sessionGen) throw new DOMException("cancelled", "AbortError");
+        this._setStatus(attempt === 0 ? "Getting ready…" : "Warming up voice search…");
+        await this._sleep(BACKOFF_MS[attempt], this._abortController.signal);
+      }
+    }
+  }
+
+  /** Promise that resolves after `ms`, or rejects (AbortError) if `signal` fires first. */
+  _sleep(ms, signal) {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new DOMException("aborted", "AbortError"));
+        return;
+      }
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(new DOMException("aborted", "AbortError"));
+      };
+      const timer = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, ms);
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
   }
 
   cancel() {

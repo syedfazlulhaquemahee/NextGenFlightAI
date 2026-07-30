@@ -52,15 +52,11 @@ async function fetchSessionToken(signal) {
   return { token: payload.token, wsUrl: payload.ws_url, sessionId: payload.session_id || "" };
 }
 
-const MAX_RECONNECT_ATTEMPTS = 3;
-const RECONNECT_BASE_DELAY_MS = 400;
-
 export class DeepgramSocket extends EventTarget {
   constructor() {
     super();
     /** @type {WebSocket|null} */
     this._ws = null;
-    this._reconnectAttempts = 0;
     this._intentionalClose = false;
     this._sessionId = "";
   }
