@@ -59,15 +59,9 @@ body.home-page .home-recent-scroll{
 }
 
 /* Hint that there's more to scroll, instead of an abrupt hard clip. */
-body.home-page .home-recent-searches.has-overflow::after{
-  content: "";
-  position: absolute;
-  top: 44px;
-  bottom: 4px;
-  right: 0;
-  width: 48px;
-  background: linear-gradient(to right, transparent, var(--bg, #07070b));
-  pointer-events: none;
+body.home-page .home-recent-searches.has-overflow .home-recent-scroll{
+  mask-image: linear-gradient(to right, black calc(100% - 56px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 56px), transparent 100%);
 }
 
 body.home-page .home-recent-scroll::-webkit-scrollbar{

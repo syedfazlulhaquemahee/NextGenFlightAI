@@ -528,7 +528,9 @@
                 <div class="results-mobile-editor-kicker">Quick Refine</div>
                 <h2>Edit search</h2>
               </div>
-              <button class="results-mobile-editor-close" type="button" data-mobile-close aria-label="Close edit search">Close</button>
+              <button class="results-mobile-editor-close" type="button" data-mobile-close aria-label="Close edit search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </button>
             </div>
 
             <div class="results-mobile-summary-list">
@@ -609,6 +611,10 @@
             </div>
 
             <div class="results-query-toolbar-meta" data-mobile-editor-panel="travelers">
+              <span class="results-mobile-block-label" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <span>Travelers &amp; cabin</span>
+              </span>
               <div class="results-query-control results-query-control--passengers">
                 <label class="results-query-control-label" for="resultsPassengersInput">
                   {{ results_icon('passengers', 'results-query-control-label-icon') }}
@@ -661,6 +667,10 @@
 
           <div class="results-query-main">
             <section class="results-query-block results-query-block-route" data-mobile-editor-panel="route" aria-label="Origin and destination airports">
+              <span class="results-mobile-block-label" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                <span>Route</span>
+              </span>
               <div class="results-query-route-grid">
                 <div class="field results-query-field">
                   <label>From</label>
@@ -693,6 +703,10 @@
             </section>
 
             <section class="results-query-block results-query-block-dates" data-mobile-editor-panel="dates" aria-label="Departure and return dates">
+              <span class="results-mobile-block-label" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                <span>Dates</span>
+              </span>
               <div class="results-query-date-grid">
                 <div class="field calendar-field results-query-field">
                   <label>Depart</label>
