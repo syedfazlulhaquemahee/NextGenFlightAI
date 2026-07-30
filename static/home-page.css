@@ -2522,12 +2522,13 @@ body.home-page .gf-underbar-check input[type="checkbox"]{
   cursor: pointer;
 }
 
-/* Compact horizontal layout for the manual bar on every desktop width.
-   The expanded form is capped at max-width:980px, so this compression is the
-   correct sizing at all widths ≥761px — NOT just ≤1100px. Gating it on a 1100px
-   *viewport* left wider viewports with the uncompressed bar, whose flex-shrink:0
-   CTA overflowed the 980px container and floated out into the right margin. */
-@media (min-width: 761px){
+/* Single-row horizontal bar — only above 1024px.
+   The expanded form is capped at max-width:980px and the single row only fits
+   inside ~980px. Below 1025px the container is narrower than that and the row
+   overflows (fields collapse to icons, CTA + travelers shove off-screen,
+   whole page scrolls sideways), so at ≤1024px we switch to the 2-col grid
+   layout below instead. This compression keeps the ≥1025px single row snug. */
+@media (min-width: 1025px){
   body.home-page .gf-seg{
     padding: 0 12px;
   }
@@ -2558,65 +2559,14 @@ body.home-page .gf-underbar-check input[type="checkbox"]{
   }
 }
 
-@media (max-width: 920px) and (min-width: 761px){
-  body.home-page .gf-seg{
-    padding: 0 8px;
-  }
+/* (Removed the old 761–920px "harder compression" tier: that whole band now
+   uses the 2-col grid layout below, so a mid-width single row no longer exists
+   to compress.) */
 
-  body.home-page .gf-seg-input,
-  body.home-page .gf-seg-label{
-    font-size: 13px;
-  }
-
-  body.home-page .gf-seg--dates{
-    flex: 1.4;
-  }
-
-  body.home-page .gf-seg--pax{
-    flex: 1.2;
-  }
-
-  body.home-page .gf-search-cta{
-    padding: 0 12px;
-    font-size: 13px;
-    height: 40px;
-    margin: 8px 6px 8px 0;
-    border-radius: 20px;
-  }
-
-  body.home-page .manual-search-v2.flex-mode .gf-seg--dates{
-    flex-basis: 170px;
-    min-width: 150px;
-  }
-
-  body.home-page .manual-search-v2.flex-mode .gf-seg--pax{
-    flex-basis: 150px;
-    min-width: 145px;
-  }
-
-  body.home-page .manual-search-v2.flex-mode .gf-search-cta{
-    min-width: 150px;
-  }
-
-  body.home-page .gf-bar{
-    min-height: 52px;
-  }
-
-  body.home-page .gf-seg{
-    min-height: 52px;
-  }
-
-  body.home-page .gf-toprow{
-    gap: 6px;
-  }
-
-  body.home-page .gf-chip-sel{
-    font-size: 12.5px;
-  }
-}
-
-/* Mobile: stack bar vertically */
-@media (max-width: 760px){
+/* Stacked 2-col grid — everywhere the single row won't fit (≤1024px).
+   Raised from 760px: the single row needs ~980px and overflowed across the
+   entire 761–1024px band, so the grid now owns that range too. */
+@media (max-width: 1024px){
   body.home-page .gf-bar{
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2761,7 +2711,7 @@ body.home-page .gf-underbar-check input[type="checkbox"]{
   }
 }
 
-@media (max-width: 760px){
+@media (max-width: 1024px){
   body.home-page .manual-search-v2.flex-mode #panel-flex{
     display: flex !important;
     align-items: center !important;
