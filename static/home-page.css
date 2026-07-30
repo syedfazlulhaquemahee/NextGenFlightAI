@@ -866,9 +866,9 @@ body.home-page .ai-suggest-chips{
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 2px 0 6px;
+  gap: 11px;
+  margin: 18px 0 0;
+  padding: 3px 2px 8px;
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
@@ -885,25 +885,30 @@ body.home-page .ai-suggest-chips::-webkit-scrollbar{
 }
 
 body.home-page .ai-suggest-chip{
-  --chip-rgb: 120, 130, 200;
+  --chip-rgb: 150, 164, 205;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   white-space: nowrap;
-  min-height: 34px;
+  min-height: 40px;
   margin: 0;
-  padding: 6px 16px;
+  padding: 0 18px;
   border-radius: 999px;
-  border: 1px solid rgba(var(--chip-rgb), 0.28) !important;
-  background: rgba(var(--chip-rgb), 0.09) !important;
-  color: rgba(210, 224, 242, 0.88) !important;
+  /* Cohesive neutral "glass" body — the per-chip colour lives in the icon and
+     the hover state, so the row reads as one set of real, tactile buttons
+     rather than five different-coloured tags. */
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)) !important;
+  color: rgba(222, 231, 246, 0.82) !important;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(var(--chip-rgb), 0.10);
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
-  animation: chip-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  animation: chip-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Per-chip accent colors + staggered entrance */
@@ -932,18 +937,8 @@ body.home-page .ai-suggest-chips .ai-suggest-chip:nth-child(5){ --chip-rgb: 56, 
 
   body.home-page .ai-suggest-chip{
     scroll-snap-align: start;
-    padding: 5px 14px;
-    min-height: 32px;
-    border-color: rgba(var(--chip-rgb), 0.24) !important;
-    background: rgba(var(--chip-rgb), 0.08) !important;
-    color: rgba(200, 218, 236, 0.82) !important;
-  }
-
-  body.home-page .ai-suggest-chip:hover,
-  body.home-page .ai-suggest-chip:active{
-    background: rgba(var(--chip-rgb), 0.15) !important;
-    border-color: rgba(var(--chip-rgb), 0.40) !important;
-    color: rgba(230, 242, 255, 0.95) !important;
+    padding: 0 15px;
+    min-height: 38px;
   }
 }
 
@@ -952,12 +947,12 @@ body.home-page .ai-suggest-chip::before{
 }
 
 body.home-page .ai-suggest-chip-title{
-  font-size: 13px !important;
+  font-size: 13.5px !important;
   font-family: var(--font-ui, "Inter", sans-serif);
-  font-weight: 600;
-  letter-spacing: .005em;
+  font-weight: 500;
+  letter-spacing: .015em;
   white-space: nowrap;
-  line-height: 1.3;
+  line-height: 1;
 }
 
 @media (max-width: 760px){
@@ -979,18 +974,22 @@ body.home-page .ai-suggest-chip-hint{
 }
 
 body.home-page .ai-suggest-chip:hover{
-  background: rgba(var(--chip-rgb), 0.16) !important;
-  border-color: rgba(var(--chip-rgb), 0.44) !important;
-  color: rgba(232, 242, 255, 0.96) !important;
-  box-shadow: 0 4px 20px rgba(var(--chip-rgb), 0.24), 0 1px 4px rgba(0,0,0,0.14);
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), 0.18), rgba(var(--chip-rgb), 0.08)) !important;
+  border-color: rgba(var(--chip-rgb), 0.5) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 22px rgba(var(--chip-rgb), 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   transform: translateY(-2px);
 }
 
+body.home-page .ai-suggest-chip:hover .ai-suggest-chip-icon{
+  color: rgba(var(--chip-rgb), 1) !important;
+}
+
 body.home-page .ai-suggest-chip:active{
-  background: rgba(var(--chip-rgb), 0.20) !important;
-  border-color: rgba(var(--chip-rgb), 0.52) !important;
-  color: rgba(240, 248, 255, 1) !important;
-  box-shadow: 0 2px 8px rgba(var(--chip-rgb), 0.16);
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), 0.24), rgba(var(--chip-rgb), 0.12)) !important;
+  border-color: rgba(var(--chip-rgb), 0.58) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(var(--chip-rgb), 0.18);
   transform: translateY(0) scale(0.97);
 }
 
@@ -998,6 +997,7 @@ body.home-page .ai-suggest-chip:focus-visible{
   outline: 2px solid rgba(var(--chip-rgb), 0.5);
   outline-offset: 2px;
 }
+/* Light-theme chip styling lives in theme.css (loaded after this file). */
 
 body.home-page .ai-submit-note{
   color: rgba(200, 218, 232, .82) !important;
@@ -1032,16 +1032,17 @@ body.home-page .manual-search-v2 .ms2-copy h2{
 
 /* Chip icon */
 body.home-page .ai-suggest-chip{
-  gap: 7px !important;
+  gap: 8px !important;
 }
 
 body.home-page .ai-suggest-chip-icon{
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
-  color: rgba(var(--chip-rgb), 1) !important;
+  color: rgba(var(--chip-rgb), 0.9) !important;
   opacity: 1;
+  transition: color 0.18s ease;
 }
 
 body.home-page .svg-mask-icon{
@@ -1518,8 +1519,7 @@ body.home-page .portal-menu > summary{
   }
 
   body.home-page .ai-suggest-chip {
-    padding: 5px 11px !important;
-    font-size: 11.5px !important;
+    padding: 0 14px !important;
   }
 
   /* Manual search collapsed pill */
@@ -1595,8 +1595,7 @@ body.home-page .portal-menu > summary{
   }
 
   body.home-page .ai-suggest-chip {
-    font-size: 11px !important;
-    padding: 4px 9px !important;
+    padding: 0 13px !important;
   }
 
   body.home-page .ms2-field {
@@ -1616,7 +1615,7 @@ body.home-page .portal-menu > summary{
   }
 
   body.home-page .ai-suggest-chip {
-    min-height: 32px !important;
+    min-height: 38px !important;
   }
 
   /* Keep search stack from overflowing viewport */
