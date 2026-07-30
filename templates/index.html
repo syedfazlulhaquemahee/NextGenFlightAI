@@ -390,14 +390,14 @@
     <section class="home-popular-destinations" aria-label="Popular destinations">
       <div class="home-section-head">
         <h2 class="home-section-title">Popular destinations</h2>
-        <p class="home-section-sub">Get inspired for your next trip — tap Compare on two to see them side by side</p>
+        <p class="home-section-sub">Popular places to fly, with live round-trip fares.</p>
       </div>
 
       <div class="home-destination-controls">
         <div class="home-destination-tabs" role="tablist" aria-label="Filter destinations by trip type">
           <button type="button" class="home-destination-tab is-active" role="tab" aria-selected="true" data-category="">All</button>
           {% for cat in destination_categories %}
-          <button type="button" class="home-destination-tab" role="tab" aria-selected="false" data-category="{{ cat.slug }}">{{ cat.icon }} {{ cat.label }}</button>
+          <button type="button" class="home-destination-tab" role="tab" aria-selected="false" data-category="{{ cat.slug }}">{{ cat.label }}</button>
           {% endfor %}
         </div>
         <button type="button" class="home-destination-viewall" id="destinationViewAllToggle" aria-expanded="false" aria-controls="popularDestinationsGrid">
@@ -412,7 +412,7 @@
           <div class="home-destination-photo">
             <img class="home-destination-img" src="{{ url_for('static', filename='img/destinations/' ~ d.photo) }}" alt="{{ d.alt }}" loading="lazy" width="1000" height="750" />
             <div class="home-destination-photo-overlay">
-              <span class="home-destination-city">{{ d.flag }} {{ d.city }}</span>
+              <span class="home-destination-city">{{ d.city }}</span>
               <span class="home-destination-country">{{ d.country }}</span>
             </div>
           </div>
@@ -423,10 +423,8 @@
               <span class="home-destination-besttime">Best: {{ d.best_time }}</span>
             </div>
             <div class="home-destination-actions">
-              <a class="home-destination-explore" href="{{ url_for('destination_landing', slug=d.slug) }}">Explore {{ d.city }} →</a>
-              <button type="button" class="home-destination-compare-toggle" data-compare-toggle="{{ d.slug }}" aria-pressed="false">
-                <span aria-hidden="true">⇄</span> Compare
-              </button>
+              <a class="home-destination-explore" href="{{ url_for('destination_landing', slug=d.slug) }}">Explore</a>
+              <button type="button" class="home-destination-compare-toggle" data-compare-toggle="{{ d.slug }}" aria-pressed="false">Compare</button>
             </div>
           </div>
         </article>

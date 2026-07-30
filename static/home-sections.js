@@ -449,7 +449,6 @@
       [a, b].forEach(function (d) {
         html +=
           '<div class="home-compare-head">' +
-          '<span class="home-compare-head-flag" aria-hidden="true">' + d.flag + "</span>" +
           '<span class="home-compare-head-city">' + d.city + "</span>" +
           '<span class="home-compare-head-country">' + d.country + "</span>" +
           "</div>";
@@ -607,7 +606,7 @@
           var city = slot.getAttribute("data-dest-city");
           var info = prices[code];
           if (info && info.price) {
-            slot.textContent = formatMoney(info.price, info.currency) + " roundtrip" + (dateLabel ? " · " + dateLabel : "");
+            slot.textContent = formatMoney(info.price, info.currency) + " round trip";
             slot.classList.add("is-loaded");
             slot.disabled = false;
             slot.setAttribute("aria-label", "See live flight results to " + city + " for " + dateLabel);

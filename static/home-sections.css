@@ -205,26 +205,27 @@ body.home-page .home-destination-viewall[aria-expanded="true"] .home-destination
 
 body.home-page .home-destination-tab{
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(220, 230, 245, 0.8);
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(198, 210, 228, 0.7);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-weight: 600;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 body.home-page .home-destination-tab:hover{
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(238, 246, 255, 0.9);
 }
 
 body.home-page .home-destination-tab.is-active{
-  background: linear-gradient(135deg, #6366f1, #818cf8);
+  background: rgba(255, 255, 255, 0.94);
   border-color: transparent;
-  color: #fff;
+  color: #0b1220;
 }
 
 /* Grid + cards — default is a horizontal scroll row; "View all" expands it
@@ -314,23 +315,25 @@ body.home-page .home-destination-photo-overlay{
   inset: auto 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 22px 14px 10px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 60%, rgba(0, 0, 0, 0.82));
+  gap: 2px;
+  padding: 34px 16px 14px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0.72));
 }
 
 body.home-page .home-destination-city{
   font-family: var(--font-display, "Space Grotesk", sans-serif);
-  font-size: 1.02rem;
+  font-size: 1.14rem;
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.01em;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45);
 }
 
 body.home-page .home-destination-country{
   font-size: 0.76rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* Info panel below the photo */
@@ -363,9 +366,10 @@ body.home-page .home-destination-price{
   padding: 0;
   font: inherit;
   text-align: left;
-  font-size: 0.84rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  color: #7dd3fc;
+  letter-spacing: -0.01em;
+  color: rgba(238, 246, 255, 0.96);
   min-height: 1.2em;
   cursor: default;
 }
@@ -424,31 +428,29 @@ body.home-page .home-destination-explore:focus-visible{
 
 body.home-page .home-destination-compare-toggle{
   appearance: none;
-  display: flex;
-  align-items: center;
   flex-shrink: 0;
   white-space: nowrap;
-  gap: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 0;
   background: transparent;
-  color: rgba(210, 220, 236, 0.7);
+  color: rgba(170, 188, 210, 0.62);
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 999px;
+  padding: 2px 0;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: color 0.15s;
 }
 
-body.home-page .home-destination-compare-toggle:hover{
-  background: rgba(255, 255, 255, 0.06);
+body.home-page .home-destination-compare-toggle:hover,
+body.home-page .home-destination-compare-toggle:focus-visible{
+  outline: none;
+  color: rgba(238, 246, 255, 0.92);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 body.home-page .home-destination-compare-toggle.is-active{
-  background: rgba(99, 102, 241, 0.18);
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #a5b4fc;
+  color: #818cf8;
 }
 
 body.home-page .home-destination-credit{
@@ -718,16 +720,6 @@ body.home-page .home-compare-explore:hover{
 
   body.home-page .home-destination-hook{
     display: none;
-  }
-
-  body.home-page .home-destination-actions{
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  body.home-page .home-destination-compare-toggle{
-    justify-content: center;
   }
 
   body.home-page .home-recent-card{
