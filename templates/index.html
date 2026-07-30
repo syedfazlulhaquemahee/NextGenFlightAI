@@ -7,7 +7,7 @@
   <title>Skairova</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260729-modern-chips') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260729-mobile-hero-sky') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260723-recent-destinations') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
@@ -87,6 +87,19 @@
   {% endif %}
 
   <main class="wrap">
+    <!-- Mobile-only ambient sky backdrop. Turns the empty hero void into sky:
+         drifting CSS clouds + the re-homed plane art behind the headline + a
+         horizon glow "floor". display:none on desktop (grid layout untouched). -->
+    <div class="hero-sky" aria-hidden="true">
+      <img class="hero-sky-plane" src="{{ url_for('static', filename='illustrations/undraw_airplane_do9t.svg', v='20260526-home-hero-art') }}" alt="" decoding="async" />
+      <span class="hero-sky-cloud hero-sky-cloud--1"></span>
+      <span class="hero-sky-cloud hero-sky-cloud--2"></span>
+      <span class="hero-sky-cloud hero-sky-cloud--3"></span>
+      <span class="hero-sky-cloud hero-sky-cloud--4"></span>
+      <span class="hero-sky-cloud hero-sky-cloud--5"></span>
+      <span class="hero-sky-cloud hero-sky-cloud--6"></span>
+      <span class="hero-sky-horizon"></span>
+    </div>
     <section class="hero hero-with-art">
       <div class="hero-copy-block">
         <h1 class="hero-title">Just say the trip.<br><span class="hero-plain">We'll </span><span class="hero-accent">find the flight.</span></h1>
@@ -193,7 +206,8 @@
     <section class="manual-search-v2 standard-mode is-collapsed" id="unified" aria-label="Flight search">
       <div class="ms2-peek ms2-peek-home-pill" id="manualPeek">
         <button type="button" class="manual-open-pill ms2-peek-open" aria-label="Open manual search">
-          <span>Manual search</span>
+          <span class="manual-open-pill-label manual-open-pill-label--wide">Manual search</span>
+          <span class="manual-open-pill-label manual-open-pill-label--mobile">Prefer to fill in fields?</span>
           <svg class="manual-open-pill-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -1184,7 +1198,10 @@
       });
 
       setMode(modeField.value || "standard");
-      if (hasManualValue()) {
+      // On phones the manual form stays collapsed behind the peek pill so the
+      // first screen is headline → AI search → pills (no lonely full form to
+      // scroll past). Desktop keeps its existing auto-expand behaviour.
+      if (hasManualValue() && !isPhoneLayout()) {
         root.classList.remove("is-collapsed");
       }
       syncManualVisibility();

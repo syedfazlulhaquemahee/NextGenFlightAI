@@ -297,6 +297,115 @@ body.home-page .hero-art-img{
   }
 }
 
+/* ===================================================================
+   Mobile hero sky (≤760px). The desktop art is dropped at this width;
+   instead of a void we build an ambient sky: drifting CSS clouds, the
+   re-homed plane behind the headline, and a horizon glow "floor".
+   All of this is display:none above 760px, so desktop is untouched.
+   =================================================================== */
+body.home-page .hero-sky{ display: none; }
+/* Desktop keeps the original pill label (base rules before the mobile @media). */
+body.home-page .manual-open-pill-label--mobile{ display: none; }
+body.home-page .manual-open-pill-label--wide{ display: inline; }
+
+@media (max-width: 760px){
+  /* .wrap becomes the positioning context for the full-bleed backdrop. */
+  body.home-page .wrap{ position: relative; }
+
+  body.home-page .hero-sky{
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: clamp(600px, 96vh, 900px);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* Faint sky wash — lighter up top — so text never sits on pure black. */
+    background:
+      radial-gradient(120% 80% at 50% -12%, rgba(60, 96, 176, 0.24), transparent 60%),
+      linear-gradient(180deg, rgba(30, 52, 104, 0.16), rgba(10, 16, 30, 0) 64%);
+    /* Melt the whole layer into the page toward the bottom. */
+    -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 74%, transparent 100%);
+  }
+
+  /* Keep real content above the sky. */
+  body.home-page .hero,
+  body.home-page .home-search-stack,
+  body.home-page .home-mode-divider{
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Re-homed plane art: a faint backdrop element behind/above the headline. */
+  body.home-page .hero-sky-plane{
+    position: absolute;
+    top: 4px;
+    right: -44px;
+    width: min(76vw, 350px);
+    height: auto;
+    opacity: 0.15;
+    transform: rotate(-4deg);
+    filter: saturate(1.05) brightness(1.18);
+    animation: hero-plane-float 15s ease-in-out infinite;
+  }
+
+  /* Soft clouds scattered across the whole hero, drifting slowly. */
+  body.home-page .hero-sky-cloud{
+    position: absolute;
+    border-radius: 999px;
+    background: radial-gradient(closest-side, rgba(206, 224, 255, 0.55), rgba(206, 224, 255, 0));
+    filter: blur(4px);
+    will-change: transform;
+  }
+  body.home-page .hero-sky-cloud--1{ top: 5%;  left: -12%; width: 190px; height: 78px; opacity: .38; animation: hero-cloud-a 64s ease-in-out infinite; }
+  body.home-page .hero-sky-cloud--2{ top: 19%; right: -16%; width: 235px; height: 92px; opacity: .30; animation: hero-cloud-b 82s ease-in-out infinite; }
+  body.home-page .hero-sky-cloud--3{ top: 40%; left: -10%; width: 150px; height: 62px; opacity: .26; animation: hero-cloud-a 74s ease-in-out infinite; animation-delay: -20s; }
+  body.home-page .hero-sky-cloud--4{ top: 55%; right: -8%; width: 205px; height: 82px; opacity: .22; animation: hero-cloud-b 92s ease-in-out infinite; animation-delay: -35s; }
+  body.home-page .hero-sky-cloud--5{ top: 72%; left: 12%;  width: 260px; height: 96px; opacity: .18; animation: hero-cloud-a 88s ease-in-out infinite; animation-delay: -50s; }
+  body.home-page .hero-sky-cloud--6{ top: 30%; left: 34%;  width: 120px; height: 52px; opacity: .18; animation: hero-cloud-b 70s ease-in-out infinite; animation-delay: -12s; }
+
+  /* Horizon glow — gives the void a floor instead of fading to black. */
+  body.home-page .hero-sky-horizon{
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    bottom: 0;
+    height: 280px;
+    background: radial-gradient(120% 120% at 50% 135%, rgba(91, 139, 255, 0.28), rgba(124, 95, 255, 0.11) 42%, transparent 72%);
+  }
+
+  /* (Vertical-rhythm tightening lives in the end-of-file mobile block so it
+     wins over the base + later mobile rules it overrides — see bottom of file.) */
+
+  /* Manual pill: friendlier mobile phrasing. */
+  body.home-page .manual-open-pill-label--wide{ display: none; }
+  body.home-page .manual-open-pill-label--mobile{ display: inline; }
+}
+
+/* Ambient motion — long, low-movement loops. It breathes, it doesn't fidget. */
+@keyframes hero-cloud-a{
+  0%   { transform: translate3d(0, 0, 0); }
+  50%  { transform: translate3d(26px, -6px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+@keyframes hero-cloud-b{
+  0%   { transform: translate3d(0, 0, 0); }
+  50%  { transform: translate3d(-30px, 5px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+@keyframes hero-plane-float{
+  0%   { transform: rotate(-4deg) translateY(0); }
+  50%  { transform: rotate(-4deg) translateY(-10px); }
+  100% { transform: rotate(-4deg) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  body.home-page .hero-sky-cloud,
+  body.home-page .hero-sky-plane{ animation: none !important; }
+}
+
 body.home-page .hero .hero-title{
   margin: 0 0 14px;
   font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif) !important;
@@ -2781,5 +2890,35 @@ body.home-page .gf-underbar-check input[type="checkbox"]{
     body.home-page .gf-seg-input {
       font-size: 16px !important;
     }
+  }
+}
+
+/* ===================================================================
+   Mobile hero — vertical rhythm (placed last so it wins over base +
+   earlier mobile rules). Kills the floating dead space so the first
+   screen reads headline → AI search → pills, with the collapsed manual
+   peek sitting right under the "OR" divider. Desktop untouched (≥761px).
+   =================================================================== */
+@media (max-width: 760px){
+  body.home-page .hero{ padding: 20px 2px 6px !important; }
+  body.home-page .hero .hero-title{
+    margin-bottom: 10px !important;
+    text-shadow: 0 2px 22px rgba(4, 10, 24, 0.55) !important; /* contrast over the sky */
+  }
+  body.home-page .hero-copy{ margin-top: 6px !important; }
+
+  /* Search card sits close to the pills and the divider. */
+  body.home-page .home-search-stack{ margin-bottom: 10px !important; }
+  body.home-page .home-search-stack .ai-card{ margin-bottom: 6px !important; }
+  body.home-page .ai-suggest-chips{ margin-top: 12px !important; }
+
+  /* "OR" divider + collapsed manual peek pulled in tight. */
+  body.home-page .home-mode-divider{ margin: 12px auto 10px !important; }
+  body.home-page .home-search-stack .manual-search-v2.is-collapsed{ margin-top: 0 !important; }
+
+  /* When the manual IS expanded (user tapped), keep it readable but snug. */
+  body.home-page .home-search-stack:has(.manual-search-v2:not(.is-collapsed)){
+    gap: 14px !important;
+    margin-bottom: 24px !important;
   }
 }
