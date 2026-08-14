@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ hotel.name }} • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-nuitee-type') }}" />
+</head>
+<body class="hotel-detail-page">
+  {% include "partials/platform_header.html" %}
+
+  {% if global_notice %}
+    <div class="hotels-notice" role="status">{{ global_notice }}</div>
+  {% endif %}
+
+  <main class="nu-wrap nu-detail">
+    <a class="nu-back" href="{{ url_for('hotel_search', place_id=search.place_id, place_name=search.place_name, checkin=search.checkin, checkout=search.checkout, adults=search.adults, rooms=search.rooms) }}">
+      ← Back to {{ search.place_name or 'results' }}
+    </a>
+
+    {% if hotel.images %}
+      <div class="nu-gal">
+        <button type="button" class="nu-gal-hero" data-img="0" aria-label="Open photo gallery">
+          <img src="{{ hotel.images[0] }}" alt="{{ hotel.name }}" />
+        </button>
+        <div class="nu-gal-side">
+          {% for img in hotel.images[1:5] %}
+            <button type="button" class="nu-gal-thumb" data-img="{{ loop.index }}" aria-label="Photo {{ loop.index + 1 }}">
+              <img src="{{ img }}" alt="" loading="lazy" />
+              {% if loop.last and hotel.images|length > 5 %}
+                <span class="nu-gal-more">+{{ hotel.images|length - 5 }} photos</span>
+              {% endif %}
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="nu-detail-body">
+      <div>
+        <header>
+          {% if hotel.stars %}<span class="nu-stars">{%- for _ in range(hotel.stars) %}★{% endfor -%}</span>{% endif %}
+          <div class="nu-detail-title"><h1>{{ hotel.name }}</h1></div>
+          {% if hotel.hotel_type %}<p class="nu-detail-type">{{ hotel.hotel_type }}{% if hotel.chain %} · {{ hotel.chain }}{% endif %}</p>{% endif %}
+          {% if hotel.address %}
+            <p class="nu-detail-addr">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+              {{ hotel.address }}{% if hotel.city %}, {{ hotel.city }}{% endif %}
+            </p>
+          {% endif %}
+
+          {% if hotel.rating %}
+            <div class="nu-detail-score">
+              <span class="nu-score-badge {{ 'nu-score-badge--mid' if hotel.rating < 8 }}">{{ hotel.rating }}</span>
+              <div>
+                <strong>{{ hotel.review_label }}</strong>
+                {% if hotel.review_count %}<span>{{ '{:,}'.format(hotel.review_count) }} verified reviews</span>{% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </header>
+
+        {% if hotel.amenities %}
+          <section class="nu-block">
+            <h2>Popular amenities</h2>
+            <ul class="nu-amenities">{% for a in hotel.amenities %}<li>{{ a }}</li>{% endfor %}</ul>
+          </section>
+        {% endif %}
+
+        <section class="nu-block" id="rooms">
+          <h2>Choose your room</h2>
+          {% if not rooms %}
+            <p class="nu-list-sub">No rooms are bookable for these dates. Try different dates.</p>
+          {% else %}
+            <ul class="nu-rooms">
+              {% for room in rooms %}
+                <li class="nu-room">
+                  <div>
+                    <h3>{{ room.name }}</h3>
+                    <p class="nu-room-board">{{ room.board_name }}</p>
+                    <ul class="nu-room-tags">
+                      {% if room.refundable %}
+                        <li class="nu-tag nu-tag--good">Free cancellation</li>
+                      {% else %}
+                        <li class="nu-tag">Non-refundable</li>
+                      {% endif %}
+                      {% if room.max_occupancy %}<li class="nu-tag">Sleeps {{ room.max_occupancy }}</li>{% endif %}
+                    </ul>
+                    {% if room.excluded_taxes %}
+                      <p class="nu-room-note">+ US${{ '{:,.0f}'.format(room.excluded_taxes) }} taxes &amp; fees at the property</p>
+                    {% endif %}
+                  </div>
+                  <div class="nu-room-buy">
+                    <strong>US${{ '{:,.0f}'.format(room.total_amount) }}</strong>
+                    <span>{{ search.rooms }} room{{ 's' if search.rooms != 1 }} x {{ search.nights }} night{{ 's' if search.nights != 1 }} incl. taxes</span>
+                    <button class="nu-btn" type="button" disabled title="Checkout is not wired up yet">Reserve</button>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </section>
+
+        {% if hotel_description %}
+          <section class="nu-block">
+            <h2>About this property</h2>
+            {# Sanitized in liteapi_client.sanitize_description — escaped, then a no-attribute tag allowlist restored. #}
+            <div class="nu-desc">{{ hotel_description|safe }}</div>
+          </section>
+        {% endif %}
+
+        {% if hotel.facilities %}
+          <section class="nu-block">
+            <h2>All facilities</h2>
+            <ul class="nu-facilities">{% for f in hotel.facilities[:40] %}<li>{{ f }}</li>{% endfor %}</ul>
+          </section>
+        {% endif %}
+      </div>
+
+      <aside class="nu-rail-side">
+        <div class="nu-panel">
+          {% if cheapest_total %}
+            <p class="nu-from">From</p>
+            <p class="nu-from-price">US${{ '{:,.0f}'.format(cheapest_total / search.nights) }} <span>/ night</span></p>
+            <p class="nu-from-total">US${{ '{:,.0f}'.format(cheapest_total) }} total for {{ search.nights }} night{{ 's' if search.nights != 1 }} incl. taxes</p>
+          {% endif %}
+          <dl class="nu-stay">
+            <div><dt>Check in</dt><dd>{{ search.checkin }}{% if hotel.checkin_time %} · {{ hotel.checkin_time }}{% endif %}</dd></div>
+            <div><dt>Check out</dt><dd>{{ search.checkout }}{% if hotel.checkout_time %} · {{ hotel.checkout_time }}{% endif %}</dd></div>
+            <div><dt>Guests</dt><dd>{{ search.adults }} guest{{ 's' if search.adults != 1 }} · {{ search.rooms }} room{{ 's' if search.rooms != 1 }}</dd></div>
+          </dl>
+          <a class="nu-btn" href="#rooms">See room options</a>
+        </div>
+
+        {% if hotel.pois %}
+          <div class="nu-panel">
+            <h2>What's nearby</h2>
+            <ul class="nu-poi">
+              {% for poi in hotel.pois %}
+                <li><span>{{ poi.name }}</span>{% if poi.distance %}<em>{{ poi.distance }}</em>{% endif %}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </main>
+
+  {% if hotel.images %}
+    <div class="nu-lb" id="nuLightbox" hidden>
+      <button type="button" class="nu-lb-close" id="nuLbClose" aria-label="Close gallery">×</button>
+      <button type="button" class="nu-lb-nav nu-lb-prev" id="nuLbPrev" aria-label="Previous photo">‹</button>
+      <img id="nuLbImg" src="" alt="" />
+      <button type="button" class="nu-lb-nav nu-lb-next" id="nuLbNext" aria-label="Next photo">›</button>
+      <p class="nu-lb-count" id="nuLbCount"></p>
+    </div>
+  {% endif %}
+
+  {% if lite_env == 'sandbox' %}
+    <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
+  {% endif %}
+
+  <script>
+    (function () {
+      var images = {{ hotel.images|tojson }};
+      var lb = document.getElementById("nuLightbox");
+      if (!lb || !images.length) return;
+      var img = document.getElementById("nuLbImg");
+      var count = document.getElementById("nuLbCount");
+      var i = 0;
+
+      function show(n) {
+        i = (n + images.length) % images.length;
+        img.src = images[i];
+        count.textContent = (i + 1) + " / " + images.length;
+      }
+      function open(n) { show(n); lb.hidden = false; document.body.style.overflow = "hidden"; }
+      function close() { lb.hidden = true; document.body.style.overflow = ""; }
+
+      document.querySelectorAll("[data-img]").forEach(function (btn) {
+        btn.addEventListener("click", function () { open(Number(btn.dataset.img)); });
+      });
+      document.getElementById("nuLbClose").addEventListener("click", close);
+      document.getElementById("nuLbPrev").addEventListener("click", function () { show(i - 1); });
+      document.getElementById("nuLbNext").addEventListener("click", function () { show(i + 1); });
+      lb.addEventListener("click", function (e) { if (e.target === lb) close(); });
+      document.addEventListener("keydown", function (e) {
+        if (lb.hidden) return;
+        if (e.key === "Escape") close();
+        if (e.key === "ArrowLeft") show(i - 1);
+        if (e.key === "ArrowRight") show(i + 1);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1261 @@
+/* ============================================================================
+   Skairova Stays — design ported from the Nuitée/liteAPI reference storefront
+   (mahisyed-mahee-7kufz.nuitee.link).
+
+   The reference is light-only. Light mode here is a faithful match to it:
+   Inter, #4F46E5 indigo, rounded hero card, floating search pill, white
+   property cards with orange stars and a green score badge. Dark mode keeps
+   the identical layout, spacing and type scale, with the palette inverted —
+   Skairova defaults to dark, so the page has to hold up in both.
+
+   Tokens are scoped to the hotel pages so they never leak into flights.
+   ========================================================================= */
+
+.hotels-page,
+.hotel-results-page,
+.hotel-detail-page {
+  /* dark is the site default */
+  --nu-bg: #0e1320;
+  --nu-surface: #161d2c;
+  --nu-surface-2: #1d2536;
+  --nu-elevated: #1a2231;
+  --nu-heading: #f4f5f7;
+  --nu-text: #f4f5f7;
+  --nu-text-2: #e2e6ec;
+  --nu-muted: #a7b0bd;
+  --nu-muted-2: #8f98a6;
+  --nu-price-sub: #98a3bd;
+  --nu-score-label: #dfe3ee;
+  --nu-feature-copy: rgba(226, 230, 236, .62);
+  --nu-border: #2a3346;
+  --nu-border-soft: #222b3c;
+  --nu-primary: #6366f1;
+  --nu-primary-hover: #818cf8;
+  --nu-primary-soft: rgba(99, 102, 241, .16);
+  --nu-on-primary: #ffffff;
+  --nu-star: #fb923c;
+  --nu-score: #22c55e;
+  --nu-score-mid: #f59e0b;
+  --nu-shadow: 0 4px 6px -1px rgba(0, 0, 0, .4), 0 2px 4px -2px rgba(0, 0, 0, .3);
+  --nu-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, .5), 0 4px 6px -4px rgba(0, 0, 0, .4);
+  --nu-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --nu-radius: 12px;
+  --nu-radius-sm: 8px;
+  --nu-radius-lg: 24px;
+  --nu-img-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='8.5' cy='9.5' r='1.6'/%3E%3Cpath d='m4 17 4.5-4.5 3 3L15 12l5 5'/%3E%3C/svg%3E");
+
+  color: var(--nu-text);
+  font-family: var(--nu-font);
+  min-height: 100vh;
+}
+
+/* style.css sets body{font-family:var(--font-ui)} — restate on the page and on
+   every descendant so headings/inputs inherit Inter rather than the site face. */
+body.hotels-page, body.hotels-page *,
+body.hotel-results-page, body.hotel-results-page *,
+body.hotel-detail-page, body.hotel-detail-page * {
+  font-family: var(--nu-font);
+}
+
+/* The site paints a tinted root, a grain texture on body, and gradient
+   pseudo-layers. The reference is a flat surface, so strip all of that — but
+   only on the stays pages. `html` is reached via :has() since the theme
+   colours the root element itself. */
+html:has(body.hotels-page),
+html:has(body.hotel-results-page),
+html:has(body.hotel-detail-page) { background: #0e1320 !important; }
+
+html[data-theme="light"]:has(body.hotels-page),
+html[data-theme="light"]:has(body.hotel-results-page),
+html[data-theme="light"]:has(body.hotel-detail-page) { background: #ffffff !important; }
+
+body.hotels-page,
+body.hotel-results-page,
+body.hotel-detail-page,
+html[data-theme="light"] body.hotels-page,
+html[data-theme="light"] body.hotel-results-page,
+html[data-theme="light"] body.hotel-detail-page {
+  background-image: none !important;
+  background-color: var(--nu-bg) !important;
+}
+
+body.hotels-page::before, body.hotels-page::after,
+body.hotel-results-page::before, body.hotel-results-page::after,
+body.hotel-detail-page::before, body.hotel-detail-page::after { display: none !important; }
+
+html[data-theme="light"] .hotels-page,
+html[data-theme="light"] .hotel-results-page,
+html[data-theme="light"] .hotel-detail-page {
+  /* exact reference values */
+  --nu-bg: #ffffff;
+  --nu-surface: #ffffff;
+  --nu-surface-2: #f3f4f6;
+  --nu-elevated: #ffffff;
+  /* sampled from the reference */
+  --nu-heading: #1f2a37;
+  --nu-text: #111322;
+  --nu-text-2: #1f2a37;
+  --nu-muted: #4d5761;
+  --nu-muted-2: #6c737f;
+  --nu-price-sub: #4a5578;
+  --nu-score-label: #30374f;
+  --nu-feature-copy: rgba(86, 87, 89, .72);
+  --nu-border: #e5e7eb;
+  --nu-border-soft: #f0f1f3;
+  --nu-primary: #4f46e5;
+  --nu-primary-hover: #4338ca;
+  --nu-primary-soft: #eef2ff;
+  --nu-on-primary: #ffffff;
+  --nu-star: #f97316;
+  --nu-score: #16a34a;
+  --nu-score-mid: #f59e0b;
+  --nu-shadow: 0 1px 3px rgba(17, 25, 39, .1), 0 1px 2px -1px rgba(17, 25, 39, .1);
+  --nu-shadow-lg: 0 10px 15px -3px rgba(17, 25, 39, .1), 0 4px 6px -4px rgba(17, 25, 39, .1);
+}
+
+.nu-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+.hotels-notice {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  background: var(--nu-surface-2);
+  color: var(--nu-text);
+  font-size: 14px;
+}
+
+.hotels-env-flag {
+  margin: 12px auto 40px;
+  color: var(--nu-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* ===================== landing hero ===================== */
+.nu-hero {
+  position: relative;
+  margin: 24px auto 0;
+  border-radius: var(--nu-radius-lg);
+  overflow: hidden;
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  isolation: isolate;
+}
+
+.nu-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+.nu-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(8, 15, 32, .62) 0%, rgba(8, 15, 32, .34) 42%, rgba(8, 15, 32, .30) 62%, rgba(8, 15, 32, .58) 100%);
+}
+
+.nu-hero-title {
+  margin: 104px 0 0;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 64px;
+  letter-spacing: normal;
+  color: #fff;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.nu-hero-sub {
+  margin: 14px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 28px;
+  color: rgba(255, 255, 255, .94);
+  text-align: center;
+  padding: 0 20px;
+}
+
+/* Mode switch + both pills share one column. The box carries the hero offset
+   that .nu-search used to own, minus the switch height, so the pill lands in
+   the same place it did before the toggle existed. */
+.nu-searchbox {
+  width: min(1020px, calc(100% - 48px));
+  margin: 62px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nu-searchbox .nu-search {
+  width: 100%;
+  margin-top: 0;
+}
+
+.nu-mode {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(12, 18, 34, .46);
+  border: 1px solid rgba(255, 255, 255, .22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.nu-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: rgba(255, 255, 255, .86);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.nu-mode-btn svg { width: 16px; height: 16px; flex: none; }
+.nu-mode-btn:hover { color: #fff; }
+
+/* Active tab borrows the pill's own surface so the switch reads as attached
+   to the bar below it in both themes. */
+.nu-mode-btn.is-active {
+  background: var(--nu-elevated);
+  color: var(--nu-text);
+}
+
+/* floating search pill */
+.nu-search {
+  margin: 116px auto 0;
+  width: min(1020px, calc(100% - 48px));
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.15fr) minmax(0, 1.15fr) auto;
+  align-items: stretch;
+  background: var(--nu-elevated);
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  box-shadow: var(--nu-shadow-lg);
+  padding: 8px;
+  gap: 0;
+}
+
+/* display:grid above beats the [hidden] attribute — the fallback form must
+   stay invisible while the LiteAPI widget is driving the search. */
+.nu-search[hidden] { display: none !important; }
+
+/* On white the reference pill is borderless; in dark it needs an edge to
+   separate from the hero photo behind it. */
+html[data-theme="light"] .nu-search { border-color: transparent; }
+
+.nu-seg {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 18px;
+  min-width: 0;
+}
+
+.nu-seg + .nu-seg::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--nu-border);
+}
+
+.nu-seg label,
+.nu-seg > span {
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--nu-muted-2);
+}
+
+.nu-seg input,
+.nu-seg select {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--nu-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -.16px;
+  appearance: none;
+  min-width: 0;
+}
+
+.nu-seg input:focus,
+.nu-seg select:focus { outline: none; }
+.nu-seg input:focus-visible,
+.nu-seg select:focus-visible { outline: none !important; }
+.nu-seg input::placeholder { color: var(--nu-muted); font-weight: 400; }
+
+.nu-seg-dates { display: flex; align-items: center; gap: 6px; }
+.nu-seg-dates input { font-size: 14px; letter-spacing: -.16px; }
+.nu-seg-dates select { font-size: 14px; letter-spacing: -.16px; cursor: pointer; }
+.nu-seg-dates i { color: var(--nu-muted); font-style: normal; flex: none; }
+
+/* The native date widget's calendar glyph eats the field width and clips the
+   value. Hide it — the whole segment is clickable to open the picker. */
+.nu-seg input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.nu-seg input[type="date"] { position: relative; }
+
+.nu-search-btn {
+  align-self: center;
+  margin-right: 4px;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-primary);
+  color: var(--nu-on-primary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s ease;
+}
+
+.nu-search-btn:hover { background: var(--nu-primary-hover); }
+.nu-search-btn svg { width: 19px; height: 19px; }
+
+.nu-suggest {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 8px;
+  right: 8px;
+  z-index: 70;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--nu-elevated);
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  box-shadow: var(--nu-shadow-lg);
+  max-height: 330px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.nu-suggest-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 12px;
+  border-radius: var(--nu-radius-sm);
+  cursor: pointer;
+}
+
+.nu-suggest-item:hover,
+.nu-suggest-item.is-active { background: var(--nu-surface-2); }
+.nu-suggest-name { font-size: 14.5px; font-weight: 600; color: var(--nu-text); }
+.nu-suggest-addr { font-size: 12.5px; color: var(--nu-muted); }
+
+/* ---------- AI mode: same pill shell, one prompt segment ---------- */
+.nu-search--ai { grid-template-columns: minmax(0, 1fr) auto; }
+
+.nu-seg-ai { justify-content: center; }
+
+.nu-ai-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* Same touch-sized, circular microphone affordance as Flights. */
+.nu-ai-mic {
+  flex: none;
+  display: grid !important;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  margin: -7px 0 0 0;
+  padding: 0;
+  border: 1px solid #aeb8c7;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #53637a;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.nu-ai-mic svg { display: block; width: 19px; height: 19px; }
+.nu-ai-mic:hover { background: #eef2ff; border-color: var(--nu-primary); color: var(--nu-primary); }
+.nu-ai-mic:focus-visible { outline: 2px solid var(--nu-primary); outline-offset: 2px; }
+.nu-ai-mic.voice-active {
+  background: var(--nu-primary-soft);
+  border-color: var(--nu-primary);
+  color: var(--nu-primary);
+}
+
+/* The shared voice controller mounts its live transcription stage on this
+   hotel form. Give the shell a stable positioning context and correct radius. */
+.nu-search--ai { position: relative; overflow: hidden; border-radius: var(--nu-radius-sm); }
+.nu-search--ai .voice-inline { border-radius: inherit; }
+.nu-search--ai.voice-active-inline {
+  background: linear-gradient(135deg, rgba(79, 131, 255, .92), rgba(123, 97, 255, .92)) !important;
+}
+.nu-search--ai.voice-active-inline .voice-inline {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.nu-search--ai.voice-active-inline .nu-ai-row { opacity: 0; pointer-events: none; }
+
+.nu-ai-spark {
+  flex: none;
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--nu-primary);
+}
+.nu-ai-spark svg { width: 100%; height: 100%; display: block; }
+
+/* A textarea (not an input) so long prompts wrap instead of scrolling out of
+   sight; JS grows it to the 3-row cap set here. */
+.nu-ai-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--nu-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -.16px;
+  line-height: 22px;
+  resize: none;
+  overflow-y: auto;
+  max-height: 66px;
+}
+
+.nu-ai-input:focus { outline: none; }
+.nu-ai-input:focus-visible { outline: none !important; }
+.nu-ai-input::placeholder { color: var(--nu-muted); font-weight: 400; }
+
+.nu-ai-spinner {
+  display: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .42);
+  border-top-color: #fff;
+  animation: nu-spin .7s linear infinite;
+}
+
+.nu-search--ai.is-busy .nu-search-btn { pointer-events: none; }
+.nu-search--ai.is-busy .nu-search-btn > svg { display: none; }
+.nu-search--ai.is-busy .nu-ai-spinner { display: block; }
+
+@keyframes nu-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .nu-ai-spinner { animation-duration: 2s; }
+}
+
+.nu-ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+/* display:flex beats the [hidden] attribute — chips belong to AI mode only. */
+.nu-ai-chips[hidden] { display: none; }
+
+.nu-ai-chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  background: rgba(12, 18, 34, .42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, .92);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.nu-ai-chip:hover {
+  background: rgba(12, 18, 34, .62);
+  border-color: rgba(255, 255, 255, .42);
+}
+
+/* Parsing plus the rate search takes a few seconds — say so rather than
+   leaving the hero looking idle. */
+.nu-ai-status {
+  margin: 14px 0 0;
+  padding: 8px 16px;
+  border-radius: var(--nu-radius-sm);
+  background: rgba(12, 18, 34, .52);
+  border: 1px solid rgba(255, 255, 255, .2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.nu-ai-status[hidden] { display: none; }
+
+/* The reference has no helper line under the pill — only surface one when the
+   user tries to submit without picking a destination. */
+.nu-hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  background: rgba(190, 18, 60, .92);
+  padding: 8px 16px;
+  border-radius: var(--nu-radius-sm);
+  visibility: hidden;
+}
+.nu-hint.is-error { visibility: visible; }
+
+/* ===================== feature strip ===================== */
+.nu-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 34px auto 0;
+  background: var(--nu-surface-2);
+  border-radius: var(--nu-radius);
+  overflow: hidden;
+}
+
+.nu-feature { display: flex; gap: 14px; padding: 22px 24px; }
+.nu-feature-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-elevated);
+  display: grid;
+  place-items: center;
+  color: var(--nu-primary);
+}
+.nu-feature-icon svg { width: 19px; height: 19px; }
+.nu-feature h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 26px; letter-spacing: -.18px; color: var(--nu-text); }
+.nu-feature p { margin: 0; font-size: 16px; font-weight: 400; line-height: 24px; color: var(--nu-feature-copy); }
+
+/* ===================== sections + carousel ===================== */
+.nu-section { margin-top: 56px; }
+.nu-section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.nu-section-head h2 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.28px; color: var(--nu-heading); }
+
+.nu-arrows { display: flex; gap: 8px; }
+.nu-arrow {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--nu-surface-2);
+  color: var(--nu-text-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-family: inherit;
+}
+.nu-arrow:hover { background: var(--nu-border); }
+.nu-arrow svg { width: 16px; height: 16px; }
+
+.nu-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 48px) / 3);
+  gap: 24px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.nu-rail::-webkit-scrollbar { display: none; }
+.nu-rail > * { scroll-snap-align: start; }
+
+.nu-rail-note { margin: 12px 0 0; font-size: 12.5px; color: var(--nu-muted); }
+
+/* recent searches — horizontal rail on every viewport, matching the
+   Flights home page's recent-searches pattern. */
+.nu-recent-viewport { position: relative; }
+
+.nu-recent-viewport::before,
+.nu-recent-viewport::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  /* Matches .nu-recent's own padding-bottom (8px) so the shadow's bottom
+     edge lines up with the cards' bottom edge instead of running short. */
+  bottom: 8px;
+  width: 28px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+/* Fully opaque only right at the edge, clear again by 70% of the strip —
+   a 40px 0%-to-100% fade was wide enough to visibly dim legible text on
+   short cards instead of reading as an edge cue. */
+.nu-recent-viewport::before { left: 0; background: linear-gradient(to right, var(--nu-bg) 0%, transparent 70%); }
+.nu-recent-viewport::after { right: 0; background: linear-gradient(to left, var(--nu-bg) 0%, transparent 70%); }
+#recentStaysSection.has-overflow-start .nu-recent-viewport::before { opacity: 1; }
+#recentStaysSection.has-overflow .nu-recent-viewport::after { opacity: 1; }
+
+.nu-recent {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 2px;
+  padding: 4px 2px 8px;
+  margin: -4px -2px 0;
+  /* Extra trailing space so the last card can clear the right-edge shadow
+     instead of stopping flush underneath it. */
+  padding-right: 28px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, .35) transparent;
+}
+.nu-recent::-webkit-scrollbar { height: 6px; }
+.nu-recent::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(148, 163, 184, .3); }
+
+.nu-recent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  padding: 12px 18px;
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  background: var(--nu-surface);
+  color: var(--nu-text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.nu-recent-item:hover { border-color: var(--nu-primary); box-shadow: var(--nu-shadow); }
+.nu-recent-city { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.nu-recent-meta { font-size: 12.5px; color: var(--nu-muted); white-space: nowrap; }
+
+/* loading skeletons for the async rails */
+.nu-skeleton { pointer-events: none; }
+.nu-skeleton .nu-card-img { display: block; }
+.nu-sk-line {
+  display: block;
+  height: 12px;
+  margin-top: 10px;
+  border-radius: 6px;
+  background: var(--nu-surface-2);
+}
+.nu-sk-line--sm { width: 45%; }
+.nu-skeleton { animation: nu-pulse 1.4s ease-in-out infinite; }
+@keyframes nu-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .nu-skeleton { animation: none; } }
+
+/* ===================== property card ===================== */
+.nu-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--nu-surface);
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .16s ease, transform .16s ease;
+}
+
+.nu-card:hover { box-shadow: var(--nu-shadow-lg); transform: translateY(-2px); }
+
+.nu-card-img { aspect-ratio: 16 / 10; background: var(--nu-surface-2); overflow: hidden; }
+.nu-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Placeholder glyph for properties with no usable photo. */
+.nu-card-img--empty {
+  display: grid;
+  place-items: center;
+  color: var(--nu-muted);
+  opacity: .5;
+}
+.nu-card-img--empty::after {
+  content: "";
+  width: 34px;
+  height: 34px;
+  background: currentColor;
+  -webkit-mask: var(--nu-img-glyph) center / contain no-repeat;
+  mask: var(--nu-img-glyph) center / contain no-repeat;
+}
+
+.nu-card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nu-stars { color: var(--nu-star); font-size: 13px; letter-spacing: 1px; line-height: 1; }
+.nu-card-name {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.3;
+  color: var(--nu-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nu-card-loc { margin: 0; display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 400; line-height: 20px; letter-spacing: -.14px; color: var(--nu-muted); }
+.nu-card-loc svg { width: 14px; height: 14px; flex: none; }
+.nu-card-loc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.nu-card-dist { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 400; letter-spacing: -.14px; color: var(--nu-muted); }
+
+/* Destination tiles carry no price, so their body should not stretch. */
+.nu-card--dest { border: 1px solid var(--nu-border); background: var(--nu-surface); text-align: left; padding: 0; font-family: inherit; cursor: pointer; }
+.nu-card--dest .nu-card-body { gap: 2px; }
+
+/* Score left, price right — but the pair wraps instead of clipping once the
+   card is narrow (3-up beside the filter rail leaves ~260px). */
+.nu-card-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.nu-score { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.nu-score-badge {
+  flex: none;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--nu-score);
+  font-weight: 600;
+  /* theme.css recolours generic inline text in light mode — pin this so the
+     badge stays legible on its green fill. */
+  color: #fff !important;
+  font-size: 12px;
+  line-height: 1.1;
+}
+.nu-score-badge--mid { background: var(--nu-score-mid); }
+.nu-score-text { min-width: 0; }
+.nu-score-text strong { display: block; font-size: 13px; font-weight: 600; color: var(--nu-score-label); white-space: nowrap; }
+.nu-score-text span { display: block; font-size: 11px; font-weight: 500; color: var(--nu-muted-2); white-space: nowrap; }
+
+.nu-price { text-align: right; margin-left: auto; }
+.nu-price s { display: block; font-size: 12.5px; font-weight: 400; color: var(--nu-muted-2); }
+.nu-price strong { display: block; font-size: 22px; font-weight: 600; letter-spacing: normal; color: var(--nu-text); white-space: nowrap; }
+.nu-price span { display: block; font-size: 13px; font-weight: 400; color: var(--nu-price-sub); }
+
+/* ===================== results page ===================== */
+.nu-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--nu-surface);
+  border-bottom: 1px solid var(--nu-border);
+  padding: 12px 0;
+}
+
+.nu-topbar .nu-search {
+  margin: 0 auto;
+  width: 100%;
+  box-shadow: none;
+  border: 1px solid var(--nu-border);
+  padding: 6px;
+}
+
+.nu-ai {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border: 1px solid var(--nu-primary);
+  background: var(--nu-primary-soft);
+  border-radius: var(--nu-radius);
+  font-size: 14px;
+  color: var(--nu-text);
+}
+
+.nu-ai-badge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--nu-primary);
+  color: var(--nu-on-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.nu-results { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; padding-top: 26px; padding-bottom: 64px; }
+
+.nu-filters {
+  position: sticky;
+  top: 96px;
+  background: var(--nu-surface);
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius);
+  padding: 18px;
+  max-height: calc(100vh - 118px);
+  overflow-y: auto;
+}
+
+.nu-filters-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.nu-filters-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.nu-clear { border: 0; background: none; padding: 0; color: var(--nu-primary); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; }
+.nu-clear:hover { text-decoration: underline; }
+
+.nu-fgroup { padding: 16px 0; border-bottom: 1px solid var(--nu-border-soft); }
+.nu-fgroup:last-child { border-bottom: 0; padding-bottom: 0; }
+.nu-fgroup h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+
+.nu-price-out { display: block; margin-bottom: 8px; font-size: 13px; color: var(--nu-muted); }
+.nu-range { width: 100%; accent-color: var(--nu-primary); }
+.nu-range-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; color: var(--nu-muted); }
+
+.nu-check { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 14px; color: var(--nu-text-2); cursor: pointer; }
+.nu-check input { accent-color: var(--nu-primary); width: 16px; height: 16px; flex: none; }
+
+.nu-star-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.nu-star-btn { position: relative; cursor: pointer; }
+.nu-star-btn input { position: absolute; opacity: 0; pointer-events: none; }
+.nu-star-btn span {
+  display: block;
+  padding: 6px 12px;
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius-sm);
+  font-size: 13px;
+  color: var(--nu-text-2);
+  white-space: nowrap;
+}
+.nu-star-btn input:checked + span {
+  border-color: var(--nu-primary);
+  background: var(--nu-primary-soft);
+  color: var(--nu-primary);
+  font-weight: 600;
+}
+
+.nu-filters-toggle {
+  display: none;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-surface);
+  color: var(--nu-text);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nu-list-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.nu-list-head h1 { margin: 0 0 3px; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.nu-list-sub { margin: 0; font-size: 14px; color: var(--nu-muted); }
+
+.nu-sort { display: flex; align-items: center; gap: 8px; flex: none; }
+.nu-sort span { font-size: 14px; color: var(--nu-muted); }
+.nu-sort select {
+  height: 40px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--nu-border);
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-surface);
+  color: var(--nu-text);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nu-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 24px; }
+.nu-grid > li { display: flex; }
+.nu-grid > li[hidden] { display: none !important; }
+.nu-grid .nu-card { width: 100%; }
+.nu-load-more-wrap { display: flex; justify-content: center; padding: 28px 0 6px; }
+.nu-load-more { min-width: 188px; }
+
+.nu-none { padding: 26px 0; color: var(--nu-muted); font-size: 14px; }
+.nu-none[hidden] { display: none !important; }
+.nu-none button { border: 0; background: none; color: var(--nu-primary); font: inherit; cursor: pointer; text-decoration: underline; }
+
+.nu-empty { background: var(--nu-surface); border: 1px solid var(--nu-border); border-radius: var(--nu-radius); padding: 48px 28px; text-align: center; }
+.nu-empty h2 { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+.nu-empty p { margin: 0 auto 22px; max-width: 470px; color: var(--nu-muted); font-size: 15px; line-height: 1.55; }
+
+.nu-btn {
+  display: inline-block;
+  padding: 11px 22px;
+  border: 0;
+  border-radius: var(--nu-radius-sm);
+  background: var(--nu-primary);
+  color: var(--nu-on-primary);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nu-btn:hover { background: var(--nu-primary-hover); }
+
+/* ===================== detail page ===================== */
+.nu-detail { padding-top: 22px; padding-bottom: 64px; }
+.nu-back { display: inline-block; margin-bottom: 16px; color: var(--nu-muted); font-size: 14px; text-decoration: none; }
+.nu-back:hover { color: var(--nu-text); }
+
+.nu-gal { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 28px; }
+.nu-gal-hero, .nu-gal-thumb {
+  position: relative; padding: 0; border: 0; overflow: hidden; cursor: pointer;
+  background: var(--nu-surface-2); border-radius: var(--nu-radius);
+}
+.nu-gal-hero { border-radius: var(--nu-radius-lg); }
+.nu-gal-hero img { width: 100%; height: 100%; max-height: 430px; object-fit: cover; display: block; }
+.nu-gal-side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nu-gal-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nu-gal-more {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(0, 0, 0, .55); color: #fff; font-size: 14px; font-weight: 600;
+}
+
+.nu-detail-body { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 32px; align-items: start; }
+.nu-detail-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.nu-detail-title h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -.02em; }
+.nu-detail-type { margin: 6px 0 0; font-size: 14px; color: var(--nu-muted); }
+.nu-detail-addr { margin: 4px 0 0; display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--nu-muted); }
+.nu-detail-addr svg { width: 15px; height: 15px; flex: none; }
+
+.nu-detail-score { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.nu-detail-score .nu-score-badge { font-size: 18px; padding: 9px 12px; border-radius: var(--nu-radius-sm); }
+.nu-detail-score strong { display: block; font-size: 15px; font-weight: 700; }
+.nu-detail-score span { font-size: 13px; color: var(--nu-muted); }
+
+.nu-block { margin-top: 34px; }
+.nu-block h2 { margin: 0 0 14px; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+
+.nu-amenities, .nu-facilities { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.nu-amenities li { padding: 8px 14px; border: 1px solid var(--nu-border); border-radius: var(--nu-radius-sm); font-size: 14px; color: var(--nu-text-2); }
+.nu-facilities li { padding: 5px 11px; border-radius: 999px; background: var(--nu-surface-2); font-size: 13px; color: var(--nu-muted); }
+
+.nu-desc { color: var(--nu-text-2); font-size: 15px; line-height: 1.65; }
+.nu-desc p { margin: 0 0 12px; }
+
+.nu-rooms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.nu-room {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 18px; background: var(--nu-surface);
+  border: 1px solid var(--nu-border); border-radius: var(--nu-radius);
+}
+.nu-room h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.nu-room-board { margin: 0 0 9px; font-size: 14px; color: var(--nu-muted); }
+.nu-room-tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.nu-tag { padding: 4px 10px; border: 1px solid var(--nu-border); border-radius: 999px; font-size: 12px; color: var(--nu-muted); }
+.nu-tag--good { border-color: var(--nu-score); color: var(--nu-score); }
+.nu-room-note { margin: 9px 0 0; font-size: 12.5px; color: var(--nu-muted); }
+.nu-room-buy { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.nu-room-buy strong { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.nu-room-buy span { font-size: 12px; color: var(--nu-muted); }
+.nu-room-buy .nu-btn { margin-top: 10px; }
+.nu-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.nu-rail-side { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 16px; }
+.nu-panel { background: var(--nu-surface); border: 1px solid var(--nu-border); border-radius: var(--nu-radius); padding: 20px; box-shadow: var(--nu-shadow); }
+.nu-panel h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+.nu-from { margin: 0; font-size: 13px; color: var(--nu-muted); }
+.nu-from-price { margin: 3px 0 0; font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.nu-from-price span { font-size: 14px; font-weight: 500; color: var(--nu-muted); }
+.nu-from-total { margin: 3px 0 16px; font-size: 13px; color: var(--nu-muted); }
+.nu-stay { margin: 0; padding: 16px 0 0; border-top: 1px solid var(--nu-border); display: flex; flex-direction: column; gap: 10px; }
+.nu-stay div { display: flex; justify-content: space-between; gap: 12px; }
+.nu-stay dt { font-size: 13px; color: var(--nu-muted); }
+.nu-stay dd { margin: 0; font-size: 13px; font-weight: 600; text-align: right; }
+.nu-panel .nu-btn { display: block; width: 100%; margin-top: 18px; text-align: center; padding: 12px; }
+.nu-poi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.nu-poi li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--nu-text-2); }
+.nu-poi em { color: var(--nu-muted); font-style: normal; flex: none; }
+
+/* lightbox */
+.nu-lb { position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, .93); display: flex; align-items: center; justify-content: center; }
+.nu-lb[hidden] { display: none; }
+.nu-lb img { max-width: 92vw; max-height: 86vh; object-fit: contain; border-radius: var(--nu-radius-sm); }
+.nu-lb-close, .nu-lb-nav {
+  position: absolute; border: 0; background: rgba(255, 255, 255, .15); color: #fff;
+  cursor: pointer; font-family: inherit;
+}
+.nu-lb-close { top: 20px; right: 24px; width: 42px; height: 42px; border-radius: 50%; font-size: 24px; line-height: 1; }
+.nu-lb-nav { top: 50%; transform: translateY(-50%); width: 48px; height: 64px; border-radius: var(--nu-radius-sm); font-size: 30px; line-height: 1; }
+.nu-lb-prev { left: 20px; }
+.nu-lb-next { right: 20px; }
+.nu-lb-close:hover, .nu-lb-nav:hover { background: rgba(255, 255, 255, .28); }
+.nu-lb-count { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); color: rgba(255, 255, 255, .82); font-size: 13px; }
+
+/* ===================== responsive ===================== */
+@media (max-width: 1080px) {
+  .nu-results { grid-template-columns: 1fr; }
+  .nu-filters { position: static; max-height: none; display: none; margin-bottom: 16px; }
+  .nu-filters.is-open { display: block; }
+  .nu-filters-toggle { display: block; }
+  .nu-detail-body { grid-template-columns: 1fr; }
+  .nu-rail-side { position: static; order: -1; }
+  .nu-rail { grid-auto-columns: calc((100% - 24px) / 2); }
+}
+
+@media (max-width: 860px) {
+  .nu-hero { min-height: 520px; }
+  .nu-hero-title { font-size: 40px; margin-top: 72px; }
+  .nu-hero-sub { font-size: 16px; }
+  /* Single column, not 1fr 1fr: Dates and Guests each hold two nested
+     fields (checkin+checkout, rooms+adults) — halving the pill width for
+     them left no room for those pairs and clipped them mid-word ("1 roc 2
+     gu"). Full-width rows give each pair the space it needs, same fix as
+     the flights search bar's dates/travelers segments. */
+  .nu-search { grid-template-columns: 1fr; gap: 4px; margin-top: 72px; }
+  .nu-searchbox { margin-top: 24px; }
+  /* The stacked rule above also matches .nu-search--ai; the prompt stays one
+     full-width row with the button beneath it. */
+  .nu-search--ai { grid-template-columns: minmax(0, 1fr); }
+  .nu-seg-where { grid-column: 1 / -1; }
+  .nu-seg + .nu-seg::before { display: none; }
+  .nu-seg { border-top: 1px solid var(--nu-border); }
+  .nu-seg-where, .nu-seg-ai { border-top: 0; }
+  /* Safety net for very narrow / foldable widths where even a full-width
+     row is tight: let the pair wrap to two lines instead of clipping. */
+  .nu-seg-dates { flex-wrap: wrap; }
+  .nu-seg-dates input,
+  .nu-seg-dates select { flex: 1 1 auto; width: auto; min-width: 84px; }
+  .nu-search-btn { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; }
+  .nu-mode-btn { padding: 8px 15px; font-size: 13.5px; }
+  .nu-features { grid-template-columns: 1fr; }
+  .nu-feature + .nu-feature { border-top: 1px solid var(--nu-border); }
+  .nu-section-head h2 { font-size: 22px; }
+  .nu-gal { grid-template-columns: 1fr; }
+  .nu-gal-side { grid-template-columns: repeat(4, 1fr); }
+  .nu-gal-thumb img { height: 76px; }
+  .nu-detail-title h1 { font-size: 25px; }
+}
+
+@media (max-width: 620px) {
+  .nu-hero-title { font-size: 32px; }
+  .nu-rail { grid-auto-columns: 86%; }
+  .nu-list-head { flex-direction: column; align-items: flex-start; }
+  .nu-room { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .nu-room-buy { align-items: flex-start; }
+}
+
+/* Hotels uses the exact same Ask AI composer geometry as Flights. The hotel
+   field names, submit endpoint, and voice control remain unchanged above. */
+.nu-search--ai {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nu-search--ai .nu-seg-ai {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.nu-hotel-ai-shell {
+  width: 94%;
+  margin: 0 auto;
+}
+
+.nu-hotel-ai-ring {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 64px;
+  overflow: hidden;
+  border: 1px solid rgba(99, 102, 241, .22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .10);
+}
+
+.nu-hotel-ai-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 62px;
+  min-height: 62px;
+  padding: 8px 10px;
+  border-radius: 15px;
+  background: transparent;
+}
+
+.nu-hotel-ai-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--nu-primary);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+
+.nu-hotel-ai-icon:hover { background: rgba(99, 102, 241, .09); }
+.nu-hotel-ai-icon:focus-visible { outline: 2px solid var(--nu-primary); outline-offset: 2px; }
+.nu-hotel-ai-icon svg { display: block; width: 18px; height: 18px; }
+
+.nu-ai-mic {
+  border-radius: 50%;
+  color: #53637a;
+}
+.nu-ai-mic:hover { border-color: transparent; color: var(--nu-primary); }
+.nu-ai-mic.voice-active { background: var(--nu-primary-soft); border-color: transparent; color: var(--nu-primary); }
+
+.nu-hotel-ai-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  max-height: 120px;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--nu-text);
+  font-family: var(--font-ui, "Inter", sans-serif);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.nu-hotel-ai-input::placeholder { color: transparent; }
+
+.nu-hotel-ai-placeholder-overlay {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 60px;
+  right: 112px;
+  display: block;
+  overflow: hidden;
+  color: #94a3b8;
+  font-family: var(--font-ui, "Inter", sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity .4s ease;
+}
+.nu-hotel-ai-placeholder-overlay[hidden] { display: none; }
+
+.nu-hotel-ai-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.nu-search--ai .nu-hotel-ai-submit {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--nu-primary);
+  color: #fff;
+  box-shadow: none;
+}
+
+.nu-search--ai .nu-hotel-ai-submit:hover { background: var(--nu-primary-hover); }
+.nu-search--ai .nu-hotel-ai-submit svg { width: 21px; height: 21px; }
+
+/* VoiceOverlay mounts its live transcription view inside this ring. */
+.nu-hotel-ai-ring.voice-active-inline { background: linear-gradient(135deg, rgba(79, 131, 255, .92), rgba(123, 97, 255, .92)); }
+.nu-hotel-ai-ring.voice-active-inline .voice-inline { opacity: 1; transform: none; pointer-events: auto; }
+.nu-hotel-ai-ring.voice-active-inline .nu-hotel-ai-wrap { opacity: 0; pointer-events: none; }
+
+@media (max-width: 860px) {
+  .nu-search--ai .nu-hotel-ai-submit { grid-column: auto; width: 44px; margin: 0; }
+}
+
+@media (max-width: 760px) {
+  .nu-hotel-ai-shell { width: 100%; }
+  .nu-hotel-ai-wrap {
+    grid-template-columns: 40px minmax(0, 1fr) 42px;
+    height: 62px;
+    min-height: 62px;
+    padding: 8px;
+    border-radius: 15px;
+  }
+  .nu-hotel-ai-magic { display: none; }
+  .nu-hotel-ai-actions { display: contents; }
+  .nu-ai-mic { grid-column: 1; grid-row: 1; }
+  .nu-hotel-ai-input { grid-column: 2; grid-row: 1; }
+  .nu-hotel-ai-placeholder-overlay { left: 60px; right: 62px; }
+  .nu-search--ai .nu-hotel-ai-submit { grid-column: 3; grid-row: 1; width: 42px; height: 42px; min-width: 42px; }
+}

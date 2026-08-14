@@ -1,0 +1,120 @@
+/* Contextual hotel shelves on flight results — same restrained card language as Hotels. */
+.flight-stays {
+  margin: 46px 0 18px;
+  padding: 30px 0 4px;
+  border-top: 1px solid rgba(30, 41, 59, 0.12);
+}
+
+.flight-stays__heading,
+.flight-stays__group-heading,
+.flight-stay-card__foot {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.flight-stays__eyebrow {
+  margin: 0 0 5px;
+  color: #635bff;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.flight-stays h2,
+.flight-stays h3,
+.flight-stays p { margin-top: 0; }
+.flight-stays h2 {
+  margin-bottom: 5px;
+  color: #17213a;
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+.flight-stays__summary { margin-bottom: 0; color: #6a7892; font-size: 14px; }
+.flight-stays__location {
+  margin-top: 10px;
+  padding: 7px 11px;
+  border: 1px solid rgba(87, 95, 129, 0.22);
+  border-radius: 999px;
+  background: #fff;
+  color: #5148ed;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.flight-stays__location:hover { background: #f3f1ff; border-color: #9b94ff; }
+.flight-stays__all {
+  flex: 0 0 auto;
+  padding: 9px 13px;
+  border: 1px solid rgba(87, 95, 129, 0.22);
+  border-radius: 999px;
+  color: #3e4770;
+  font-size: 13px;
+  font-weight: 700;
+  transition: border-color .18s ease, color .18s ease, background-color .18s ease;
+}
+.flight-stays__all:hover { background: #f3f1ff; border-color: #9b94ff; color: #5148ed; }
+
+.flight-stays__group { margin-top: 28px; }
+.flight-stays__group-heading { align-items: baseline; margin-bottom: 12px; }
+.flight-stays__group-heading h3 { margin-bottom: 0; color: #25314a; font-size: 17px; font-weight: 750; letter-spacing: -0.02em; }
+.flight-stays__group-heading span { color: #8390a6; font-size: 13px; }
+
+.flight-stays__rail {
+  display: grid;
+  grid-auto-columns: minmax(218px, 1fr);
+  grid-auto-flow: column;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  overflow-x: auto;
+  padding: 1px 1px 8px;
+  scrollbar-width: thin;
+}
+
+.flight-stay-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(30, 41, 59, 0.13);
+  border-radius: 13px;
+  background: #fff;
+  color: #243049;
+  box-shadow: 0 2px 9px rgba(15, 23, 42, 0.035);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.flight-stay-card:hover { transform: translateY(-3px); border-color: rgba(99, 91, 255, 0.34); box-shadow: 0 12px 24px rgba(50, 42, 117, 0.12); }
+.flight-stay-card__image { display: block; width: 100%; height: 125px; background: linear-gradient(135deg, #e9edfa, #dfe5f6); }
+.flight-stay-card__image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flight-stay-card__image.is-empty::after { content: "Hotel"; display: grid; height: 100%; place-items: center; color: #73809a; font-size: 13px; font-weight: 700; }
+.flight-stay-card__body { display: flex; min-width: 0; flex-direction: column; padding: 12px; }
+.flight-stay-card__stars { margin-bottom: 5px; color: #c68325; font-size: 11px; letter-spacing: 1px; }
+.flight-stay-card__name { overflow: hidden; color: #202a41; font-size: 14px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.flight-stay-card__place { min-height: 32px; margin-top: 5px; overflow: hidden; color: #71809a; font-size: 12px; line-height: 1.35; }
+.flight-stay-card__foot { align-items: end; margin-top: 11px; }
+.flight-stay-card__rating { display: grid; gap: 1px; color: #66758e; font-size: 10px; line-height: 1.2; }
+.flight-stay-card__rating b { display: inline-grid; width: fit-content; place-items: center; padding: 3px 5px; border-radius: 5px; background: #16a34a; color: white; font-size: 11px; }
+.flight-stay-card__rating--mid b { background: #f59e0b; }
+.flight-stay-card__price { display: grid; margin-left: auto; color: #71809a; font-size: 10px; line-height: 1.25; text-align: right; }
+.flight-stay-card__price b { color: #26304b; font-size: 15px; }
+
+.flight-stay-skeleton { min-height: 226px; border-radius: 13px; background: linear-gradient(100deg, #f2f4f9 30%, #fafbfe 48%, #f2f4f9 62%); background-size: 200% 100%; animation: flight-stays-shimmer 1.25s infinite linear; }
+@keyframes flight-stays-shimmer { to { background-position: -200% 0; } }
+
+html[data-theme="dark"] .flight-stays { border-top-color: rgba(203, 213, 225, 0.15); }
+html[data-theme="dark"] .flight-stays h2, html[data-theme="dark"] .flight-stays__group-heading h3, html[data-theme="dark"] .flight-stay-card__name, html[data-theme="dark"] .flight-stay-card__price b { color: #eef2ff; }
+html[data-theme="dark"] .flight-stays__summary, html[data-theme="dark"] .flight-stays__group-heading span, html[data-theme="dark"] .flight-stay-card__place, html[data-theme="dark"] .flight-stay-card__price, html[data-theme="dark"] .flight-stay-card__rating { color: #a9b4cb; }
+html[data-theme="dark"] .flight-stays__all, html[data-theme="dark"] .flight-stay-card { border-color: rgba(203, 213, 225, 0.18); background: #182239; color: #e7ecf8; }
+html[data-theme="dark"] .flight-stays__all { color: #dce0ff; }
+html[data-theme="dark"] .flight-stays__location { border-color: rgba(203, 213, 225, 0.18); background: #182239; color: #dce0ff; }
+
+@media (max-width: 760px) {
+  .flight-stays { margin-top: 32px; padding-top: 24px; }
+  .flight-stays__heading { align-items: start; flex-direction: column; gap: 12px; }
+  .flight-stays h2 { font-size: 22px; }
+  .flight-stays__rail { grid-auto-columns: minmax(218px, 72vw); grid-template-columns: none; }
+}

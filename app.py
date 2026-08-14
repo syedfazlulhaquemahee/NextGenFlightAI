@@ -7,6 +7,7 @@ import hmac
 import heapq
 import importlib
 import json
+import math
 import os
 import re
 import secrets
@@ -30,8 +31,23 @@ from dotenv import load_dotenv
 
 import analytics_store
 import email_service
-from destinations_data import CATEGORIES, DESTINATIONS, destinations_for_category, get_destination, get_destination_by_code
+from destinations_data import CATEGORIES, DESTINATIONS, DOMESTIC_DESTINATIONS, destinations_for_category, get_destination, get_destination_by_code, get_domestic_destination_by_code
 from agent_portal import agent_bp
+from liteapi_client import (
+    LITE_ENABLED,
+    LITE_ENV,
+    LiteAPIClient,
+    LiteAPIError,
+    SingleFlightTTLCache,
+    FILTERABLE_AMENITIES,
+    LITE_DEFAULT_CURRENCY,
+    build_detail_view,
+    build_hotel_cards,
+    build_rooms_view,
+    sanitize_description,
+)
+
+HOTEL_AMENITY_FILTERS = [label for label, _ in FILTERABLE_AMENITIES]
 from duffel_booking import (
     build_checkout_page_model,
     build_checkout_summary,
@@ -386,7 +402,14 @@ def _apply_security_headers(response: Response) -> Response:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
+    # Geolocation stays off everywhere except the Flights and Hotels landing
+    # pages, which use it for their nearby-hotel rails. Camera/mic remain
+    # blocked, and the browser still prompts for consent — this only stops the
+    # platform from refusing the request outright.
+    geolocation = "(self)" if request.endpoint in {"index", "hotels"} else "()"
+    response.headers.setdefault(
+        "Permissions-Policy", f"geolocation={geolocation}, camera=(), microphone=()"
+    )
     if os.getenv("NGF_SESSION_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes"}:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
@@ -1960,6 +1983,64 @@ def _load_local_airports():
 def _airport_code_map():
     return {a["code"]: a for a in _load_local_airports()}
 
+
+@lru_cache(maxsize=1)
+def _load_airport_coords():
+    """Same large/medium-commercial-airport filter as _load_local_airports,
+    but keeping lat/lng for the "airport nearest a GPS point" lookup used by
+    the homepage's location-aware popular-flights widget."""
+    out = []
+    if not os.path.exists(AIRPORTS_CSV_PATH):
+        return out
+    with open(AIRPORTS_CSV_PATH, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = (row.get("iata_code") or "").strip().upper()
+            if len(code) != 3:
+                continue
+            airport_type = (row.get("type") or "").strip().lower()
+            # Large only, not medium: a nearest-by-distance search over
+            # medium airports too tends to surface small regional/GA fields
+            # (e.g. Hawthorne over LAX for downtown LA) that aren't the
+            # recognizable major hub this widget wants as "your airport".
+            if airport_type != "large_airport":
+                continue
+            if (row.get("scheduled_service") or "").strip().lower() != "yes":
+                continue
+            try:
+                lat = float(row.get("latitude_deg") or "")
+                lng = float(row.get("longitude_deg") or "")
+            except (TypeError, ValueError):
+                continue
+            out.append({
+                "code": code,
+                "city": (row.get("municipality") or "").strip(),
+                "country": (row.get("iso_country") or "").strip().upper(),
+                "lat": lat,
+                "lng": lng,
+            })
+    return out
+
+
+def _nearest_airport(lat: float, lng: float) -> dict[str, Any] | None:
+    """Haversine great-circle distance to every candidate airport; returns
+    the closest one. A linear scan over a few thousand rows is fast enough
+    for a once-per-session lookup."""
+    best = None
+    best_dist = float("inf")
+    lat_rad = math.radians(lat)
+    for row in _load_airport_coords():
+        dlat = math.radians(row["lat"] - lat)
+        dlng = math.radians(row["lng"] - lng)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat_rad) * math.cos(math.radians(row["lat"])) * math.sin(dlng / 2) ** 2
+        )
+        dist = 2 * math.asin(min(1, math.sqrt(a)))
+        if dist < best_dist:
+            best_dist = dist
+            best = row
+    return best
+
 def _airport_display_name_local(iata_code: str) -> str:
     code = (iata_code or "").strip().upper()
     if not code:
@@ -3159,6 +3240,173 @@ def _extract_ai_traveler_context(user_text: str) -> dict[str, Any]:
     return context
 
 
+_STAY_INTENT_TERMS = (
+    "hotel", "hotels", "stay", "stays", "staying", "accommodation", "accomodation",
+    "resort", "hostel", "airbnb", "room", "rooms", "suite", "motel", "lodge",
+    "guesthouse", "guest house", "villa", "apartment", "place to stay", "night in",
+    "nights in", "check in", "check-in", "checkin",
+)
+_FLIGHT_INTENT_TERMS = (
+    "flight", "flights", "fly", "flying", "airline", "airfare", "fare", "plane",
+    "nonstop", "non-stop", "layover", "one way", "one-way", "round trip",
+    "round-trip", "business class", "economy", "depart", "landing",
+)
+
+
+def detect_search_intent(user_text: str) -> str:
+    """Route a natural-language query to the flights or stays pipeline.
+
+    Cheap keyword pass first — it settles the overwhelming majority of queries
+    without a model round trip. Only genuinely ambiguous text goes to Gemini.
+    """
+    txt = (user_text or "").strip().lower()
+    if not txt:
+        return "flights"
+
+    stay_hits = sum(1 for term in _STAY_INTENT_TERMS if re.search(rf"\b{re.escape(term)}\b", txt))
+    flight_hits = sum(1 for term in _FLIGHT_INTENT_TERMS if re.search(rf"\b{re.escape(term)}\b", txt))
+
+    if stay_hits and not flight_hits:
+        return "stays"
+    if flight_hits and not stay_hits:
+        return "flights"
+    if stay_hits and flight_hits:
+        # Mentions both ("flight to Paris and a hotel") — flights own the trip spine.
+        return "flights"
+
+    if not model:
+        return "flights"
+
+    prompt = (
+        'Classify this travel search as exactly one word, "flights" or "stays". '
+        'Choose "stays" only if the user is looking for somewhere to sleep '
+        "(hotel, resort, apartment). Otherwise choose \"flights\". "
+        f'Reply with the single word only.\n\nQuery: """{user_text}"""'
+    )
+    try:
+        raw = (getattr(model.generate_content(prompt), "text", "") or "").strip().lower()
+    except Exception as exc:
+        print("INTENT DETECT ERROR:", repr(exc))
+        return "flights"
+    return "stays" if "stay" in raw else "flights"
+
+
+def parse_ai_stay_request(user_text: str) -> dict | None:
+    """Natural language -> hotel search parameters."""
+    if not model or not user_text:
+        return None
+
+    today = date.today().isoformat()
+    prompt = f"""
+You are a hotel search assistant.
+
+Convert the user's request into valid JSON with these fields:
+- destination (city, area, or landmark name as plain text, e.g. "Dubai", "Paris", "Bali")
+- checkin (YYYY-MM-DD or null)
+- checkout (YYYY-MM-DD or null)
+- nights (integer or null — use when the user says a duration but no dates)
+- adults (integer, default 2)
+- children_ages (array of integers, empty when none mentioned)
+- rooms (integer, default 1)
+- min_stars (integer 1-5 or null — e.g. "5 star hotel" -> 5, "at least 4 stars" -> 4)
+- min_rating (number 1-10 or null — e.g. "well reviewed" -> 8, "highly rated" -> 8.5)
+- max_price_per_night (number or null, in USD)
+- free_cancellation (true/false — true when the user wants refundable/flexible)
+- breakfast (true/false — true when the user wants breakfast included)
+- amenities (array from: Free WiFi, Pool, Breakfast, Parking, Gym, Spa, Restaurant, Airport shuttle, Air conditioning, Pet friendly, Family rooms, Bar)
+- sort (recommended, price_low, price_high, rating, stars)
+
+Rules:
+- Use null when information is missing
+- Dates must be ISO format (YYYY-MM-DD)
+- If a date has no year, assume the next future occurrence
+- If the user gives a duration but no dates (e.g. "3 nights in Rome"), set nights and leave checkin/checkout null
+- Count every guest implied: "me and my wife" is 2 adults, "family of four" is 4
+- Children are people under 18 — put their ages in children_ages and exclude them from adults
+- "cheap"/"budget" -> sort "price_low"; "best"/"nicest"/"top rated" -> sort "rating"; "luxury" -> min_stars 5
+- Today is {today}
+- Only return JSON
+
+User request:
+\"\"\"{user_text}\"\"\"
+"""
+    try:
+        response = model.generate_content(prompt)
+        text = (getattr(response, "text", "") or "").strip()
+        if text.startswith("```"):
+            text = text.strip().strip("`").strip()
+            if text.lower().startswith("json"):
+                text = text[4:].strip()
+        parsed = json.loads(text)
+    except Exception as exc:
+        print("AI STAY PARSE ERROR:", repr(exc))
+        return None
+
+    destination = str(parsed.get("destination") or "").strip()
+    if not destination:
+        return None
+
+    checkin = str(parsed.get("checkin") or "").strip()
+    checkout = str(parsed.get("checkout") or "").strip()
+
+    # Fill in dates the model left open so the user always lands on real results.
+    try:
+        nights = int(parsed.get("nights") or 0)
+    except (TypeError, ValueError):
+        nights = 0
+    if not checkin:
+        checkin = (date.today() + timedelta(days=30)).isoformat()
+    if not checkout:
+        span = nights if nights > 0 else 3
+        try:
+            checkout = (datetime.strptime(checkin, "%Y-%m-%d").date() + timedelta(days=span)).isoformat()
+        except ValueError:
+            checkin = (date.today() + timedelta(days=30)).isoformat()
+            checkout = (date.today() + timedelta(days=30 + span)).isoformat()
+
+    def _int(value, default, lo, hi):
+        try:
+            return max(lo, min(hi, int(value)))
+        except (TypeError, ValueError):
+            return default
+
+    ages = []
+    for age in parsed.get("children_ages") or []:
+        try:
+            ages.append(max(0, min(17, int(age))))
+        except (TypeError, ValueError):
+            continue
+
+    sort = str(parsed.get("sort") or "recommended").strip().lower()
+    if sort not in {"recommended", "price_low", "price_high", "rating", "stars"}:
+        sort = "recommended"
+
+    return {
+        "destination": destination,
+        "checkin": checkin,
+        "checkout": checkout,
+        "adults": _int(parsed.get("adults"), 2, 1, 8),
+        "children_ages": ages[:4],
+        "rooms": _int(parsed.get("rooms"), 1, 1, 4),
+        "min_stars": _int(parsed.get("min_stars"), 0, 0, 5) or None,
+        "min_rating": _money_or_none(parsed.get("min_rating")),
+        "max_price_per_night": _money_or_none(parsed.get("max_price_per_night")),
+        "free_cancellation": bool(parsed.get("free_cancellation")),
+        "breakfast": bool(parsed.get("breakfast")),
+        "amenities": [str(a).strip() for a in (parsed.get("amenities") or []) if str(a).strip()][:6],
+        "sort": sort,
+        "raw_text": user_text,
+    }
+
+
+def _money_or_none(value: Any) -> float | None:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if num > 0 else None
+
+
 def parse_ai_flight_request(user_text: str) -> dict | None:
     if not model or not user_text:
         return None
@@ -3836,6 +4084,7 @@ class DuffelClient:
 
 
 DUFF = DuffelClient()
+LITE = LiteAPIClient()
 
 # ------------------------------------------------------------
 # Search core
@@ -11424,23 +11673,774 @@ def index():
         edit_search_fields=_pop_edit_search_fields(),
         destinations=DESTINATIONS,
         destination_categories=CATEGORIES,
+        domestic_destinations=DOMESTIC_DESTINATIONS,
         voice_ai_enabled=VOICE_AI_ENABLED,
     )
 
 
+def _hotel_nights(checkin: str, checkout: str) -> int:
+    try:
+        start = datetime.strptime(checkin, "%Y-%m-%d").date()
+        end = datetime.strptime(checkout, "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+    return max(0, (end - start).days)
+
+
+def _hotel_search_defaults() -> dict[str, str]:
+    today = date.today()
+    return {
+        "checkin": (today + timedelta(days=30)).isoformat(),
+        "checkout": (today + timedelta(days=33)).isoformat(),
+    }
+
+
 @app.route("/hotels")
 def hotels():
+    if not LITE_ENABLED:
+        _track_analytics_event(
+            event_type="coming_soon_viewed",
+            search_mode="browse",
+            success=True,
+            metadata={"page": "hotels"},
+        )
+        return render_template(
+            "coming_soon.html",
+            feature_name="Hotels",
+            feature_label="Hotel stays",
+            feature_description="Beautiful places to stay, matched to your trip rhythm, budget, and travel style.",
+        )
+
     _track_analytics_event(
-        event_type="coming_soon_viewed",
+        event_type="site_landed",
         search_mode="browse",
         success=True,
         metadata={"page": "hotels"},
     )
     return render_template(
-        "coming_soon.html",
-        feature_name="Hotels",
-        feature_label="Hotel stays",
-        feature_description="Beautiful places to stay, matched to your trip rhythm, budget, and travel style.",
+        "hotels.html",
+        defaults=_hotel_search_defaults(),
+        destinations=DESTINATIONS,
+        lite_env=LITE_ENV,
+        global_notice=_pop_global_notice(),
+        voice_ai_enabled=VOICE_AI_ENABLED,
+    )
+
+
+# Landing-page showcase rails. Pricing properties takes seconds, so these are
+# fetched async by the client and memoised here for a short period.  The price
+# cache is intentionally much shorter than static hotel-content caching: rate
+# availability is live, while repeated browser refreshes should not create a
+# supplier-call stampede.
+HOTEL_SHOWCASE_CITIES = ["Paris", "Rome", "Dubai", "Tokyo", "Barcelona", "Istanbul"]
+HOTEL_SHOWCASE_TTL = float(os.getenv("HOTEL_SHOWCASE_TTL", "120"))
+HOTEL_SHOWCASE_SIZE = 12
+HOTEL_SHOWCASE_INITIAL_CITIES = max(
+    1,
+    min(len(HOTEL_SHOWCASE_CITIES), int(os.getenv("HOTEL_SHOWCASE_INITIAL_CITIES", "2"))),
+)
+HOTEL_LIVE_CARD_TTL = float(os.getenv("HOTEL_LIVE_CARD_TTL", "90"))
+HOTEL_LIVE_CARD_CACHE_SIZE = int(os.getenv("HOTEL_LIVE_CARD_CACHE_SIZE", "192"))
+HOTEL_LIVE_CARD_MAX_INFLIGHT = int(os.getenv("HOTEL_LIVE_CARD_MAX_INFLIGHT", "24"))
+_hotel_showcase_cache = SingleFlightTTLCache(
+    maxsize=8,
+    ttl_seconds=HOTEL_SHOWCASE_TTL,
+    max_inflight=4,
+)
+_hotel_live_card_cache = SingleFlightTTLCache(
+    maxsize=HOTEL_LIVE_CARD_CACHE_SIZE,
+    ttl_seconds=HOTEL_LIVE_CARD_TTL,
+    max_inflight=HOTEL_LIVE_CARD_MAX_INFLIGHT,
+)
+
+
+def _showcase_cached(key: str, producer):
+    return _hotel_showcase_cache.get_or_build(key, producer)
+
+
+def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import asin, cos, radians, sin, sqrt
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    return 3958.8 * 2 * asin(sqrt(a))
+
+
+def _showcase_dates() -> tuple[str, str, int]:
+    """One night, 30 days out — matches the reference's 'x 1 night' framing."""
+    start = date.today() + timedelta(days=30)
+    return start.isoformat(), (start + timedelta(days=1)).isoformat(), 1
+
+
+def _price_content_rows(
+    content: Sequence[Mapping[str, Any]],
+    *,
+    limit: int = 50,
+    checkin: str | None = None,
+    checkout: str | None = None,
+    nights: int | None = None,
+    adults: int = 2,
+    rooms: int = 1,
+) -> list[dict[str, Any]]:
+    if not checkin or not checkout or nights is None:
+        checkin, checkout, nights = _showcase_dates()
+    by_id = {str(r.get("id") or "").strip(): r for r in content[:limit]}
+    by_id = {hotel_id: row for hotel_id, row in by_id.items() if hotel_id}
+    if not by_id:
+        return []
+    rate_rows = LITE.search_rates(
+        hotel_ids=list(by_id.keys()), checkin=checkin, checkout=checkout, adults=adults, rooms=rooms,
+    )
+    return build_hotel_cards(rate_rows, by_id, nights=nights, facility_names=LITE.facility_names())
+
+
+def _priced_coordinate_cards(
+    *,
+    latitude: float,
+    longitude: float,
+    checkin: str,
+    checkout: str,
+    nights: int,
+    adults: int = 2,
+    rooms: int = 1,
+    radius: int = 25000,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Price nearby inventory once for a rounded browser-location cell.
+
+    The cached cards deliberately exclude distance and URL fields. Those are
+    request-specific and are added by the caller using the visitor's precise
+    coordinate, while expensive content/rate work is coalesced for people in
+    the same small area.
+    """
+    rounded_latitude = round(latitude, 2)
+    rounded_longitude = round(longitude, 2)
+    key = (
+        "coordinate-cards",
+        f"{rounded_latitude:.2f}",
+        f"{rounded_longitude:.2f}",
+        int(radius),
+        int(limit),
+        checkin,
+        checkout,
+        int(adults),
+        int(rooms),
+    )
+
+    def build() -> list[dict[str, Any]]:
+        content = LITE.hotels_for_coordinates(
+            rounded_latitude, rounded_longitude, radius=radius, limit=limit,
+        )
+        cards = _price_content_rows(
+            content,
+            limit=limit,
+            checkin=checkin,
+            checkout=checkout,
+            nights=nights,
+            adults=adults,
+            rooms=rooms,
+        )
+        return [card for card in cards if card.get("photo")]
+
+    return _hotel_live_card_cache.get_or_build(key, build)
+
+
+def _card_link(card: Mapping[str, Any], place_id: str = "", place_name: str = "") -> str:
+    checkin, checkout, _ = _showcase_dates()
+    return url_for(
+        "hotel_detail", hotel_id=card["hotel_id"], checkin=checkin, checkout=checkout,
+        adults=2, rooms=1, place_id=place_id, place_name=place_name,
+    )
+
+
+@app.route("/api/hotels/recommended", methods=["GET"])
+def hotel_recommended():
+    """Marquee properties across a bounded set of cities.
+
+    The former cold path priced six cities one after another.  This starts with
+    two curated cities, prices them concurrently, and takes more cards from
+    each.  The rail remains full when inventory is available without making a
+    first-time visitor wait for six separate supplier rate calls.
+    """
+    checkin, checkout, nights = _showcase_dates()
+    cities = HOTEL_SHOWCASE_CITIES[:HOTEL_SHOWCASE_INITIAL_CITIES]
+    cards_per_city = max(1, (HOTEL_SHOWCASE_SIZE + len(cities) - 1) // len(cities))
+
+    def city_cards(city: str) -> list[dict[str, Any]]:
+        key = ("showcase-city", city.casefold(), checkin, checkout, cards_per_city)
+
+        def build_city() -> list[dict[str, Any]]:
+            places = LITE.search_places(city)
+            if not places:
+                return []
+            place = places[0]
+            content = LITE.hotels_for_place(place["place_id"], limit=50)
+            cards = _price_content_rows(
+                content,
+                checkin=checkin,
+                checkout=checkout,
+                nights=nights,
+                adults=2,
+                rooms=1,
+            )
+
+            # Curated shelf, not a bargain bin — but rank on rating *and*
+            # review volume, otherwise every slot is a 10/10 with 3 reviews.
+            def rank(card: Mapping[str, Any]) -> tuple[float, float]:
+                rating = float(card.get("rating") or 0)
+                reviews = float(card.get("review_count") or 0)
+                weighted = (rating * reviews + 8.0 * 200) / (reviews + 200)
+                return (-weighted, float(card["offer"]["total_amount"]))
+
+            cards = [card for card in cards if card.get("photo")]
+            cards.sort(key=rank)
+            out: list[dict[str, Any]] = []
+            for card in cards[:cards_per_city]:
+                # `url_for` needs the request context, so retain these tiny
+                # routing hints here and turn them into public card fields on
+                # the request thread after the concurrent workers finish.
+                card["_showcase_place_id"] = place["place_id"]
+                card["_showcase_place_name"] = place["name"]
+                out.append(card)
+            return out
+
+        try:
+            return _hotel_live_card_cache.get_or_build(key, build_city)
+        except LiteAPIError as exc:
+            print("SHOWCASE RECOMMENDED ERROR:", city, exc)
+            return []
+
+    def build():
+        by_city: dict[str, list[dict[str, Any]]] = {}
+        with ThreadPoolExecutor(max_workers=len(cities)) as pool:
+            futures = {pool.submit(city_cards, city): city for city in cities}
+            for future in as_completed(futures):
+                city = futures[future]
+                try:
+                    by_city[city] = future.result()
+                except Exception as exc:
+                    print("SHOWCASE RECOMMENDED WORKER ERROR:", city, repr(exc))
+                    by_city[city] = []
+
+        picks: list[dict[str, Any]] = []
+        for city in cities:
+            for cached_card in by_city.get(city, []):
+                card = dict(cached_card)
+                place_id = str(card.pop("_showcase_place_id", "") or "")
+                place_name = str(card.pop("_showcase_place_name", "") or "")
+                card["url"] = _card_link(card, place_id, place_name)
+                card["place_name"] = place_name
+                picks.append(card)
+        return picks[:HOTEL_SHOWCASE_SIZE]
+
+    return jsonify(_showcase_cached(f"recommended:{checkin}:{checkout}", build))
+
+
+@app.route("/api/hotels/nearby", methods=["GET"])
+def hotel_nearby():
+    """Properties around the visitor's coordinates, with distance from centre."""
+    try:
+        lat = float(request.args.get("lat"))
+        lng = float(request.args.get("lng"))
+    except (TypeError, ValueError):
+        return jsonify([])
+    if not LITE_ENABLED or not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return jsonify([])
+
+    checkin, checkout, nights = _showcase_dates()
+    try:
+        base_cards = _priced_coordinate_cards(
+            latitude=lat,
+            longitude=lng,
+            checkin=checkin,
+            checkout=checkout,
+            nights=nights,
+            adults=2,
+            rooms=1,
+            radius=25000,
+            limit=50,
+        )
+    except LiteAPIError as exc:
+        print("SHOWCASE NEARBY ERROR:", exc)
+        return jsonify([])
+
+    # Distances are deliberately calculated outside the rounded-coordinate
+    # price cache, so every visitor still sees their own exact proximity.
+    cards = [dict(card) for card in base_cards]
+    for card in cards:
+        try:
+            card["distance_miles"] = round(
+                _haversine_miles(lat, lng, float(card["latitude"]), float(card["longitude"])), 1
+            )
+        except (TypeError, ValueError):
+            card["distance_miles"] = None
+        card["url"] = _card_link(card)
+    cards.sort(key=lambda c: (c.get("distance_miles") is None, c.get("distance_miles") or 0))
+    return jsonify(cards[:HOTEL_SHOWCASE_SIZE])
+
+
+@app.route("/api/hotels/flight-stays", methods=["GET"])
+def flight_destination_stays():
+    """Bookable stays at the flight destination for the selected trip dates.
+
+    This is deliberately fetched after a flight-results page has loaded: hotel
+    rate lookups are comparatively slow, and should never hold up flight
+    results.  It shares the exact same LiteAPI content/rate path as Hotels.
+    """
+    destination_input = (request.args.get("destination") or "").strip()
+    checkin = (request.args.get("checkin") or "").strip()
+    checkout = (request.args.get("checkout") or "").strip()
+    nights = _hotel_nights(checkin, checkout)
+    if not LITE_ENABLED or not destination_input or nights <= 0:
+        return jsonify({"recommended": [], "nearby": []})
+
+    adults = _coerce_passengers(request.args.get("adults"), default=2)
+    airport_code = _normalize_airport_input(destination_input)
+    airport = _airport_code_map().get(airport_code or "")
+    destination_name = str((airport or {}).get("city") or destination_input).strip()
+    # Some airport source rows carry a municipality qualifier, e.g.
+    # "Paris (Roissy-en-France, Val-d'Oise)".  It helps an airport picker,
+    # but is a poorer query/heading for a city-wide hotel search.
+    destination_name = destination_name.split(" (", 1)[0].strip()
+    if not destination_name:
+        return jsonify({"recommended": [], "nearby": []})
+
+    cache_key = (
+        "flight-destination-cards",
+        destination_name.casefold(),
+        checkin,
+        checkout,
+        adults,
+        1,
+    )
+
+    def build_payload() -> dict[str, Any]:
+        places = LITE.search_places(destination_name)
+        if not places:
+            return {"recommended": [], "nearby": []}
+        place = places[0]
+        content = LITE.hotels_for_place(place["place_id"], limit=50)
+        if not any(str(row.get("id") or "").strip() for row in content):
+            return {"recommended": [], "nearby": []}
+        cards = _price_content_rows(
+            content,
+            limit=50,
+            checkin=checkin,
+            checkout=checkout,
+            nights=nights,
+            adults=adults,
+            rooms=1,
+        )
+
+        cards = [card for card in cards if card.get("photo")]
+        for card in cards:
+            card["url"] = url_for(
+                "hotel_detail", hotel_id=card["hotel_id"], checkin=checkin, checkout=checkout,
+                adults=adults, rooms=1, place_id=place["place_id"], place_name=place["name"],
+            )
+
+        # Favour well-reviewed hotels for the curated rail, then show the most
+        # compelling remaining options from the destination area as "nearby".
+        def recommended_rank(card: Mapping[str, Any]) -> tuple[float, float]:
+            rating = float(card.get("rating") or 0)
+            reviews = float(card.get("review_count") or 0)
+            weighted_rating = (rating * reviews + 8.0 * 200) / (reviews + 200)
+            return (-weighted_rating, float(card["offer"]["total_amount"]))
+
+        recommended = sorted(cards, key=recommended_rank)[:4]
+        selected_ids = {card["hotel_id"] for card in recommended}
+        nearby = [card for card in cards if card["hotel_id"] not in selected_ids]
+        nearby.sort(key=lambda card: float(card["offer"]["total_amount"]))
+
+        browse_url = url_for(
+            "hotel_search", place_id=place["place_id"], place_name=place["name"],
+            checkin=checkin, checkout=checkout, adults=adults, rooms=1,
+        )
+        return {
+            "destination": destination_name,
+            "nights": nights,
+            "price_display": "total",
+            "browse_url": browse_url,
+            "recommended": recommended,
+            "nearby": nearby[:4],
+        }
+
+    try:
+        payload = _hotel_live_card_cache.get_or_build(cache_key, build_payload)
+    except LiteAPIError as exc:
+        print("FLIGHT DESTINATION STAYS ERROR:", destination_name, exc)
+        payload = {"recommended": [], "nearby": []}
+    return jsonify(payload)
+
+
+@app.route("/api/hotels/flight-stays/nearby", methods=["GET"])
+def flight_local_stays():
+    """Tonight's priced stays around the visitor's browser-provided location.
+
+    The flights landing page uses this as its useful default before a traveller
+    has selected a destination and dates.  It deliberately uses a one-night
+    stay so the card headline is an actual current nightly rate, rather than a
+    future showcase estimate.
+    """
+    try:
+        latitude = float(request.args.get("lat"))
+        longitude = float(request.args.get("lng"))
+    except (TypeError, ValueError):
+        return jsonify({"recommended": [], "nearby": []})
+    if not LITE_ENABLED or not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return jsonify({"recommended": [], "nearby": []})
+
+    checkin = date.today().isoformat()
+    checkout = (date.today() + timedelta(days=1)).isoformat()
+    nights = 1
+    try:
+        base_cards = _priced_coordinate_cards(
+            latitude=latitude,
+            longitude=longitude,
+            checkin=checkin,
+            checkout=checkout,
+            nights=nights,
+            adults=2,
+            rooms=1,
+            radius=25000,
+            limit=50,
+        )
+    except LiteAPIError as exc:
+        print("FLIGHT LOCAL STAYS ERROR:", exc)
+        return jsonify({"recommended": [], "nearby": []})
+
+    # Keep exact user distance outside the rounded-coordinate rate cache.
+    cards = [dict(card) for card in base_cards]
+    for card in cards:
+        try:
+            card["distance_miles"] = round(
+                _haversine_miles(latitude, longitude, float(card["latitude"]), float(card["longitude"])), 1
+            )
+        except (TypeError, ValueError):
+            card["distance_miles"] = None
+        card["url"] = url_for(
+            "hotel_detail", hotel_id=card["hotel_id"], checkin=checkin, checkout=checkout,
+            adults=2, rooms=1,
+        )
+
+    def recommended_rank(card: Mapping[str, Any]) -> tuple[float, float, float]:
+        rating = float(card.get("rating") or 0)
+        reviews = float(card.get("review_count") or 0)
+        weighted_rating = (rating * reviews + 8.0 * 200) / (reviews + 200)
+        distance = float(card.get("distance_miles") or 9999)
+        return (-weighted_rating, distance, float(card["offer"]["nightly_amount"] or 0))
+
+    recommended = sorted(cards, key=recommended_rank)[:4]
+    selected_ids = {card["hotel_id"] for card in recommended}
+    nearby = [card for card in cards if card["hotel_id"] not in selected_ids]
+    nearby.sort(key=lambda card: (card.get("distance_miles") is None, card.get("distance_miles") or 0))
+
+    return jsonify({
+        "nights": nights,
+        "checkin": checkin,
+        "checkout": checkout,
+        "price_display": "nightly",
+        "recommended": recommended,
+        "nearby": nearby[:4],
+    })
+
+
+@app.route("/api/hotels/places", methods=["GET"])
+def hotel_places():
+    """Destination autocomplete for the hotel search bar."""
+    query = (request.args.get("q") or "").strip()
+    if len(query) < 2:
+        return jsonify([])
+    try:
+        places = LITE.search_places(query)
+    except LiteAPIError as exc:
+        print("HOTEL PLACES ERROR:", exc)
+        return jsonify([])
+    return jsonify(places[:8])
+
+
+def _run_hotel_search(
+    *,
+    place_id: str,
+    place_name: str,
+    checkin: str,
+    checkout: str,
+    adults: int,
+    rooms: int,
+    children_ages: Sequence[int] | None = None,
+    ai_filters: Mapping[str, Any] | None = None,
+    ai_text: str = "",
+):
+    """Shared by the manual form and the AI entry point."""
+    nights = _hotel_nights(checkin, checkout)
+    if not place_id or nights <= 0:
+        _set_global_notice("Pick a destination and your check-in and check-out dates.")
+        return redirect(url_for("hotels"))
+
+    # A full city can easily contain 150+ properties.  The rate provider only
+    # accepts 50 IDs per request, so pricing every candidate before rendering
+    # makes the first result page wait for three upstream batches.  Render one
+    # live-priced batch immediately; the results page requests later batches
+    # only if the traveller asks to see more.
+    initial_batch_size = 50
+    started = time.time()
+    try:
+        content = LITE.hotels_for_place(place_id)
+        valid_content = [row for row in content if str(row.get("id") or "").strip()]
+        initial_content = valid_content[:initial_batch_size]
+        content_by_id = {str(row.get("id") or "").strip(): row for row in initial_content}
+        rate_rows = LITE.search_rates(
+            hotel_ids=list(content_by_id.keys()),
+            checkin=checkin,
+            checkout=checkout,
+            adults=adults,
+            children_ages=children_ages,
+            rooms=rooms,
+        )
+        cards = build_hotel_cards(
+            rate_rows, content_by_id, nights=nights,
+            facility_names=LITE.facility_names(),
+        )
+    except LiteAPIError as exc:
+        print("HOTEL SEARCH ERROR:", exc)
+        _set_global_notice(str(exc))
+        return redirect(url_for("hotels"))
+
+    prices = [card["offer"]["total_amount"] for card in cards]
+    currency = cards[0]["offer"]["currency"] if cards else LITE_DEFAULT_CURRENCY
+
+    _track_analytics_event(
+        event_type="search_completed",
+        search_mode="hotels_ai" if ai_text else "hotels",
+        destination=place_name or place_id,
+        result_count=len(cards),
+        success=bool(cards),
+        currency=currency,
+        metadata={
+            "page": "hotels",
+            "nights": nights,
+            "adults": adults,
+            "rooms": rooms,
+            "properties_priced": len(content_by_id),
+            "properties_available": len(valid_content),
+            "elapsed_ms": int((time.time() - started) * 1000),
+            "ai": bool(ai_text),
+        },
+    )
+
+    return render_template(
+        "hotel_results.html",
+        cards=cards,
+        search={
+            "place_id": place_id,
+            "place_name": place_name,
+            "checkin": checkin,
+            "checkout": checkout,
+            "adults": adults,
+            "rooms": rooms,
+            "nights": nights,
+            "children_ages": list(children_ages or []),
+        },
+        facets={
+            "min_price": int(min(prices)) if prices else 0,
+            "max_price": int(max(prices)) + 1 if prices else 0,
+            "currency": currency,
+            "amenities": HOTEL_AMENITY_FILTERS,
+        },
+        ai_filters=ai_filters or {},
+        ai_text=ai_text,
+        searched_count=len(content_by_id),
+        has_more=len(valid_content) > len(initial_content),
+        next_offset=len(initial_content),
+        lite_env=LITE_ENV,
+        global_notice=_pop_global_notice(),
+    )
+
+
+@app.route("/api/hotels/search-more", methods=["GET"])
+def hotel_search_more():
+    """Return the next live-priced 50-property hotel batch for an open search."""
+    place_id = (request.args.get("place_id") or "").strip()
+    place_name = (request.args.get("place_name") or "").strip()
+    checkin = (request.args.get("checkin") or "").strip()
+    checkout = (request.args.get("checkout") or "").strip()
+    nights = _hotel_nights(checkin, checkout)
+    if not LITE_ENABLED or not place_id or nights <= 0:
+        return jsonify({"html": "", "has_more": False, "next_offset": 0}), 400
+
+    try:
+        adults = max(1, min(8, int(request.args.get("adults") or 2)))
+    except ValueError:
+        adults = 2
+    try:
+        rooms = max(1, min(4, int(request.args.get("rooms") or 1)))
+    except ValueError:
+        rooms = 1
+    try:
+        offset = max(0, int(request.args.get("offset") or 0))
+    except ValueError:
+        offset = 0
+    # Align requests to the provider's safe 50-ID batch size.
+    batch_size = 50
+    offset = (offset // batch_size) * batch_size
+    children_ages = []
+    for value in (request.args.get("children_ages") or "").split(","):
+        try:
+            children_ages.append(max(0, min(17, int(value))))
+        except (TypeError, ValueError):
+            continue
+
+    try:
+        content = LITE.hotels_for_place(place_id)
+        valid_content = [row for row in content if str(row.get("id") or "").strip()]
+        batch = valid_content[offset:offset + batch_size]
+        by_id = {str(row.get("id") or "").strip(): row for row in batch}
+        rate_rows = LITE.search_rates(
+            hotel_ids=list(by_id.keys()), checkin=checkin, checkout=checkout,
+            adults=adults, children_ages=children_ages, rooms=rooms,
+        )
+        cards = build_hotel_cards(
+            rate_rows, by_id, nights=nights, facility_names=LITE.facility_names(),
+        )
+    except LiteAPIError as exc:
+        print("HOTEL SEARCH MORE ERROR:", exc)
+        return jsonify({"html": "", "has_more": False, "next_offset": offset}), 502
+
+    next_offset = offset + len(batch)
+    search = {
+        "place_id": place_id,
+        "place_name": place_name,
+        "checkin": checkin,
+        "checkout": checkout,
+        "adults": adults,
+        "rooms": rooms,
+        "nights": nights,
+    }
+    return jsonify({
+        "html": render_template("partials/hotel_result_cards.html", cards=cards, search=search, card_offset=offset),
+        "has_more": next_offset < len(valid_content),
+        "next_offset": next_offset,
+    })
+
+
+@app.route("/hotels/search", methods=["GET", "POST"])
+def hotel_search():
+    source = request.form if request.method == "POST" else request.args
+
+    try:
+        adults = max(1, min(8, int(source.get("adults") or 2)))
+    except ValueError:
+        adults = 2
+    try:
+        rooms = max(1, min(4, int(source.get("rooms") or 1)))
+    except ValueError:
+        rooms = 1
+
+    return _run_hotel_search(
+        place_id=(source.get("place_id") or "").strip(),
+        place_name=(source.get("place_name") or "").strip(),
+        checkin=(source.get("checkin") or "").strip(),
+        checkout=(source.get("checkout") or "").strip(),
+        adults=adults,
+        rooms=rooms,
+    )
+
+
+@app.route("/hotels/ai-search", methods=["GET", "POST"])
+def hotel_ai_search():
+    """Natural-language stay search: parse -> resolve destination -> results."""
+    source = request.form if request.method == "POST" else request.args
+    ai_text = (source.get("q") or source.get("ai_text") or "").strip()
+    if not ai_text:
+        return redirect(url_for("hotels"))
+
+    parsed = parse_ai_stay_request(ai_text)
+    if not parsed:
+        _set_global_notice("We couldn't read that stay request. Try naming a city and your dates.")
+        return redirect(url_for("hotels"))
+
+    try:
+        places = LITE.search_places(parsed["destination"])
+    except LiteAPIError as exc:
+        print("HOTEL AI PLACE ERROR:", exc)
+        places = []
+    if not places:
+        _set_global_notice(f"We couldn't find stays in \"{parsed['destination']}\".")
+        return redirect(url_for("hotels"))
+
+    return _run_hotel_search(
+        place_id=places[0]["place_id"],
+        place_name=places[0]["name"],
+        checkin=parsed["checkin"],
+        checkout=parsed["checkout"],
+        adults=parsed["adults"],
+        rooms=parsed["rooms"],
+        children_ages=parsed["children_ages"],
+        ai_filters={
+            "min_stars": parsed["min_stars"],
+            "min_rating": parsed["min_rating"],
+            "max_price_per_night": parsed["max_price_per_night"],
+            "free_cancellation": parsed["free_cancellation"],
+            "breakfast": parsed["breakfast"],
+            "amenities": parsed["amenities"],
+            "sort": parsed["sort"],
+        },
+        ai_text=ai_text,
+    )
+
+
+@app.route("/hotels/<hotel_id>", methods=["GET"])
+def hotel_detail(hotel_id: str):
+    checkin = (request.args.get("checkin") or "").strip()
+    checkout = (request.args.get("checkout") or "").strip()
+    try:
+        adults = max(1, min(8, int(request.args.get("adults") or 2)))
+    except ValueError:
+        adults = 2
+    try:
+        rooms = max(1, min(4, int(request.args.get("rooms") or 1)))
+    except ValueError:
+        rooms = 1
+
+    nights = _hotel_nights(checkin, checkout)
+    if nights <= 0:
+        _set_global_notice("Pick your check-in and check-out dates to see room rates.")
+        return redirect(url_for("hotels"))
+
+    try:
+        content = LITE.hotel_detail(hotel_id)
+        rate_rows = LITE.search_rates(
+            hotel_ids=[hotel_id],
+            checkin=checkin,
+            checkout=checkout,
+            adults=adults,
+            rooms=rooms,
+        )
+    except LiteAPIError as exc:
+        print("HOTEL DETAIL ERROR:", exc)
+        _set_global_notice(str(exc))
+        return redirect(url_for("hotels"))
+
+    rooms_view = build_rooms_view(rate_rows[0], nights=nights) if rate_rows else []
+    cheapest = min((r["total_amount"] for r in rooms_view), default=None)
+
+    return render_template(
+        "hotel_detail.html",
+        hotel=build_detail_view(content),
+        hotel_description=sanitize_description(content.get("hotelDescription")),
+        rooms=rooms_view,
+        cheapest_total=cheapest,
+        search={
+            "place_id": (request.args.get("place_id") or "").strip(),
+            "place_name": (request.args.get("place_name") or "").strip(),
+            "checkin": checkin,
+            "checkout": checkout,
+            "adults": adults,
+            "rooms": rooms,
+            "nights": nights,
+        },
+        lite_env=LITE_ENV,
+        global_notice=_pop_global_notice(),
     )
 
 
@@ -11524,6 +12524,30 @@ def _destination_price_lookup(origin: str, dest_code: str, depart_date: str, ret
     return {"price": round(price), "currency": snapshot.get("scan_currency") or "USD"}
 
 
+@app.route("/api/nearest-airport", methods=["POST"])
+def nearest_airport():
+    """Browser geolocation -> nearest commercial airport, for the homepage's
+    location-aware 'Popular flights near you' widget. Never guesses a city
+    from IP/headers — only real device coordinates the user granted."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        lat = float(payload.get("lat"))
+        lng = float(payload.get("lng"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid coordinates"}), 400
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return jsonify({"error": "invalid coordinates"}), 400
+
+    airport = _nearest_airport(lat, lng)
+    if not airport:
+        return jsonify({"error": "no airport found"}), 404
+    return jsonify({
+        "code": airport["code"],
+        "city": airport["city"],
+        "country": airport["country"],
+    })
+
+
 @app.route("/api/destination-prices", methods=["POST"])
 def destination_prices():
     """
@@ -11542,7 +12566,7 @@ def destination_prices():
     codes: list[str] = []
     for raw_code in requested_codes:
         code = str(raw_code or "").strip().upper()
-        if code and get_destination_by_code(code) and code not in codes:
+        if code and (get_destination_by_code(code) or get_domestic_destination_by_code(code)) and code not in codes:
             codes.append(code)
     codes = codes[:16]
     if not codes:
@@ -11575,6 +12599,120 @@ def destination_prices():
         "return_date": return_date,
         "prices": prices,
     })
+
+
+def _smart_destination_date_candidates(is_domestic: bool) -> list[tuple[date, date]]:
+    """
+    Three real candidate trips per destination, grounded in published 2026
+    fare-timing research rather than one arbitrary shared weekend:
+
+    - Domestic fares bottom out roughly 31-45 days before departure; for
+      international the sweet spot is more like 2-3 months (~56-90 days)
+      out (Going.com / NerdWallet / Kayak "best time to book" 2026 data).
+    - Midweek (Tue/Wed) departures run ~10-20% cheaper than Fri-Sun on
+      domestic leisure routes; for international itineraries, Friday
+      departures are the statistically cheaper day (Expedia 2026 Air Hacks,
+      NerdWallet). This mirrors the weekday bias already used by the
+      existing "cheapest week" flex-month search (_weekday_bias below).
+
+    Checking a short weekend, a midweek trip, and a long weekend spread
+    across the appropriate booking window lets each destination land on
+    whichever shape turns out cheapest for that specific route — verified
+    by a real price lookup, never assumed. Two destinations only share
+    dates if that's genuinely what the live fares came back as.
+    """
+    today = date.today()
+    offsets = (21, 35, 49) if is_domestic else (49, 70, 91)
+
+    def next_weekday_on_or_after(base: date, weekday: int) -> date:
+        return base + timedelta(days=(weekday - base.weekday()) % 7)
+
+    early = today + timedelta(days=offsets[0])
+    mid = today + timedelta(days=offsets[1])
+    late = today + timedelta(days=offsets[2])
+
+    shapes = [
+        (next_weekday_on_or_after(early, 4), 2),  # Fri -> Sun: short weekend
+        (next_weekday_on_or_after(mid, 1), 3),    # Tue -> Fri: midweek (cheapest day)
+        (next_weekday_on_or_after(late, 4), 3),   # Fri -> Mon: long weekend
+    ]
+    return [(dep, dep + timedelta(days=nights)) for dep, nights in shapes]
+
+
+def _best_smart_candidate(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Cheapest of the verified candidates wins. Ties within ~2% (or $5,
+    whichever is larger) are broken by the same weekday-cheapness bias the
+    flex-month search uses, so real-world noise doesn't arbitrarily pick a
+    Sunday over an equally-priced Tuesday."""
+    best_price = min(r["price"] for r in results)
+    tolerance = max(5.0, best_price * 0.02)
+    band = [r for r in results if r["price"] <= best_price + tolerance]
+    return max(band, key=lambda r: _weekday_bias(r["depart_date"]))
+
+
+@app.route("/api/popular-flights", methods=["POST"])
+def popular_flights():
+    """
+    Real live fares for the homepage's 'Popular flights near you' widget.
+    Unlike /api/destination-prices (one shared weekend applied to every
+    card, kept as-is for the destination landing pages that still use it),
+    each destination here gets its own independently-optimized dates: three
+    real candidate trips are priced per destination (see
+    _smart_destination_date_candidates) across a domestic- or
+    international-appropriate booking window, and whichever comes back
+    cheapest for that specific route wins. Every (destination x candidate)
+    lookup across every destination is flattened into one shared parallel
+    batch rather than nesting a thread pool per destination. Never
+    fabricates a number or a date pairing: a destination with no live
+    result across all three candidates is simply omitted.
+    """
+    payload = request.get_json(silent=True) or {}
+    origin = _normalize_airport_input(str(payload.get("origin") or "").strip()) or "JFK"
+
+    requested_codes = payload.get("destinations") or []
+    codes: list[str] = []
+    for raw_code in requested_codes:
+        code = str(raw_code or "").strip().upper()
+        if code and code not in codes and (get_destination_by_code(code) or get_domestic_destination_by_code(code)):
+            codes.append(code)
+    codes = codes[:16]
+    if not codes:
+        return jsonify({"origin": origin, "prices": {}})
+
+    tasks: list[tuple[str, date, date]] = []
+    for code in codes:
+        is_domestic = get_domestic_destination_by_code(code) is not None
+        for depart, ret in _smart_destination_date_candidates(is_domestic):
+            tasks.append((code, depart, ret))
+
+    by_code: dict[str, list[dict[str, Any]]] = {code: [] for code in codes}
+    workers = min(16, len(tasks))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        future_to_task = {
+            executor.submit(_destination_price_lookup, origin, code, dep.isoformat(), ret.isoformat()): (code, dep, ret)
+            for code, dep, ret in tasks
+        }
+        for future in as_completed(future_to_task):
+            code, dep, ret = future_to_task[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                print("POPULAR FLIGHTS FUTURE ERROR:", code, repr(exc))
+                continue
+            if result:
+                by_code[code].append({
+                    "price": result["price"],
+                    "currency": result["currency"],
+                    "depart_date": dep.isoformat(),
+                    "return_date": ret.isoformat(),
+                })
+
+    prices: dict[str, Any] = {}
+    for code, results in by_code.items():
+        if results:
+            prices[code] = _best_smart_candidate(results)
+
+    return jsonify({"origin": origin, "prices": prices})
 
 
 @app.route("/results/<token>", methods=["GET"])
@@ -12248,6 +13386,14 @@ def search_stream():
 def search_shell():
     """Render results immediately, then let client fetch heavy `/search` HTML."""
     mode = (request.form.get("mode") or "standard").strip().lower()
+
+    # One AI box serves both products: a stay-shaped query is handed to the
+    # hotel pipeline instead of being forced through flight search.
+    if mode == "ai" and LITE_ENABLED:
+        ai_text = (request.form.get("ai_text") or request.form.get("q") or "").strip()
+        if ai_text and detect_search_intent(ai_text) == "stays":
+            return redirect(url_for("hotel_ai_search", q=ai_text))
+
     if mode == "flex":
         # Keep flexible flow on the dedicated streaming shell.
         return search_flex_shell()

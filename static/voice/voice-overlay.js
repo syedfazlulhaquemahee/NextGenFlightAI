@@ -68,12 +68,26 @@ function isMac() {
 }
 
 export class VoiceOverlayController {
-  constructor({ micButtonId = "voiceMicBtn", textareaId = "aiText", formId = "aiForm", tokenId = "aiParseToken" } = {}) {
+  constructor({
+    micButtonId = "voiceMicBtn",
+    textareaId = "aiText",
+    formId = "aiForm",
+    tokenId = "aiParseToken",
+    ringSelector = ".ai-input-ring",
+    wrapSelector = ".ai-input-wrap",
+    skipIntentParse = false,
+  } = {}) {
     this.micButton = document.getElementById(micButtonId);
     this.textarea = document.getElementById(textareaId);
     this.form = document.getElementById(formId);
     this.tokenInput = document.getElementById(tokenId);
     if (!this.micButton || !this.textarea || !this.form) return; // page doesn't have the AI search bar
+
+    // Hotels posts its spoken text to its existing AI form, whose endpoint
+    // already owns hotel intent parsing. Flights retains its preview parser.
+    this.ringSelector = ringSelector;
+    this.wrapSelector = wrapSelector;
+    this.skipIntentParse = skipIntentParse;
 
     this.machine = new VoiceStateMachine();
     this.reducedMotion = prefersReducedMotion();
@@ -110,8 +124,8 @@ export class VoiceOverlayController {
   _buildInlineDom() {
     // Mount the voice UI *inside* the existing search bar's gradient ring, so
     // the bar transforms in place — no full-screen modal, no separate view.
-    this.ring = this.micButton.closest(".ai-input-ring");
-    this.wrap = this.ring ? this.ring.querySelector(".ai-input-wrap") : null;
+    this.ring = this.micButton.closest(this.ringSelector);
+    this.wrap = this.ring ? this.ring.querySelector(this.wrapSelector) || this.ring : null;
     if (!this.ring || !this.wrap) {
       this.ring = null; // page markup unexpectedly different — disable gracefully
       return;
@@ -737,6 +751,15 @@ export class VoiceOverlayController {
     }
 
     this.machine.send("HAS_TRANSCRIPT"); // PROCESSING → PARSING
+
+    // The hotel AI endpoint is the source of truth for interpreting stay
+    // requests. Once speech has been transcribed, send it through that exact
+    // form rather than trying to apply the flight-only preview parser.
+    if (this.skipIntentParse) {
+      this.machine.send("PARSE_OK", { parsePreview: null, parseToken: "" });
+      this._commitSearch(transcript, "");
+      return;
+    }
 
     try {
       const { parseToken, preview } = await parseTravelIntent(transcript, this._abortController?.signal);

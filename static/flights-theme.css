@@ -1,0 +1,1048 @@
+/* ============================================================================
+   Flights hero — photo treatment, ported from the Stays page's nu-hero
+   pattern (see hotels.css) so both product pages share one language: a
+   full-bleed photo, a dark top-to-bottom wash for text legibility, and a
+   glass tab switcher sitting on top instead of a flat gradient panel.
+
+   Everything below is scoped to body.home-page and loads after
+   home-page.css / home-sections.css / style.css, so it only overrides what
+   the photo hero actually needs — search widget internals (.gf-*, .ms2-*,
+   .ai-*) are untouched.
+   ========================================================================= */
+
+/* Match the Hotels canvas: a clean, soft-white page behind the hero and
+   content rather than the older Flights-only grey/indigo texture. */
+html[data-theme="light"] body.home-page {
+  background: #fff !important;
+  background-image: none !important;
+}
+html[data-theme="light"] body.home-page::before {
+  background: none !important;
+}
+
+body.home-page .hero-photo-mode{
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 24px;
+  min-height: 460px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 16px auto 0;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 150px;
+  box-shadow: 0 30px 70px rgba(4, 9, 20, .38);
+}
+
+/* The search stack (product tabs, Search/Ask AI tabs, manual bar or AI
+   prompt) is a sibling of the hero photo in markup, not a child — pulling
+   it up with a negative margin lands it on the photo's lower third, same
+   composition as the Stays page's .nu-searchbox sitting inside .nu-hero,
+   without moving hundreds of lines of search-widget markup (and the many
+   element IDs the existing search JS depends on) into a new DOM position. */
+body.home-page .home-search-stack{
+  position: relative;
+  z-index: 2;
+  margin-top: -84px !important;
+}
+
+body.home-page .hero-photo-img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  z-index: -2;
+}
+
+/* Same wash as the Stays hero: darker at top and bottom, lightest through
+   the middle third where the photo's own content reads best. */
+body.home-page .hero-photo-mode::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(6, 10, 22, .66) 0%, rgba(6, 10, 22, .30) 38%, rgba(6, 10, 22, .28) 60%, rgba(6, 10, 22, .70) 100%);
+}
+
+body.home-page .hero-photo-mode .hero-copy-block{
+  max-width: 46rem;
+  width: 100%;
+  text-align: center;
+  padding: 96px 0 0;
+}
+
+body.home-page .hero-photo-mode .hero-title{
+  text-align: center;
+}
+
+body.home-page .hero-photo-mode .hero-copy{
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  color: rgba(255, 255, 255, .92) !important;
+}
+
+/* theme.css paints the hero title/copy dark for light mode, on the
+   assumption the hero sits on a plain light page background. The photo
+   hero always has its own dark gradient wash underneath the text (see
+   .hero-photo-mode::after above), so the text needs to stay white in
+   both themes — same as the Stays page's .nu-hero-title. */
+html[data-theme="light"] body.home-page .hero-photo-mode .hero-title,
+html[data-theme="light"] body.home-page .hero-photo-mode .hero-title .hero-plain{
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .35) !important;
+}
+
+html[data-theme="light"] body.home-page .hero-photo-mode .hero-copy{
+  color: rgba(255, 255, 255, .92) !important;
+}
+
+@media (max-width: 900px){
+  body.home-page .hero-photo-mode{ min-height: 420px; padding-bottom: 44px; }
+  body.home-page .hero-photo-mode .hero-copy-block{ padding-top: 76px; }
+  /* The photo is much shorter here, so the pull-up has to shrink to match —
+     otherwise the search stack rides up over the headline instead of the
+     photo's lower third. */
+  body.home-page .home-search-stack{ margin-top: 0 !important; }
+}
+
+@media (max-width: 620px){
+  body.home-page .hero-photo-mode{ min-height: 380px; border-radius: 18px; padding-bottom: 32px; }
+  body.home-page .hero-photo-mode .hero-copy-block{ padding-top: 56px; }
+  body.home-page .hero-photo-mode .hero-title{ font-size: clamp(1.7rem, 7vw, 2.3rem) !important; }
+}
+
+/* ===================== product tabs on photo ===================== */
+/* Frosted-glass pill, matching the Stays page's .nu-mode switch, so the
+   Flights/Stays toggle reads as "floating on the photo" instead of the
+   flat surface it used on the abstract-gradient hero. */
+body.home-page .home-product-tabs{
+  display: inline-flex;
+  gap: 4px;
+  margin: 18px auto 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(12, 18, 34, .46);
+  border: 1px solid rgba(255, 255, 255, .22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none;
+}
+
+body.home-page .home-product-tab{
+  color: rgba(255, 255, 255, .86);
+}
+
+body.home-page .home-product-tab:hover{ color: #fff; }
+
+body.home-page .home-product-tab.is-active{
+  background: #fff;
+  color: #111322;
+}
+
+/* ===================== Search / Ask AI tabs ===================== */
+/* Literal port of the Stays page's .nu-mode pill — same glass pill under
+   the hero, same active-state treatment (white surface, dark text). This
+   is what picks the manual bar vs. the AI prompt; there is no scroll
+   collapse or peek state on this page, only this toggle. */
+body.home-page .nu-mode{
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+body.home-page .nu-mode-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+body.home-page .nu-mode-btn svg{ width: 16px; height: 16px; flex: none; }
+body.home-page .nu-mode-btn:hover{ color: var(--text); }
+
+/* The Stays page's active tab borrows the pill's own elevated surface color
+   (white in light mode / dark card in dark mode) rather than the accent —
+   match that exactly, using this page's --card token as the equivalent of
+   hotels.css's --nu-elevated. */
+body.home-page .nu-mode-btn.is-active{
+  background: var(--card-strong, var(--card));
+  color: var(--text);
+}
+
+body.home-page .nu-mode.is-product-hidden{ display: none !important; }
+
+/* Search-stack container: same 1020px pill width as the Stays hero, and
+   the AI card sits flush under the tabs with no leftover "or" divider gap. */
+body.home-page .home-search-stack{
+  max-width: 1020px;
+}
+
+body.home-page .home-search-stack .ai-wrap{
+  margin-top: 0 !important;
+}
+
+/* .ai-narrow already carries its own display:flex in style.css, which beats
+   the bare [hidden] attribute (author styles always win over the UA
+   default). Force it the same way the Flights/Stays product tabs already
+   handle this — see .is-product-hidden usage in the inline script below. */
+body.home-page .ai-wrap[hidden]{
+  display: none !important;
+}
+
+/* ===================== trust strip, hotel-card style ===================== */
+/* Same 3-up bordered strip as .nu-features on the Stays page, restated with
+   this page's own tokens so both dark and light theme stay correct. */
+body.home-page .home-trust-stats{
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+body.home-page .home-trust-item{
+  border-radius: 0;
+}
+
+body.home-page .home-trust-icon{
+  background: var(--bg);
+}
+
+/* ===================== recent searches, pill style ===================== */
+body.home-page .home-recent-card{
+  border-radius: 14px;
+}
+
+/* ===========================================================================
+   Flights landing page — Hotels-parity presentation
+
+   The Flights form deliberately retains its existing DOM and behaviour. These
+   rules only give it the same landing-page composition as /hotels: a 1200px
+   photo hero, centered copy, one floating search surface, the same cards, and
+   the same responsive breakpoints.
+   ======================================================================== */
+
+body.home-page {
+  --flight-bg: #0e1320;
+  --flight-surface: #161d2c;
+  --flight-surface-2: #1d2536;
+  --flight-elevated: #1a2231;
+  --flight-heading: #f4f5f7;
+  --flight-text: #f4f5f7;
+  --flight-muted: #a7b0bd;
+  --flight-border: #2a3346;
+  --flight-primary: #6366f1;
+  --flight-primary-hover: #818cf8;
+  background: var(--flight-bg) !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-theme="light"] body.home-page {
+  --flight-bg: #ffffff;
+  --flight-surface: #ffffff;
+  --flight-surface-2: #f3f4f6;
+  --flight-elevated: #ffffff;
+  --flight-heading: #1f2a37;
+  --flight-text: #111322;
+  --flight-muted: #4d5761;
+  --flight-border: #e5e7eb;
+  --flight-primary: #4f46e5;
+  --flight-primary-hover: #4338ca;
+}
+
+body.home-page .wrap {
+  width: min(1200px, 100%);
+  max-width: 1200px;
+  /* Hotels' .nu-wrap has horizontal padding only, so remove the legacy
+     homepage's 32px top inset and align both hero images at the same y. */
+  padding: 0 20px 56px !important;
+  padding-top: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The primary nav already contains Flights and Hotels. Hide the former inline
+   product switcher so the two dedicated pages have the identical shell. */
+body.home-page .home-product-tabs { display: none !important; }
+
+body.home-page .hero-photo-mode {
+  width: 100%;
+  max-width: none;
+  min-height: 620px;
+  /* Compensate for the homepage shell's retained 32px top inset: Hotels'
+     hero begins 24px below the header, and Flights must occupy that exact y. */
+  margin: -8px auto 0;
+  padding: 0;
+  border-radius: 24px;
+  box-shadow: none;
+  justify-content: flex-start;
+}
+
+body.home-page .hero-photo-mode .hero-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+body.home-page .hero-photo-mode .hero-copy-block {
+  max-width: none;
+  padding: 104px 20px 0;
+}
+
+body.home-page .hero-photo-mode .hero-title {
+  margin: 0;
+  color: #fff !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 56px !important;
+  font-weight: 700 !important;
+  line-height: 64px !important;
+  letter-spacing: normal !important;
+}
+
+body.home-page .hero-photo-mode .hero-copy {
+  display: block !important;
+  margin: 14px auto 0;
+  padding: 0 20px;
+  max-width: none;
+  color: rgba(255, 255, 255, .94) !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  line-height: 28px !important;
+}
+
+body.home-page .home-search-stack {
+  width: min(1020px, calc(100% - 48px));
+  max-width: 1020px;
+  margin: 62px auto 0 !important;
+  position: static;
+  z-index: auto;
+  gap: 0 !important;
+}
+
+body.home-page .nu-mode {
+  align-self: center;
+  margin: 0 0 14px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  background: rgba(12, 18, 34, .46);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+body.home-page .nu-mode-btn {
+  color: rgba(255, 255, 255, .86);
+}
+
+body.home-page .nu-mode-btn:hover { color: #fff; }
+body.home-page .nu-mode-btn.is-active {
+  background: var(--flight-elevated);
+  color: var(--flight-text);
+}
+
+/* Flight controls are different from stay controls, but live inside the same
+   single elevated surface and use Hotels' spacing, dividers, and CTA shape. */
+body.home-page .home-search-stack .manual-search-v2,
+body.home-page .home-search-stack .ai-wrap {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+body.home-page .home-search-stack .manual-search-v2 {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+body.home-page .manual-search-v2 .ms2-form {
+  gap: 0;
+  padding: 8px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  /* The controls float directly over the hero; only the search bar itself
+     carries a surface. */
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] body.home-page .manual-search-v2 .ms2-form {
+  border-color: transparent !important;
+  box-shadow: 0 10px 15px -3px rgba(17, 25, 39, .1), 0 4px 6px -4px rgba(17, 25, 39, .1) !important;
+}
+
+body.home-page .manual-search-v2 .gf-toprow {
+  min-height: 34px;
+  margin: 0;
+  padding: 0 10px 7px;
+  border-bottom: 0 !important;
+  background: transparent !important;
+  border-radius: 0;
+}
+
+body.home-page .manual-search-v2 .gf-chip-sel,
+body.home-page .gf-underbar,
+body.home-page .gf-underbar-check,
+body.home-page .gf-underbar-check span {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+}
+
+body.home-page .manual-search-v2 .gf-chip-caret {
+  color: #fff !important;
+  stroke: #fff !important;
+  opacity: 1 !important;
+}
+
+body.home-page .manual-search-v2 .gf-chip-sel:hover {
+  background: rgba(12, 18, 34, .26);
+}
+
+/* Manual flight search uses a deliberately solid, high-contrast surface. */
+body.home-page .gf-bar {
+  min-height: 58px;
+  border: 1px solid #aeb8c7;
+  /* Same outer radius as the Ask AI input ring. */
+  border-radius: 12px;
+  background: #fff !important;
+  opacity: 1 !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .10);
+}
+body.home-page .gf-bar:focus-within { border-color: #8b98aa; box-shadow: 0 1px 2px rgba(15, 23, 42, .10); }
+body.home-page .gf-seg {
+  min-height: 58px;
+  border-radius: 8px;
+  background: #fff !important;
+  opacity: 1 !important;
+  color: #172033;
+}
+body.home-page .gf-seg:hover { background: #f7f9fc; }
+body.home-page .gf-chip-sel,
+body.home-page .gf-seg-input,
+body.home-page .gf-seg-label,
+body.home-page .gf-seg--pax { color: #172033 !important; }
+body.home-page .gf-chip-caret,
+body.home-page .gf-seg-input::placeholder,
+body.home-page .gf-seg-label.is-placeholder { color: #667085 !important; }
+body.home-page .gf-seg-icon { color: #667085 !important; }
+body.home-page .gf-bar-sep { height: 38px; background: #c7d0dc; }
+body.home-page .gf-swap-btn {
+  border-color: #b8c2d0;
+  background: #fff;
+  color: #4b5a70;
+}
+body.home-page .gf-search-cta {
+  background: #635bff !important;
+  border-color: #635bff !important;
+  box-shadow: none !important;
+}
+body.home-page .gf-search-cta:hover { background: #5148e8 !important; box-shadow: none; }
+
+/* Icon-only compact CTA — only fits the ≥1025px single-row bar (see
+   home-page.css's own 1025px breakpoint for that layout). Below that, the
+   ≤1024px grid layout needs the full-width "Search flights" button, so this
+   must not leak into it unscoped (it did, and silently squashed the CTA
+   down to a 44px icon at every mobile width because this rule loads after
+   home-page.css's ≤1024px block with equal specificity). */
+@media (min-width: 1025px) {
+  body.home-page .gf-bar {
+    overflow: hidden;
+    /* Match the right-hand curve of the Ask AI input exactly. */
+    border-radius: 12px;
+  }
+
+  body.home-page .gf-search-cta {
+    align-self: stretch;
+    width: 52px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0 12px 12px 0;
+    background: #635bff;
+    box-shadow: none;
+  }
+  body.home-page .gf-search-cta span { display: none; }
+}
+
+@media (max-width: 1024px) {
+  body.home-page .gf-bar {
+    background: #fff !important;
+    border-color: #aeb8c7 !important;
+  }
+
+  body.home-page .gf-seg {
+    border-color: #c6cfdb !important;
+    background: #fff !important;
+  }
+
+  body.home-page .gf-seg:hover { background: #f7f9fc !important; }
+
+  body.home-page .gf-search-cta {
+    border-radius: 12px !important;
+  }
+}
+
+/* Mobile recent-search overflow cue: keep the shadow at the rail edge, but
+   use the light page surface instead of the inherited dark page token. */
+@media (max-width: 760px) {
+  body.home-page .home-recent-viewport::before,
+  body.home-page .home-recent-viewport::after {
+    display: block !important;
+    top: 10px;
+    bottom: 14px;
+    width: 16px;
+    background: linear-gradient(to right, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, 0) 100%) !important;
+    box-shadow: 5px 0 10px rgba(15, 23, 42, .025);
+  }
+
+  body.home-page .home-recent-viewport::after {
+    right: 0;
+    background: linear-gradient(to left, rgba(255, 255, 255, .78) 0%, rgba(255, 255, 255, 0) 100%) !important;
+    box-shadow: -5px 0 10px rgba(15, 23, 42, .025);
+  }
+
+  body.home-page .home-recent-scroll {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 12px;
+  }
+}
+
+/* Desktop manual search — deliberately mirrors the Hotels form: a quiet white
+   card, small field labels, clear vertical dividers, and an inset square CTA.
+   Flights keeps the two route values and the single swap action it needs. */
+@media (min-width: 1025px) {
+  body.home-page .gf-bar {
+    /* Same compact measurement as .nu-search on Hotels: 8px shell padding
+       around 56px field content, rather than a fixed tall card. */
+    min-height: 0;
+    height: auto;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff !important;
+    background-image: none !important;
+    box-shadow: 0 10px 15px -3px rgba(17, 25, 39, .10), 0 4px 6px -4px rgba(17, 25, 39, .10);
+  }
+
+  body.home-page .gf-seg {
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: 8px 18px;
+    border-radius: 0;
+    background: transparent !important;
+  }
+
+  body.home-page .gf-seg::before {
+    display: block;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 450;
+    line-height: normal;
+    color: #6c737f;
+    content: "";
+  }
+
+  body.home-page .gf-seg--from::before { content: "From"; }
+  body.home-page .gf-seg--to::before { content: "To"; }
+  body.home-page .gf-seg--dates::before { content: "Dates"; }
+  body.home-page .gf-seg--pax::before { content: "Travelers"; }
+
+  body.home-page .gf-seg-icon { display: none !important; }
+
+  body.home-page .gf-seg-input,
+  body.home-page .gf-seg-label,
+  body.home-page .gf-seg--pax {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px !important;
+    font-weight: 500;
+    line-height: normal;
+    letter-spacing: -.16px;
+    color: #111322 !important;
+  }
+
+  body.home-page .gf-seg--from .gf-seg-input,
+  body.home-page .gf-seg--to .gf-seg-input {
+    font-weight: 700;
+  }
+
+  body.home-page .gf-seg-input::placeholder,
+  body.home-page .gf-seg-label.is-placeholder { color: #4d5761 !important; }
+
+  body.home-page .gf-seg--from,
+  body.home-page .gf-seg--to { flex: 1 1 0; }
+
+  body.home-page .gf-seg--dates {
+    flex: 1.2 1 0;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: left;
+  }
+
+  body.home-page .gf-seg--pax {
+    flex: 1.25 1 0;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: left;
+  }
+
+  body.home-page .gf-bar-sep {
+    width: 1px;
+    /* These are the two Hotels-style group dividers: route | dates | guests.
+       There is intentionally no divider between From and To. */
+    height: 48px;
+    align-self: center;
+    margin: 0;
+    background: #e5e7eb !important;
+  }
+
+  body.home-page .gf-swap-btn {
+    align-self: center;
+    width: 36px;
+    height: 36px;
+    margin: 0 -6px;
+    border-color: #e5e7eb;
+    background: #fff;
+    color: #4d5761;
+    z-index: 1;
+  }
+
+  body.home-page .gf-search-cta {
+    align-self: center;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    flex: none;
+    margin: 0 4px 0 0;
+    padding: 0;
+    border: 0 !important;
+    border-radius: 8px;
+    background: #4f46e5 !important;
+    color: #fff;
+    box-shadow: none !important;
+    transition: background .15s ease;
+  }
+
+  body.home-page .gf-search-cta:hover { background: #4338ca !important; }
+  body.home-page .gf-search-cta .gf-cta-icon { width: 19px; height: 19px; }
+}
+
+/* theme.css's light-mode glass rule is more specific than the base selector.
+   Override it at the same scope so the manual form is always solid white. */
+html[data-theme="light"] body.home-page .gf-bar,
+html[data-theme="light"] body.home-page .gf-bar:focus-within {
+  background: #fff !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #e5e7eb !important;
+  box-shadow: 0 10px 15px -3px rgba(17, 25, 39, .10), 0 4px 6px -4px rgba(17, 25, 39, .10) !important;
+}
+
+/* Final, same-specificity override of theme.css's older flight-gradient CTA.
+   These values are copied from Hotels' .nu-search-btn. */
+html[data-theme="light"] body.home-page .gf-search-cta,
+html[data-theme="light"] body.home-page .gf-search-cta:hover,
+body.home-page .gf-search-cta,
+body.home-page .gf-search-cta:hover {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  margin-right: 4px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: #4f46e5 !important;
+  background-image: none !important;
+  color: #fff !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+html[data-theme="light"] body.home-page .gf-search-cta:hover,
+body.home-page .gf-search-cta:hover { background: #4338ca !important; }
+
+/* Compact manual form: the base desktop CTA is deliberately 44px square, but
+   on the stacked layout it must become a full-width action. Keep this after
+   the shared desktop rule so it cannot collapse back to an icon-only sliver. */
+@media (max-width: 1024px) {
+  html[data-theme="light"] body.home-page .gf-search-cta,
+  html[data-theme="light"] body.home-page .gf-search-cta:hover,
+  body.home-page .gf-search-cta,
+  body.home-page .gf-search-cta:hover {
+    display: inline-flex !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  body.home-page .gf-search-cta span { display: inline !important; }
+
+  /* Keep the light manual form neutral; the purple CTA is the only accent. */
+  body.home-page .gf-seg-icon,
+  body.home-page .gf-seg-icon.svg-mask-icon,
+  body.home-page .gf-swap-btn svg {
+    color: #667085 !important;
+  }
+}
+
+/* Hotels typography parity — declared at the same light-theme specificity as
+   the older home rules, so no inherited flight token can tint or resize it. */
+@media (min-width: 1025px) {
+  html[data-theme="light"] body.home-page .gf-seg::before,
+  body.home-page .gf-seg::before {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 450 !important;
+    line-height: normal !important;
+    letter-spacing: normal !important;
+    color: #6c737f !important;
+    -webkit-text-fill-color: #6c737f !important;
+  }
+
+  html[data-theme="light"] body.home-page .gf-seg-input,
+  html[data-theme="light"] body.home-page .gf-seg-label,
+  html[data-theme="light"] body.home-page .gf-seg--pax,
+  body.home-page .gf-seg-input,
+  body.home-page .gf-seg-label,
+  body.home-page .gf-seg--pax {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    line-height: normal !important;
+    letter-spacing: -.16px !important;
+    color: #111322 !important;
+    -webkit-text-fill-color: #111322 !important;
+  }
+
+  /* Empty From/To are hotel-style placeholders. Once a value is selected it
+     gets the requested bold emphasis, without making the placeholder heavy. */
+  html[data-theme="light"] body.home-page .gf-seg--from .gf-seg-input::placeholder,
+  html[data-theme="light"] body.home-page .gf-seg--to .gf-seg-input::placeholder,
+  body.home-page .gf-seg--from .gf-seg-input::placeholder,
+  body.home-page .gf-seg--to .gf-seg-input::placeholder {
+    font-weight: 400 !important;
+    color: #4d5761 !important;
+    -webkit-text-fill-color: #4d5761 !important;
+    opacity: 1 !important;
+  }
+
+  body.home-page .gf-seg--from .gf-seg-input:not(:placeholder-shown),
+  body.home-page .gf-seg--to .gf-seg-input:not(:placeholder-shown) {
+    font-weight: 700 !important;
+  }
+}
+
+/* Preserve the AI pipeline and voice affordance while presenting it inside
+   the exact same simple search surface as the Hotels Ask AI mode. */
+body.home-page .ai-card,
+body.home-page .ai-form,
+body.home-page .ai-prompt-shell,
+body.home-page .ai-input-ring,
+body.home-page .ai-input-wrap {
+  width: 100%;
+}
+body.home-page .ai-input-ring {
+  box-sizing: border-box !important;
+  height: 64px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(99, 102, 241, .22) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .10) !important;
+}
+body.home-page .ai-input-wrap {
+  box-sizing: border-box !important;
+  height: 62px !important;
+  min-height: 62px !important;
+  padding: 8px 10px !important;
+  border-radius: 15px !important;
+  background: transparent !important;
+}
+body.home-page .ai-input-wrap .ai-input {
+  color: var(--flight-text) !important;
+  font-size: 16px !important;
+}
+body.home-page .ai-input-wrap .ai-input::placeholder { color: var(--flight-muted) !important; }
+html[data-theme="light"] body.home-page .ai-placeholder-overlay { color: #64748b; }
+body.home-page .ai-placeholder-overlay[hidden] { display: none !important; }
+body.home-page .ai-input-icon-btn.ai-input-magic-btn {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--flight-primary);
+}
+body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #53637a !important;
+}
+body.home-page .ai-input-toolbar { right: 10px; }
+body.home-page .ai-input-submit-btn {
+  width: 44px;
+  height: 44px;
+  /* Mirror the circular voice control on the other side of the input. */
+  border-radius: 50%;
+  background: var(--flight-primary);
+  color: #fff;
+  box-shadow: none !important;
+}
+
+/* A calm solid surface keeps the purple CTA as the sole visual anchor. */
+html[data-theme="light"] body.home-page .ai-input-ring::before {
+  content: none !important;
+  animation: none !important;
+}
+html[data-theme="light"] body.home-page .ai-input-ring,
+html[data-theme="light"] body.home-page .ai-prompt-shell:focus-within .ai-input-ring {
+  border-color: rgba(99, 102, 241, .22) !important;
+  background: rgba(255, 255, 255, .92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .10) !important;
+}
+html[data-theme="light"] body.home-page .ai-input-wrap {
+  background: rgba(255, 255, 255, .92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* The base theme once supplied a multicolour conic pseudo-layer. Remove it in
+   every theme rather than merely lowering its opacity. */
+body.home-page .ai-input-ring::before {
+  content: none !important;
+  animation: none !important;
+}
+
+body.home-page .ai-placeholder-overlay {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+  left: 60px !important;
+  right: 112px !important;
+}
+
+@media (min-width: 761px) {
+  body.home-page .home-search-stack .ai-wrap {
+    width: 94% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+body.home-page .ai-suggest-chips {
+  margin: 14px 0 0;
+  padding: 8px 2px 14px;
+  overflow: visible;
+  justify-content: center;
+}
+body.home-page .ai-suggest-chip {
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: 999px;
+  background: rgba(7, 14, 28, .58) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  box-shadow: none;
+}
+body.home-page .ai-suggest-chip-title {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+}
+body.home-page .ai-suggest-chip:hover {
+  /* A broad, low-opacity halo fades naturally around the pill. */
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), .14), rgba(7, 14, 28, .64)) !important;
+  border-color: rgba(var(--chip-rgb), .26) !important;
+  box-shadow: 0 8px 24px rgba(var(--chip-rgb), .10), 0 0 34px rgba(var(--chip-rgb), .07) !important;
+}
+body.home-page .ai-suggest-chip-icon { display: none; }
+
+/* On phones the composer has one job: accept a trip request. Keep only the
+   example button and submit control in the row so the text area never gets
+   squeezed behind auxiliary controls. */
+@media (max-width: 760px) {
+  body.home-page .ai-input-ring { width: 100%; box-sizing: border-box; height: 64px !important; border-radius: 16px !important; }
+  body.home-page .ai-input-wrap {
+    grid-template-columns: 40px minmax(0, 1fr) 42px !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    padding: 8px !important;
+    gap: 8px !important;
+    border-radius: 15px !important;
+  }
+  body.home-page .ai-input-toolbar { grid-column: 3; min-width: 42px; }
+  /* On compact screens the microphone is the more useful left-side action.
+     Keep the existing #voiceMicBtn in place so the voice-search controller
+     and AI request flow are unchanged. */
+  body.home-page .ai-input-icon-btn.ai-input-magic-btn { display: none !important; }
+  body.home-page .ai-input-icon-btn.ai-input-voice-btn {
+    display: grid !important;
+    position: absolute !important;
+    z-index: 3;
+    left: 8px;
+    top: 50%;
+    margin: 0 !important;
+    transform: translateY(-50%);
+  }
+  body.home-page .ai-input-actions { width: 42px; }
+  body.home-page .ai-input-submit-btn { width: 42px !important; height: 42px !important; min-width: 42px !important; }
+  body.home-page .ai-input-wrap .ai-input { grid-column: 2; min-width: 0 !important; }
+  body.home-page .ai-placeholder-overlay { left: 60px !important; right: 62px !important; color: #94a3b8 !important; }
+
+  body.home-page .ai-input-wrap.is-multiline .ai-input-voice-btn {
+    top: auto;
+    bottom: 8px;
+    transform: none;
+  }
+}
+
+/* Hotels places its three assurance tiles directly under the hero. Use flex
+   ordering to retain all existing Flights markup and scripts unchanged. */
+body.home-page .home-trust-stats {
+  order: 3;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 34px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--flight-surface-2);
+}
+body.home-page .home-trust-item { padding: 22px 24px; }
+body.home-page .home-trust-item:nth-child(4) { display: none; }
+body.home-page .home-trust-icon {
+  border: 0;
+  background: var(--flight-elevated);
+  color: var(--flight-primary);
+}
+body.home-page .home-trust-title { color: var(--flight-text); font-size: 18px; line-height: 26px; }
+body.home-page .home-trust-desc { color: var(--flight-muted); font-size: 16px; line-height: 24px; }
+
+/* Keep the contextual hotel module immediately after Recent searches. */
+body.home-page .home-recent-searches { order: 1; }
+body.home-page .flight-stays { order: 2; }
+body.home-page .home-popular-flights { order: 4; }
+body.home-page .footer { order: 6; }
+body.home-page .home-recent-searches,
+body.home-page .home-popular-flights {
+  padding: 0;
+  border: 0;
+  margin-top: 56px;
+}
+body.home-page .home-section-head { margin-bottom: 20px; }
+body.home-page .home-section-title { color: var(--flight-heading); font-family: inherit; font-size: 28px; font-weight: 600; }
+body.home-page .home-section-sub { color: var(--flight-muted); }
+
+@media (max-width: 860px) {
+  body.home-page .hero-photo-mode { min-height: 520px; }
+  body.home-page .hero-photo-mode .hero-copy-block { padding-top: 72px; }
+  body.home-page .hero-photo-mode .hero-title { font-size: 40px !important; line-height: 48px !important; }
+  body.home-page .hero-photo-mode .hero-copy { font-size: 16px !important; }
+  body.home-page .home-search-stack { margin-top: 24px !important; }
+  body.home-page .home-trust-stats { grid-template-columns: 1fr; }
+  body.home-page .home-trust-item + .home-trust-item { border-top: 1px solid var(--flight-border); }
+  /* .gf-bar / .gf-seg layout at this width is owned by home-page.css's
+     ≤1024px grid rules — don't fight them here with a competing flex-wrap
+     layout (that produced a squashed, truncated travelers button). */
+  body.home-page .gf-search-cta span { display: inline; }
+}
+
+@media (max-width: 620px) {
+  body.home-page .wrap { padding: 0 14px; }
+  body.home-page .hero-photo-mode { min-height: 520px; border-radius: 18px; }
+  body.home-page .hero-photo-mode .hero-copy-block { padding-top: 72px; }
+  body.home-page .hero-photo-mode .hero-title { font-size: 32px !important; line-height: 38.4px !important; }
+  body.home-page .home-search-stack { width: calc(100% - 28px); }
+  body.home-page .manual-search-v2 .gf-toprow { overflow-x: auto; }
+}
+
+/* Tablet bridge (761–1024px): the shared site's generic tablet rule caps
+   every `.hero h1` at 11 characters. That is appropriate for its compact
+   marketing heroes but makes the Flights title wrap into a narrow, left-set
+   block at iPad widths. Keep the photo hero's intended full, centered title
+   and remove the inherited vertical padding only in this in-between range. */
+@media (min-width: 761px) and (max-width: 1024px) {
+  body.home-page .hero-photo-mode {
+    padding: 0 !important;
+  }
+
+  body.home-page .hero-photo-mode .hero-title {
+    width: 100%;
+    max-width: none !important;
+    margin-inline: auto;
+    text-align: center !important;
+  }
+}
+
+/* The stacked tablet form is naturally taller than its desktop row. Tighten
+   only the surrounding hero rhythm across this bridge so the total hero height
+   stays continuous at the 1024px form-layout switch. */
+@media (min-width: 861px) and (max-width: 1024px) {
+  body.home-page .hero-photo-mode .hero-copy-block {
+    padding-top: 72px;
+  }
+
+  body.home-page .home-search-stack {
+    margin-top: 24px !important;
+  }
+}

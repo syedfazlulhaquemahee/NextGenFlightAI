@@ -239,6 +239,11 @@
     var returnHiddenInput = config.returnHiddenInput;
     var returnDisplayInput = config.returnDisplayInput;
     var tripTypeInput = config.tripTypeInput;
+    var minIso = ISO_RE.test(config.minDate || "") ? config.minDate : todayIso();
+    var maxIso = ISO_RE.test(config.maxDate || "") ? config.maxDate : "";
+    var departPrompt = config.departPrompt || "Choose your departure date";
+    var returnPrompt = config.returnPrompt || "Choose your return date";
+    var singleSetPrompt = config.singleSetPrompt || "Departure date set";
 
     if (!departHiddenInput || !departDisplayInput || !returnHiddenInput || !returnDisplayInput) return null;
 
@@ -247,6 +252,13 @@
 
     var defaultDepartPlaceholder = departDisplayInput.getAttribute("placeholder") || "";
     var defaultReturnPlaceholder = returnDisplayInput.getAttribute("placeholder") || "";
+
+    // Display controls are deliberately separate from the submitted ISO
+    // fields. Reflect the initial values immediately so they never look like
+    // inert native-date placeholders while the calendar module finishes
+    // loading.
+    departDisplayInput.value = formatDisplay(departHiddenInput.value || "");
+    returnDisplayInput.value = formatDisplay(returnHiddenInput.value || "");
 
     function syncResponsivePlaceholders() {
       var compact = compactQuery.matches;
@@ -289,7 +301,8 @@
     function buildCalendar() {
       popover.body.innerHTML = "";
       var el = document.createElement(mode === "range" ? "calendar-range" : "calendar-date");
-      el.setAttribute("min", todayIso());
+      el.setAttribute("min", minIso);
+      if (maxIso) el.setAttribute("max", maxIso);
 
       var count = monthsToShow(mode);
       for (var i = 0; i < count; i += 1) {
@@ -308,14 +321,14 @@
       }
 
       el.addEventListener("rangestart", function () {
-        popover.hint.textContent = "Choose your return date";
+        popover.hint.textContent = returnPrompt;
         popover.hint.classList.add("is-active");
       });
 
       el.addEventListener("change", function () {
         syncFromCalendar();
         popover.hint.classList.remove("is-active");
-        popover.hint.textContent = mode === "range" ? "Choose your departure date" : "Departure date set";
+        popover.hint.textContent = mode === "range" ? departPrompt : singleSetPrompt;
         window.setTimeout(function () { popover.close(); }, mode === "range" ? 260 : 160);
       });
 
@@ -323,7 +336,7 @@
       popover.body.appendChild(el);
       calendarEl = el;
       popover.hint.classList.remove("is-active");
-      popover.hint.textContent = "Choose your departure date";
+      popover.hint.textContent = departPrompt;
       popover.reposition();
     }
 
@@ -349,6 +362,12 @@
     [departDisplayInput, returnDisplayInput].forEach(function (input) {
       input.addEventListener("focus", function () { openPopoverFor(input); });
       input.addEventListener("click", function () { openPopoverFor(input); });
+      // Safari can focus a readonly input without emitting the click event
+      // consistently inside a fixed bottom sheet. Opening on touch release
+      // makes the same shadcn range calendar reliable on mobile.
+      input.addEventListener("pointerup", function (e) {
+        if (e.pointerType === "touch" || e.pointerType === "pen") openPopoverFor(input);
+      });
       input.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
           e.preventDefault();
@@ -391,36 +410,45 @@
   // ------------------------------------------------------------------
   // Standalone single-date input (multi-city legs, etc).
   // ------------------------------------------------------------------
-  function initSingleDateInput(input) {
+  function initSingleDateInput(input, options) {
     if (!input || input.dataset.calendarBound === "true") return null;
+    options = options || {};
     input.dataset.calendarBound = "true";
     input.readOnly = true;
 
     var popover = createPopover("single");
-    var minIso = todayIso();
+    var valueInput = options.valueInput || input;
+    var hasMin = Object.prototype.hasOwnProperty.call(options, "minDate");
+    var minIso = hasMin ? (ISO_RE.test(options.minDate || "") ? options.minDate : "") : todayIso();
+    var maxIso = ISO_RE.test(options.maxDate || "") ? options.maxDate : "";
+    var prompt = options.prompt || "Choose a date";
 
     function buildCalendar() {
       popover.body.innerHTML = "";
       var el = document.createElement("calendar-date");
-      el.setAttribute("min", minIso);
+      if (minIso) el.setAttribute("min", minIso);
+      if (maxIso) el.setAttribute("max", maxIso);
       var monthEl = document.createElement("calendar-month");
       el.appendChild(monthEl);
-      if (ISO_RE.test(input.value || "")) el.setAttribute("value", input.value);
+      if (ISO_RE.test(valueInput.value || "")) el.setAttribute("value", valueInput.value);
 
       el.addEventListener("change", function () {
         var next = el.value || "";
-        notifyIfChanged(input, ISO_RE.test(next) ? next : "");
+        next = ISO_RE.test(next) ? next : "";
+        notifyIfChanged(valueInput, next);
+        if (valueInput !== input) notifyIfChanged(input, formatDisplay(next));
         window.setTimeout(function () { popover.close(); }, 160);
       });
 
       addNavIcons(el);
       popover.body.appendChild(el);
-      popover.hint.textContent = "Choose a date";
+      popover.hint.textContent = prompt;
       popover.reposition();
     }
 
     popover.clearBtn.addEventListener("click", function () {
-      notifyIfChanged(input, "");
+      notifyIfChanged(valueInput, "");
+      if (valueInput !== input) notifyIfChanged(input, "");
       buildCalendar();
     });
     popover.doneBtn.addEventListener("click", function () { popover.close(); });
@@ -463,6 +491,81 @@
     return wrapper;
   }
 
+  function copyDateInputForCalendar(input) {
+    if (!input || input.dataset.nxCalendarConverted === "true") return null;
+
+    var display = document.createElement("input");
+    var displayId = input.id ? input.id + "Display" : "nxDateDisplay";
+    display.type = "text";
+    display.id = displayId;
+    display.className = (input.className ? input.className + " " : "") + "ndp-native-display";
+    display.placeholder = input.getAttribute("placeholder") || "Select date";
+    display.value = formatDisplay(input.value || "");
+    display.readOnly = true;
+    display.required = input.required;
+    display.disabled = input.disabled;
+    display.setAttribute("aria-label", input.getAttribute("aria-label") || "Select date");
+    display.setAttribute("autocomplete", "off");
+
+    if (input.id) {
+      document.querySelectorAll("label[for]").forEach(function (label) {
+        if (label.htmlFor === input.id) label.htmlFor = displayId;
+      });
+    }
+
+    input.type = "hidden";
+    input.required = false;
+    input.setAttribute("aria-hidden", "true");
+    input.dataset.nxCalendarConverted = "true";
+    input.insertAdjacentElement("afterend", display);
+    return display;
+  }
+
+  function initNativeDateRange(startInput, endInput, options) {
+    if (!startInput || !endInput || startInput.dataset.nxCalendarConverted === "true") return null;
+    options = options || {};
+    var startDisplay = copyDateInputForCalendar(startInput);
+    var endDisplay = copyDateInputForCalendar(endInput);
+    if (!startDisplay || !endDisplay) return null;
+
+    var picker = initSharedDateRange({
+      departHiddenInput: startInput,
+      departDisplayInput: startDisplay,
+      returnHiddenInput: endInput,
+      returnDisplayInput: endDisplay,
+      minDate: options.minDate || todayIso(),
+      maxDate: options.maxDate || "",
+      departPrompt: options.departPrompt || "Choose your check-in date",
+      returnPrompt: options.returnPrompt || "Choose your check-out date",
+      singleSetPrompt: options.singleSetPrompt || "Date set",
+    });
+
+    // Stays seeds its default dates after the page's modules have loaded.
+    // Keep the friendly display controls in sync with those unchanged hidden
+    // form values, and with any other programmatic updates made by a page.
+    function reflectDate(hiddenInput, displayInput) {
+      displayInput.value = formatDisplay(hiddenInput.value || "");
+    }
+    ["input", "change"].forEach(function (eventName) {
+      startInput.addEventListener(eventName, function () { reflectDate(startInput, startDisplay); });
+      endInput.addEventListener(eventName, function () { reflectDate(endInput, endDisplay); });
+    });
+    return picker;
+  }
+
+  function initNativeSingleDateInput(input, options) {
+    if (!input || input.dataset.nxCalendarConverted === "true") return null;
+    options = options || {};
+    var display = copyDateInputForCalendar(input);
+    if (!display) return null;
+    return initSingleDateInput(display, {
+      valueInput: input,
+      minDate: Object.prototype.hasOwnProperty.call(options, "minDate") ? options.minDate : todayIso(),
+      maxDate: options.maxDate || "",
+      prompt: options.prompt || "Choose a date",
+    });
+  }
+
   // Rebuild any *open* calendars when crossing the compact/desktop breakpoint
   // so the month count (1 vs 2) stays correct without needing to close first.
   if (typeof compactQuery.addEventListener === "function") {
@@ -473,25 +576,60 @@
 
   window.initSingleCalendarInput = initSingleDateInput;
   window.initSharedDateRange = initSharedDateRange;
+  window.initNativeDateRange = initNativeDateRange;
+  window.initNativeSingleCalendarInput = initNativeSingleDateInput;
 
-  var mainRangePicker = initSharedDateRange({
-    departHiddenInput: document.getElementById("departPicker"),
-    departDisplayInput: document.getElementById("departPickerDisplay"),
-    returnHiddenInput: document.getElementById("returnPicker"),
-    returnDisplayInput: document.getElementById("returnPickerDisplay"),
-    tripTypeInput: document.getElementById("tripType"),
-  });
-  window.__manualDateRangePicker = mainRangePicker;
+  function bootPageDatePickers() {
+    if (window.__nxPageDatePickersBound) return;
+    window.__nxPageDatePickersBound = true;
 
-  initSharedDateRange({
-    departHiddenInput: document.getElementById("refineDepartPicker"),
-    departDisplayInput: document.getElementById("refineDepartPickerDisplay"),
-    returnHiddenInput: document.getElementById("refineReturnPicker"),
-    returnDisplayInput: document.getElementById("refineReturnPickerDisplay"),
-    tripTypeInput: document.getElementById("resultsTripType"),
-  });
+    /* Native date controls marked in server-rendered templates use the same
+       range-calendar surface as Flights. The original input remains in the
+       form (as a hidden ISO value), so route handlers and AI/search pipelines
+       receive exactly the fields they did before this UI upgrade. */
+    document.querySelectorAll("[data-nx-calendar-range-start]").forEach(function (startInput) {
+      var key = startInput.getAttribute("data-nx-calendar-range-start");
+      var endInput = document.querySelector('[data-nx-calendar-range-end="' + key + '"]');
+      initNativeDateRange(startInput, endInput);
+    });
 
-  document.querySelectorAll('input[name="leg_date"]').forEach(function (input) {
-    initSingleDateInput(input);
-  });
+    document.querySelectorAll('input[type="date"][data-nx-calendar]').forEach(function (input) {
+      var mode = input.getAttribute("data-nx-calendar");
+      initNativeSingleDateInput(input, mode === "past" ? {
+        minDate: "",
+        maxDate: todayIso(),
+        prompt: "Choose a date",
+      } : {
+        minDate: todayIso(),
+        prompt: "Choose a date",
+      });
+    });
+
+    var mainRangePicker = initSharedDateRange({
+      departHiddenInput: document.getElementById("departPicker"),
+      departDisplayInput: document.getElementById("departPickerDisplay"),
+      returnHiddenInput: document.getElementById("returnPicker"),
+      returnDisplayInput: document.getElementById("returnPickerDisplay"),
+      tripTypeInput: document.getElementById("tripType"),
+    });
+    window.__manualDateRangePicker = mainRangePicker;
+
+    initSharedDateRange({
+      departHiddenInput: document.getElementById("refineDepartPicker"),
+      departDisplayInput: document.getElementById("refineDepartPickerDisplay"),
+      returnHiddenInput: document.getElementById("refineReturnPicker"),
+      returnDisplayInput: document.getElementById("refineReturnPickerDisplay"),
+      tripTypeInput: document.getElementById("resultsTripType"),
+    });
+
+    document.querySelectorAll('input[name="leg_date"]').forEach(function (input) {
+      initSingleDateInput(input);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootPageDatePickers, { once: true });
+  } else {
+    bootPageDatePickers();
+  }
 })();

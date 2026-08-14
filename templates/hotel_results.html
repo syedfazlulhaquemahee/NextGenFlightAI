@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ search.place_name or 'Stays' }} • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-performance') }}" />
+</head>
+<body class="hotel-results-page">
+  {% include "partials/platform_header.html" %}
+
+  {% if global_notice %}
+    <div class="hotels-notice" role="status">{{ global_notice }}</div>
+  {% endif %}
+
+  <div class="nu-topbar">
+    <div class="nu-wrap">
+      <form class="nu-search" method="POST" action="{{ url_for('hotel_search') }}" autocomplete="off" id="staySearchForm">
+        <div class="nu-seg nu-seg-where">
+          <label for="nuWhere">Where</label>
+          <input id="nuWhere" type="text" name="place_name" value="{{ search.place_name }}" placeholder="Enter a destination" required
+                 role="combobox" aria-expanded="false" aria-controls="nuList" aria-autocomplete="list" />
+          <input type="hidden" name="place_id" id="nuPlaceId" value="{{ search.place_id }}" />
+          <ul class="nu-suggest" id="nuList" role="listbox" hidden></ul>
+        </div>
+        <div class="nu-seg">
+          <span>Dates</span>
+          <div class="nu-seg-dates">
+            <input type="date" name="checkin" id="nuCheckin" value="{{ search.checkin }}" required aria-label="Check in" data-nx-calendar-range-start="hotel-stay" />
+            <i>–</i>
+            <input type="date" name="checkout" id="nuCheckout" value="{{ search.checkout }}" required aria-label="Check out" data-nx-calendar-range-end="hotel-stay" />
+          </div>
+        </div>
+        <div class="nu-seg">
+          <span>Guests</span>
+          <div class="nu-seg-dates">
+            <select name="rooms" aria-label="Rooms">
+              {% for n in range(1, 5) %}<option value="{{ n }}" {% if n == search.rooms %}selected{% endif %}>{{ n }} room{{ 's' if n > 1 }}</option>{% endfor %}
+            </select>
+            <select name="adults" aria-label="Guests">
+              {% for n in range(1, 9) %}<option value="{{ n }}" {% if n == search.adults %}selected{% endif %}>{{ n }} guest{{ 's' if n > 1 }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <button class="nu-search-btn" type="submit" aria-label="Search stays">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {% if ai_text %}
+    <div class="nu-wrap">
+      <div class="nu-ai">
+        <span class="nu-ai-badge">AI</span>
+        <span>Interpreted &ldquo;{{ ai_text }}&rdquo; as {{ search.place_name }}, {{ search.checkin }} → {{ search.checkout }}, {{ search.adults }} guest{{ 's' if search.adults != 1 }}{% if ai_filters.min_stars %}, {{ ai_filters.min_stars }}+ stars{% endif %}{% if ai_filters.free_cancellation %}, free cancellation{% endif %}</span>
+      </div>
+    </div>
+  {% endif %}
+
+  <main class="nu-wrap nu-results">
+    <aside class="nu-filters" id="nuFilters" aria-label="Filter results">
+      <div class="nu-filters-head">
+        <h2>Filter by</h2>
+        <button type="button" class="nu-clear" id="nuClear">Clear all</button>
+      </div>
+
+      <section class="nu-fgroup">
+        <h3>Price per night</h3>
+        <output class="nu-price-out" id="nuPriceOut">Any price</output>
+        <input type="range" id="nuPrice" class="nu-range"
+               min="{{ (facets.min_price / search.nights)|round(0, 'floor')|int }}"
+               max="{{ (facets.max_price / search.nights)|round(0, 'ceil')|int }}"
+               value="{{ (facets.max_price / search.nights)|round(0, 'ceil')|int }}" step="5" aria-label="Maximum price per night" />
+        <div class="nu-range-ends">
+          <span>US${{ (facets.min_price / search.nights)|round(0, 'floor')|int }}</span>
+          <span>US${{ (facets.max_price / search.nights)|round(0, 'ceil')|int }}+</span>
+        </div>
+      </section>
+
+      <section class="nu-fgroup">
+        <h3>Guest rating</h3>
+        {% for val, label in [(9, 'Wonderful 9+'), (8, 'Very good 8+'), (7, 'Good 7+'), (6, 'Pleasant 6+')] %}
+          <label class="nu-check"><input type="radio" name="nuRating" value="{{ val }}" /><span>{{ label }}</span></label>
+        {% endfor %}
+        <label class="nu-check"><input type="radio" name="nuRating" value="0" checked /><span>Any rating</span></label>
+      </section>
+
+      <section class="nu-fgroup">
+        <h3>Star rating</h3>
+        <div class="nu-star-row">
+          {% for n in [5, 4, 3, 2, 1] %}
+            <label class="nu-star-btn"><input type="checkbox" class="nuStar" value="{{ n }}" /><span>{{ n }} ★</span></label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="nu-fgroup">
+        <h3>Booking options</h3>
+        <label class="nu-check"><input type="checkbox" id="nuRefundable" /><span>Free cancellation</span></label>
+        <label class="nu-check"><input type="checkbox" id="nuBreakfast" /><span>Breakfast included</span></label>
+      </section>
+
+      <section class="nu-fgroup">
+        <h3>Amenities</h3>
+        {% for amenity in facets.amenities %}
+          <label class="nu-check"><input type="checkbox" class="nuAmenity" value="{{ amenity }}" /><span>{{ amenity }}</span></label>
+        {% endfor %}
+      </section>
+    </aside>
+
+    <section>
+      <div class="nu-list-head">
+        <div>
+          <h1 id="nuCount">{{ cards|length }} propert{{ 'y' if cards|length == 1 else 'ies' }}</h1>
+          <p class="nu-list-sub">{{ search.place_name }} · {{ search.nights }} night{{ 's' if search.nights != 1 }} · {{ search.adults }} guest{{ 's' if search.adults != 1 }}</p>
+        </div>
+        <label class="nu-sort">
+          <span>Sort by</span>
+          <select id="nuSort">
+            <option value="recommended">Recommended</option>
+            <option value="price_low">Price: low to high</option>
+            <option value="price_high">Price: high to low</option>
+            <option value="rating">Guest rating</option>
+            <option value="stars">Star rating</option>
+          </select>
+        </label>
+      </div>
+
+      <button type="button" class="nu-filters-toggle" id="nuFiltersToggle">Filters &amp; sort</button>
+
+      {% if not cards %}
+        <div class="nu-empty">
+          <h2>No availability for these dates</h2>
+          <p>Suppliers returned no live rates for {{ search.place_name }} between {{ search.checkin }} and {{ search.checkout }}. Try shifting your dates or a nearby area.</p>
+          <a class="nu-btn" href="{{ url_for('hotels') }}">Change search</a>
+        </div>
+      {% else %}
+        <p class="nu-none" id="nuNone" hidden>No properties match these filters. <button type="button" id="nuClear2">Clear filters</button></p>
+
+        <ul class="nu-grid" id="nuCards">{% include "partials/hotel_result_cards.html" %}</ul>
+        {% if has_more %}
+          <div class="nu-load-more-wrap">
+            <button type="button" class="nu-btn nu-load-more" id="nuLoadMore"
+                    data-place-id="{{ search.place_id }}" data-checkin="{{ search.checkin }}" data-checkout="{{ search.checkout }}"
+                    data-place-name="{{ search.place_name }}" data-children="{{ search.children_ages|join(',') }}"
+                    data-adults="{{ search.adults }}" data-rooms="{{ search.rooms }}" data-offset="{{ next_offset }}">
+              Show more stays
+            </button>
+          </div>
+        {% endif %}
+      {% endif %}
+    </section>
+  </main>
+
+  {% if lite_env == 'sandbox' %}
+    <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
+  <script>
+    StaysSearch.init({
+      input: "nuWhere", placeId: "nuPlaceId", list: "nuList",
+      checkin: "nuCheckin", checkout: "nuCheckout", form: "staySearchForm"
+    });
+
+    (function () {
+      var wrap = document.getElementById("nuCards");
+      if (!wrap) return;
+      var cards = Array.prototype.slice.call(wrap.children);
+      var priceEl = document.getElementById("nuPrice");
+      var priceOut = document.getElementById("nuPriceOut");
+      // step="5" makes the browser snap `value` down to the nearest valid
+      // step, which would silently filter out the priciest property on load.
+      priceEl.value = priceEl.max;
+      var priceMax = Number(priceEl.max);
+      var countEl = document.getElementById("nuCount");
+      var noneEl = document.getElementById("nuNone");
+      var sortEl = document.getElementById("nuSort");
+
+      function checked(sel) {
+        return Array.prototype.slice.call(document.querySelectorAll(sel))
+          .filter(function (el) { return el.checked; }).map(function (el) { return el.value; });
+      }
+
+      function apply() {
+        var maxPrice = Number(priceEl.value);
+        var minRating = Number((document.querySelector('input[name="nuRating"]:checked') || {}).value || 0);
+        var stars = checked(".nuStar").map(Number);
+        var wantRefund = document.getElementById("nuRefundable").checked;
+        var wantBreakfast = document.getElementById("nuBreakfast").checked;
+        var amenities = checked(".nuAmenity");
+
+        priceOut.textContent = maxPrice >= priceMax ? "Any price" : "Up to US$" + maxPrice + " / night";
+
+        var shown = 0;
+        cards.forEach(function (c) {
+          var d = c.dataset, ok = true;
+          if (maxPrice < priceMax && Number(d.price) > maxPrice) ok = false;
+          if (ok && minRating && Number(d.rating) < minRating) ok = false;
+          if (ok && stars.length && stars.indexOf(Number(d.stars)) === -1) ok = false;
+          if (ok && wantRefund && d.refundable !== "1") ok = false;
+          if (ok && wantBreakfast && d.breakfast !== "1") ok = false;
+          if (ok && amenities.length) {
+            var has = (d.amenities || "").split("|");
+            ok = amenities.every(function (a) { return has.indexOf(a) !== -1; });
+          }
+          c.hidden = !ok;
+          if (ok) shown++;
+        });
+
+        countEl.textContent = shown + (shown === 1 ? " property" : " properties");
+        noneEl.hidden = shown !== 0;
+      }
+
+      function sort() {
+        var mode = sortEl.value;
+        cards.slice().sort(function (a, b) {
+          var A = a.dataset, B = b.dataset;
+          if (mode === "price_low") return Number(A.price) - Number(B.price);
+          if (mode === "price_high") return Number(B.price) - Number(A.price);
+          if (mode === "rating") return Number(B.rating) - Number(A.rating);
+          if (mode === "stars") return Number(B.stars) - Number(A.stars);
+          return Number(A.index) - Number(B.index);
+        }).forEach(function (c) { wrap.appendChild(c); });
+      }
+
+      document.getElementById("nuFilters").addEventListener("change", apply);
+      priceEl.addEventListener("input", apply);
+      sortEl.addEventListener("change", sort);
+
+      function clearAll() {
+        priceEl.value = priceMax;
+        document.querySelector('input[name="nuRating"][value="0"]').checked = true;
+        document.querySelectorAll(".nuStar, .nuAmenity").forEach(function (el) { el.checked = false; });
+        document.getElementById("nuRefundable").checked = false;
+        document.getElementById("nuBreakfast").checked = false;
+        apply();
+      }
+      document.getElementById("nuClear").addEventListener("click", clearAll);
+      var c2 = document.getElementById("nuClear2");
+      if (c2) c2.addEventListener("click", clearAll);
+      document.getElementById("nuFiltersToggle").addEventListener("click", function () {
+        document.getElementById("nuFilters").classList.toggle("is-open");
+      });
+
+      var loadMore = document.getElementById("nuLoadMore");
+      if (loadMore) {
+        loadMore.addEventListener("click", function () {
+          if (loadMore.disabled) return;
+          var params = new URLSearchParams({
+            place_id: loadMore.dataset.placeId || "",
+            place_name: loadMore.dataset.placeName || "",
+            checkin: loadMore.dataset.checkin || "",
+            checkout: loadMore.dataset.checkout || "",
+            adults: loadMore.dataset.adults || "2",
+            rooms: loadMore.dataset.rooms || "1",
+            children_ages: loadMore.dataset.children || "",
+            offset: loadMore.dataset.offset || "0"
+          });
+          loadMore.disabled = true;
+          loadMore.setAttribute("aria-busy", "true");
+          loadMore.textContent = "Loading stays…";
+          fetch("/api/hotels/search-more?" + params.toString())
+            .then(function (response) {
+              if (!response.ok) throw new Error("Unable to load more stays");
+              return response.json();
+            })
+            .then(function (payload) {
+              var template = document.createElement("template");
+              template.innerHTML = payload.html || "";
+              var added = Array.prototype.slice.call(template.content.children);
+              if (added.length) {
+                var hadUnlimitedPrice = Number(priceEl.value) >= priceMax;
+                wrap.appendChild(template.content);
+                cards = cards.concat(added);
+                var nextPriceMax = cards.reduce(function (current, card) {
+                  return Math.max(current, Number(card.dataset.price) || 0);
+                }, priceMax);
+                if (nextPriceMax > priceMax) {
+                  priceMax = nextPriceMax;
+                  priceEl.max = String(nextPriceMax);
+                  if (hadUnlimitedPrice) priceEl.value = String(nextPriceMax);
+                }
+                sort();
+                apply();
+              }
+              if (payload.has_more) {
+                loadMore.dataset.offset = String(payload.next_offset || Number(loadMore.dataset.offset || 0) + 50);
+                loadMore.disabled = false;
+                loadMore.removeAttribute("aria-busy");
+                loadMore.textContent = "Show more stays";
+              } else {
+                loadMore.closest(".nu-load-more-wrap").remove();
+              }
+            })
+            .catch(function () {
+              loadMore.disabled = false;
+              loadMore.removeAttribute("aria-busy");
+              loadMore.textContent = "Try again";
+            });
+        });
+      }
+
+      /* preselect whatever the AI inferred from the query */
+      var ai = {{ ai_filters|tojson }};
+      if (ai && Object.keys(ai).length) {
+        if (ai.min_rating) {
+          var tier = [9, 8, 7, 6].find(function (t) { return ai.min_rating >= t; });
+          var el = tier && document.querySelector('input[name="nuRating"][value="' + tier + '"]');
+          if (el) el.checked = true;
+        }
+        if (ai.min_stars) {
+          document.querySelectorAll(".nuStar").forEach(function (el) {
+            if (Number(el.value) >= ai.min_stars) el.checked = true;
+          });
+        }
+        if (ai.max_price_per_night) priceEl.value = Math.min(priceMax, Math.ceil(ai.max_price_per_night));
+        if (ai.free_cancellation) document.getElementById("nuRefundable").checked = true;
+        if (ai.breakfast) document.getElementById("nuBreakfast").checked = true;
+        (ai.amenities || []).forEach(function (name) {
+          document.querySelectorAll(".nuAmenity").forEach(function (el) { if (el.value === name) el.checked = true; });
+        });
+        if (ai.sort && ai.sort !== "recommended") { sortEl.value = ai.sort; sort(); }
+      }
+      apply();
+    })();
+  </script>
+</body>
+</html>

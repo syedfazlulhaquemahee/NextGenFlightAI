@@ -1,0 +1,43 @@
+{% for card in cards %}
+  {% set url = url_for('hotel_detail', hotel_id=card.hotel_id, checkin=search.checkin, checkout=search.checkout, adults=search.adults, rooms=search.rooms, place_id=search.place_id, place_name=search.place_name) %}
+  <li data-price="{{ card.offer.nightly_amount or card.offer.total_amount }}"
+      data-rating="{{ card.rating or 0 }}"
+      data-stars="{{ card.stars }}"
+      data-refundable="{{ 1 if card.offer.refundable_available else 0 }}"
+      data-breakfast="{{ 1 if card.offer.has_breakfast else 0 }}"
+      data-amenities="{{ card.amenities|join('|') }}"
+      data-index="{{ (card_offset|default(0)) + loop.index0 }}">
+    <a class="nu-card" href="{{ url }}">
+      <span class="nu-card-img">
+        {% if card.photo %}<img src="{{ card.photo }}" alt="" loading="lazy" decoding="async" />{% endif %}
+      </span>
+      <span class="nu-card-body">
+        {% if card.stars %}
+          <span class="nu-stars" aria-label="{{ card.stars }} star property">{%- for _ in range(card.stars) %}★{% endfor -%}</span>
+        {% endif %}
+        <span class="nu-card-name">{{ card.name }}</span>
+        <span class="nu-card-loc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+          <span>{{ card.city }}{% if card.address %}, {{ card.address }}{% endif %}</span>
+        </span>
+
+        <span class="nu-card-foot">
+          <span class="nu-score">
+            {% if card.rating %}
+              <span class="nu-score-badge {{ 'nu-score-badge--mid' if card.rating < 8 }}">{{ card.rating }}</span>
+              <span class="nu-score-text">
+                <strong>{{ card.review_label }}</strong>
+                {% if card.review_count %}<span>{{ '{:,}'.format(card.review_count) }} reviews</span>{% endif %}
+              </span>
+            {% endif %}
+          </span>
+          <span class="nu-price">
+            {% if card.offer.was_amount %}<s>US${{ '{:,.0f}'.format(card.offer.was_amount) }}</s>{% endif %}
+            <strong>US${{ '{:,.0f}'.format(card.offer.total_amount) }}</strong>
+            <span>{{ search.rooms }} room{{ 's' if search.rooms != 1 }} x {{ search.nights }} night{{ 's' if search.nights != 1 }} incl. taxes</span>
+          </span>
+        </span>
+      </span>
+    </a>
+  </li>
+{% endfor %}

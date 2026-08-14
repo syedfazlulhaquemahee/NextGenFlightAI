@@ -24,12 +24,13 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260722-cally') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260529-border-only-focus') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-results-calendar') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260813-sort-dropdown') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260514-slim2') }}" />
   {% if flex_streaming or search_pending %}
   <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
   {% endif %}
+  {% include "partials/flights_parity_head.html" %}
 </head>
 <body class="results-page{% if flex_streaming or search_pending %} flex-stream-results{% endif %}">
   {% macro results_icon(name, class_name='') -%}
@@ -685,7 +686,11 @@
                   />
                 </div>
 
-                <button class="results-query-swap" type="button" id="resultsSwapBtn" aria-label="Swap origin and destination">⇄</button>
+                <button class="results-query-swap" type="button" id="resultsSwapBtn" aria-label="Swap origin and destination">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M7 7h11m0 0-3-3m3 3-3 3M17 17H6m0 0 3-3m-3 3 3 3"/>
+                  </svg>
+                </button>
 
                 <div class="field results-query-field">
                   <label>To</label>
@@ -720,6 +725,9 @@
                     readonly
                     required
                   />
+                  <span class="results-date-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+                  </span>
                   <input id="refineDepartPicker" type="hidden" name="depart_date" value="{{ query.depart_date or '' }}" />
                 </div>
 
@@ -734,6 +742,9 @@
                     aria-label="Return"
                     readonly
                   />
+                  <span class="results-date-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+                  </span>
                   <input id="refineReturnPicker" type="hidden" name="return_date" value="{{ query.return_date or '' }}" />
                 </div>
               </div>
@@ -2663,7 +2674,7 @@
   <script type="module" src="{{ url_for('static', filename='vendor/cally/cally.js', v='0.9.2') }}"></script>
   <script src="{{ url_for('static', filename='search-validation.js') }}"></script>
   <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260722-cally') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260813-results-calendar') }}"></script>
   <script>
   /* ── SRB inline-edit panel controller ── */
   (function () {
@@ -2861,75 +2872,68 @@
     passSel?.addEventListener("change",  syncPaxLabel);
     cabinSel?.addEventListener("change", syncPaxLabel);
 
-    /* Calendar — inline inside the dates panel */
+    /* Calendar — use the same compact Cally/shadcn range calendar as the
+       mobile editor. This replaces the old results-only Flatpickr instance. */
     const initSrbCalendars = () => {
-      if (typeof window.flatpickr !== "function") return;
       const container = document.getElementById("srbInlineCalendar");
       if (!container || container.dataset.srbCalBound === "1") return;
-      container.dataset.srbCalBound = "1";
 
-      const isoFmt = "Y-m-d";
-      const parseDates = [departHid?.value, returnHid?.value]
-        .filter(Boolean)
-        .map(v => window.flatpickr.parseDate(v, isoFmt))
-        .filter(Boolean);
-
-      const syncFillerWeek = (fp) => {
-        const containers = Array.from(fp?.days?.querySelectorAll(".dayContainer") || []);
-        containers.forEach((dayContainer) => {
-          const cells = Array.from(dayContainer.querySelectorAll(".flatpickr-day"));
-          const lastWeek = cells.slice(-7);
-          const isOnlyNextMonth = lastWeek.length === 7 && lastWeek.every((cell) => cell.classList.contains("nextMonthDay"));
-          dayContainer.classList.toggle("srb-hide-final-week", isOnlyNextMonth);
-        });
-      };
-
-      const picker = window.flatpickr(container, {
-        inline: true,
-        mode: (tripType?.value === "oneway") ? "single" : "range",
-        dateFormat: isoFmt,
-        disableMobile: true,
-        allowInput: false,
-        monthSelectorType: "static",
-        minDate: "today",
-        showMonths: 1,
-        defaultDate: parseDates.length ? parseDates : undefined,
-        onReady(_sel, _str, fp) {
-          if (fp.calendarContainer) fp.calendarContainer.classList.add("nx-calendar");
-          syncFillerWeek(fp);
-        },
-        onMonthChange(_sel, _str, fp) {
-          syncFillerWeek(fp);
-        },
-        onYearChange(_sel, _str, fp) {
-          syncFillerWeek(fp);
-        },
-        onChange(selected, _str, fp) {
-          syncFillerWeek(fp);
-          const dep = selected[0] ? fp.formatDate(selected[0], isoFmt) : "";
-          const ret = selected[1] ? fp.formatDate(selected[1], isoFmt) : "";
-          if (departHid) { departHid.value = dep; departHid.dispatchEvent(new Event("change", { bubbles: true })); }
-          if (returnHid) { returnHid.value = ret; returnHid.dispatchEvent(new Event("change", { bubbles: true })); }
-          syncDatesLabel();
-          if (fp.config.mode === "single" || selected.length === 2) {
-            setTimeout(() => closeAll(true), 400);
-          }
-        },
-      });
-
-      tripType?.addEventListener("change", () => {
-        const ow = tripType.value === "oneway";
-        picker.set("mode", ow ? "single" : "range");
-        if (ow && picker.selectedDates.length > 1) picker.setDate([picker.selectedDates[0]], false);
-        if (ow && returnHid) {
-          returnHid.value = "";
-          returnHid.dispatchEvent(new Event("change", { bubbles: true }));
+      const mount = () => {
+        if (!window.customElements?.get("calendar-range")) {
+          window.customElements?.whenDefined?.("calendar-range").then(mount);
+          return;
         }
-        syncDatesLabel();
-      });
+        if (container.dataset.srbCalBound === "1") return;
+        container.dataset.srbCalBound = "1";
+        container.classList.add("ndp-body", "srb-shadcn-calendar");
+
+        const addNav = (calendar) => {
+          const previous = document.createElement("span");
+          previous.slot = "previous";
+          previous.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.75 4.75 6.5 10l5.25 5.25" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>';
+          const next = document.createElement("span");
+          next.slot = "next";
+          next.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8.25 4.75 5.25 5.25-5.25 5.25" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>';
+          calendar.append(previous, next);
+        };
+
+        const build = () => {
+          const oneWay = tripType?.value === "oneway";
+          const calendar = document.createElement(oneWay ? "calendar-date" : "calendar-range");
+          calendar.setAttribute("min", new Date().toISOString().slice(0, 10));
+          const month = document.createElement("calendar-month");
+          calendar.appendChild(month);
+          const depart = departHid?.value || "";
+          const returning = returnHid?.value || "";
+          if (oneWay && depart) calendar.setAttribute("value", depart);
+          if (!oneWay && depart && returning) calendar.setAttribute("value", `${depart}/${returning}`);
+          addNav(calendar);
+          calendar.addEventListener("change", () => {
+            const values = String(calendar.value || "").split("/");
+            const depart = values[0] || "";
+            const returning = oneWay ? "" : (values[1] || "");
+            if (departHid) { departHid.value = depart; departHid.dispatchEvent(new Event("change", { bubbles: true })); }
+            if (returnHid) { returnHid.value = returning; returnHid.dispatchEvent(new Event("change", { bubbles: true })); }
+            syncDatesLabel();
+            if (oneWay || returning) setTimeout(() => closeAll(true), 260);
+          });
+          container.replaceChildren(calendar);
+        };
+
+        tripType?.addEventListener("change", () => {
+          if (tripType.value === "oneway" && returnHid) {
+            returnHid.value = "";
+            returnHid.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+          build();
+          syncDatesLabel();
+        });
+        build();
+      };
+      mount();
     };
 
-    /* Run after calendar.js (which comes right after this script tag) */
+    /* Run after the calendar web component has registered. */
     document.addEventListener("DOMContentLoaded", initSrbCalendars, { once: true });
 
     /* Close on outside click or Escape */

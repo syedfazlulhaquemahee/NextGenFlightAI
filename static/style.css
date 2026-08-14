@@ -8746,11 +8746,13 @@ textarea:focus-visible{
 
 .ai-form{
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
 .ai-prompt-shell{
   display: block;
+  min-width: 0;
 }
 
 .ai-prompt-label{

@@ -2242,6 +2242,51 @@ html[data-theme="light"] .results-top-sort-btn { border-color: rgba(15,23,42,0.1
 html[data-theme="light"] .results-top-sort-btn:hover { border-color: rgba(15,23,42,0.2); background: #fff; color: rgba(15,23,42,0.88); }
 html[data-theme="light"] .results-top-sort-btn.is-active { color: rgba(13,116,104,0.98); border-color: rgba(13,148,136,0.4); background: rgba(13,148,136,0.1); }
 
+/* Results sort selector — one compact dropdown for every sort mode. */
+@media (min-width: 761px) {
+  .results-premium-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 8px 0 18px;
+  }
+
+  /* The drawer is already visible alongside results on desktop, so a second
+     Filters trigger above the sort row is redundant and breaks the tray. */
+  .results-filter-drawer-open {
+    display: none !important;
+  }
+
+  .results-top-sort { display: none !important; }
+  .results-top-sort-mobile { display: block; position: relative; }
+  .results-top-sort-select {
+    width: 228px;
+    min-height: 46px;
+    padding: 0 42px 0 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(71,85,105,.18);
+    background-color: #fff;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 650;
+    text-align: left;
+    text-align-last: left;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(15,23,42,.05);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%235b667b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 15px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+  }
+  .results-top-sort-select:hover,
+  .results-top-sort-select:focus { border-color: rgba(13,148,136,.52); outline: none; }
+
+  html:not([data-theme="light"]) .results-top-sort-select {
+    border-color: rgba(255,255,255,.15);
+    background-color: rgba(16,22,34,.92);
+    color: var(--text);
+  }
+}
+
 .results-explorer {
   display: grid;
   grid-template-columns: 258px minmax(0,1fr);

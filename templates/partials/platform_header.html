@@ -2,8 +2,9 @@
   <div class="brand platform-header-inner">
     <a class="brand-link" href="{{ url_for('index') }}">SKAIROVA</a>
     <nav class="site-nav" aria-label="Main navigation">
-      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint not in ['hotels', 'deals'] else '' }}" href="{{ url_for('index') }}">Flights</a>
-      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint == 'hotels' else '' }}" href="{{ url_for('hotels') }}">Hotels</a>
+      {% set hotel_endpoints = ['hotels', 'hotel_search', 'hotel_ai_search', 'hotel_detail'] %}
+      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint not in hotel_endpoints + ['deals'] else '' }}" href="{{ url_for('index') }}">Flights</a>
+      <a class="site-nav-link {{ 'site-nav-active' if request.endpoint in hotel_endpoints else '' }}" href="{{ url_for('hotels') }}">Hotels</a>
       <a class="site-nav-link {{ 'site-nav-active' if request.endpoint == 'deals' else '' }}" href="{{ url_for('deals') }}">Deals</a>
     </nav>
     <div class="topbar-utility">

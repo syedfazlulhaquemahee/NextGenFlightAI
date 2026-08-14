@@ -1759,9 +1759,9 @@ html[data-theme="light"] body.home-page .manual-open-pill-arrow{
   color: #475569 !important;
 }
 
-/* Recent searches + popular destinations */
+/* Recent searches + popular flights near you */
 html[data-theme="light"] body.home-page .home-recent-searches,
-html[data-theme="light"] body.home-page .home-popular-destinations{
+html[data-theme="light"] body.home-page .home-popular-flights{
   border-top-color: rgba(15, 23, 42, 0.10) !important;
 }
 html[data-theme="light"] body.home-page .home-section-title{
@@ -1789,121 +1789,38 @@ html[data-theme="light"] body.home-page .home-recent-title{
 html[data-theme="light"] body.home-page .home-recent-sub{
   color: #64748b !important;
 }
-html[data-theme="light"] body.home-page .home-destination-card{
-  background: rgba(15, 23, 42, 0.03) !important;
-  border-color: rgba(15, 23, 42, 0.10) !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10) !important;
+html[data-theme="light"] body.home-page .home-flights-tabs{
+  border-bottom-color: rgba(15, 23, 42, 0.10) !important;
 }
-html[data-theme="light"] body.home-page .home-destination-card:hover,
-html[data-theme="light"] body.home-page .home-destination-card:focus-visible{
-  border-color: rgba(15, 23, 42, 0.22) !important;
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16) !important;
-}
-html[data-theme="light"] body.home-page .home-destination-credit{
-  color: rgba(100, 116, 139, 0.62) !important;
-}
-html[data-theme="light"] body.home-page .home-destination-tab{
-  background: transparent !important;
-  border-color: transparent !important;
+html[data-theme="light"] body.home-page .home-flights-tab{
   color: rgba(51, 65, 85, 0.72) !important;
 }
-html[data-theme="light"] body.home-page .home-destination-tab:hover{
-  background: rgba(15, 23, 42, 0.05) !important;
+html[data-theme="light"] body.home-page .home-flights-tab:hover{
   color: #1e293b !important;
 }
-html[data-theme="light"] body.home-page .home-destination-tab.is-active{
-  background: #0f172a !important;
-  color: #fff !important;
+html[data-theme="light"] body.home-page .home-flights-tab.is-active{
+  color: #1e293b !important;
 }
-html[data-theme="light"] body.home-page .home-destination-viewall{
-  border-color: rgba(15, 23, 42, 0.14) !important;
-  color: rgba(30, 41, 59, 0.8) !important;
+html[data-theme="light"] body.home-page .home-flights-tab.is-active::after{
+  background: #4f46e5 !important;
 }
-html[data-theme="light"] body.home-page .home-destination-viewall:hover{
-  background: rgba(15, 23, 42, 0.05) !important;
+html[data-theme="light"] body.home-page .home-flight-photo{
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
 }
-html[data-theme="light"] body.home-page .home-destination-hook{
-  color: rgba(51, 65, 85, 0.82) !important;
+html[data-theme="light"] body.home-page .home-flight-route{
+  color: #1e293b !important;
 }
-html[data-theme="light"] body.home-page .home-destination-price{
-  color: #0f172a !important;
-}
-html[data-theme="light"] body.home-page .home-destination-price-skeleton{
-  background: rgba(8, 145, 178, 0.16) !important;
-}
-html[data-theme="light"] body.home-page .home-destination-besttime{
+html[data-theme="light"] body.home-page .home-flight-meta{
   color: #64748b !important;
 }
-html[data-theme="light"] body.home-page .home-destination-explore{
-  color: #4f46e5 !important;
-}
-html[data-theme="light"] body.home-page .home-destination-compare-toggle{
-  color: rgba(71, 85, 105, 0.75) !important;
-}
-html[data-theme="light"] body.home-page .home-destination-compare-toggle:hover,
-html[data-theme="light"] body.home-page .home-destination-compare-toggle:focus-visible{
-  color: #1e293b !important;
-}
-html[data-theme="light"] body.home-page .home-destination-compare-toggle.is-active{
-  color: #4338ca !important;
-}
-html[data-theme="light"] body.home-page .home-compare-bar{
-  background: rgba(255, 255, 255, 0.96) !important;
-  border-color: rgba(15, 23, 42, 0.14) !important;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-bar-label{
-  color: #1e293b !important;
-}
-html[data-theme="light"] body.home-page .home-compare-bar-clear{
-  color: rgba(51, 65, 85, 0.7) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-bar-cta{
-  background: linear-gradient(135deg, #0f766e, #0891b2 54%, #2563eb) !important;
-  color: #fff !important;
-}
-html[data-theme="light"] body.home-page .home-compare-modal-inner{
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.99)) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-modal-close{
-  background: rgba(15, 23, 42, 0.05) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-  color: rgba(30, 41, 59, 0.8) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-editorial-note{
+html[data-theme="light"] body.home-page .home-flights-note{
   color: rgba(100, 116, 139, 0.72) !important;
 }
-html[data-theme="light"] body.home-page .home-compare-head{
-  background: rgba(15, 23, 42, 0.03) !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-head-city{
-  color: #1e293b !important;
-}
-html[data-theme="light"] body.home-page .home-compare-head-country{
-  color: #64748b !important;
-}
-html[data-theme="light"] body.home-page .home-compare-row{
-  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-cell{
-  color: #b45309 !important;
-}
-html[data-theme="light"] body.home-page .home-compare-cell-label{
-  color: rgba(100, 116, 139, 0.8) !important;
-}
-html[data-theme="light"] body.home-page .home-compare-verdict{
-  background: rgba(79, 70, 229, 0.06) !important;
-  border-color: rgba(79, 70, 229, 0.18) !important;
-  color: #312e81 !important;
-}
-html[data-theme="light"] body.home-page .home-compare-explore{
-  border-color: rgba(79, 70, 229, 0.3) !important;
-  color: #4338ca !important;
-}
-html[data-theme="light"] body.home-page .home-compare-explore:hover{
-  background: rgba(79, 70, 229, 0.08) !important;
+html[data-theme="light"] body.home-page .home-flight-card.is-skeleton .home-flight-photo,
+html[data-theme="light"] body.home-page .home-flight-sk-line{
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.04) 25%, rgba(15, 23, 42, 0.09) 37%, rgba(15, 23, 42, 0.04) 63%) !important;
+  background-size: 200% 100% !important;
 }
 
 /* Trust stats */
@@ -4260,7 +4177,13 @@ html[data-theme="light"] body.home-page .gf-seg-label.is-placeholder{
   color: #64748b !important;
 }
 
-html[data-theme="light"] body.home-page .gf-seg-icon,
+html[data-theme="light"] body.home-page .gf-seg-icon{
+  color: #000 !important;
+}
+
+/* .gf-check-icon sits on the dark photo-hero underbar, not the white
+   field pills — keep it blue (matching the checkbox's own accent-color
+   below) rather than black, which nearly disappears against the photo. */
 html[data-theme="light"] body.home-page .gf-check-icon{
   color: #38bdf8 !important;
 }

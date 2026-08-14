@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Stays • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-performance') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260813-hotels-voice') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260813-inline-cue-fix') }}" />
+</head>
+<body class="hotels-page">
+  {% include "partials/platform_header.html" %}
+
+  {% if global_notice %}
+    <div class="hotels-notice" role="status">{{ global_notice }}</div>
+  {% endif %}
+
+  <main class="nu-wrap">
+    <!-- Hero with the floating search pill -->
+    <section class="nu-hero">
+      <img class="nu-hero-img" src="{{ url_for('static', filename='img/destinations/santorini.jpg') }}" alt="" decoding="async" />
+      <h1 class="nu-hero-title">Incredible hotel deals</h1>
+      <p class="nu-hero-sub">Discover hotels, vacation homes and more</p>
+
+      <!-- One pill, two engines: the manual form and the AI prompt swap in place.
+           Both keep the same shell so the hero never shifts between modes. -->
+      <div class="nu-searchbox">
+        <div class="nu-mode" role="tablist" aria-label="Search mode">
+          <button type="button" class="nu-mode-btn is-active" role="tab" id="nuModeManual"
+                  aria-selected="true" aria-controls="staySearchForm" data-mode="manual">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span>Search</span>
+          </button>
+          <button type="button" class="nu-mode-btn" role="tab" id="nuModeAi"
+                  aria-selected="false" aria-controls="stayAiForm" data-mode="ai">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/><path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8z" opacity=".7"/></svg>
+            <span>Ask AI</span>
+          </button>
+        </div>
+
+        <form class="nu-search" method="POST" action="{{ url_for('hotel_search') }}" autocomplete="off" id="staySearchForm">
+          <div class="nu-seg nu-seg-where">
+            <label for="nuWhere">Where</label>
+            <input id="nuWhere" type="text" name="place_name" placeholder="Enter a destination" required
+                   role="combobox" aria-expanded="false" aria-controls="nuList" aria-autocomplete="list" />
+            <input type="hidden" name="place_id" id="nuPlaceId" />
+            <ul class="nu-suggest" id="nuList" role="listbox" hidden></ul>
+          </div>
+
+          <div class="nu-seg">
+            <span>Dates</span>
+            <div class="nu-seg-dates">
+              <input type="date" name="checkin" id="nuCheckin" value="{{ defaults.checkin }}" required aria-label="Check in" data-nx-calendar-range-start="hotel-stay" />
+              <i>–</i>
+              <input type="date" name="checkout" id="nuCheckout" value="{{ defaults.checkout }}" required aria-label="Check out" data-nx-calendar-range-end="hotel-stay" />
+            </div>
+          </div>
+
+          <div class="nu-seg">
+            <span>Guests</span>
+            <div class="nu-seg-dates">
+              <select name="rooms" aria-label="Rooms">
+                {% for n in range(1, 5) %}<option value="{{ n }}">{{ n }} room{{ 's' if n > 1 }}</option>{% endfor %}
+              </select>
+              <select name="adults" aria-label="Guests">
+                {% for n in range(1, 9) %}<option value="{{ n }}" {% if n == 2 %}selected{% endif %}>{{ n }} guest{{ 's' if n > 1 }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <button class="nu-search-btn" type="submit" aria-label="Search stays">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </button>
+        </form>
+
+        <!-- Posts straight to /hotels/ai-search, which parses the sentence and
+             resolves the destination before running the same rate search. -->
+        <form class="nu-search nu-search--ai" method="POST" action="{{ url_for('hotel_ai_search') }}"
+              autocomplete="off" id="stayAiForm" hidden>
+          <div class="nu-seg nu-seg-ai">
+            <label class="sr-only" for="nuAiText">Describe your stay</label>
+            <div class="nu-hotel-ai-shell">
+              <div class="nu-hotel-ai-ring ai-reference-surface">
+                <div class="nu-hotel-ai-wrap ai-reference-row">
+                  <button type="button" class="nu-hotel-ai-icon nu-hotel-ai-magic ai-reference-leading" id="nuHotelSampleBtn" aria-label="Insert an example hotel search" title="Try an example">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/><path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8z" opacity=".7"/></svg>
+                  </button>
+                  <!-- The box is one row tall, so JS swaps in a shorter prompt on narrow screens. -->
+                  <textarea id="nuAiText" name="q" class="nu-ai-input nu-hotel-ai-input" rows="1" wrap="soft" maxlength="300"
+                            placeholder="5 star hotel in Dubai with a pool, Dec 12–15, 2 guests"
+                            data-placeholder-sm="Hotel in Dubai, Dec 12–15"
+                            aria-describedby="nuAiKeyboardHint"></textarea>
+                  <span class="nu-hotel-ai-placeholder-overlay" id="nuHotelAiPlaceholder" aria-hidden="true">5 star hotel in Dubai with a pool, Dec 12–15, 2 guests</span>
+                  <span class="nu-hotel-ai-actions" role="group" aria-label="AI search actions">
+                    <button type="button" class="nu-hotel-ai-icon nu-ai-mic ai-reference-mic" id="stayVoiceMicBtn" aria-label="Search stays by voice" aria-pressed="false" title="Search stays by voice">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                        <path d="M12 18v4"/><path d="M9 22h6"/>
+                      </svg>
+                    </button>
+                    <button class="nu-search-btn nu-hotel-ai-submit ai-reference-submit" type="submit" aria-label="Search stays with AI">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                      <span class="nu-ai-spinner" aria-hidden="true"></span>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <span id="nuAiKeyboardHint" class="sr-only">Press Enter to search. Shift+Enter adds a new line.</span>
+          </div>
+        </form>
+
+        <div class="nu-ai-chips" id="nuAiChips" role="group" aria-label="Example stay searches" hidden>
+          <button type="button" class="nu-ai-chip" data-prompt="Cheap hotel in Bangkok for 4 nights under $80 a night">Under budget</button>
+          <button type="button" class="nu-ai-chip" data-prompt="5 star hotel in Dubai with a pool and spa for 3 nights">Luxury</button>
+          <button type="button" class="nu-ai-chip" data-prompt="Hotel in Rome with free cancellation and breakfast, 2 guests, 3 nights">Free cancellation</button>
+          <button type="button" class="nu-ai-chip" data-prompt="Family room in Orlando for 2 adults and 2 kids aged 6 and 9, 5 nights">Family</button>
+          <button type="button" class="nu-ai-chip" data-prompt="Highly rated hotel near the beach in Barcelona next month for 4 nights">Top rated</button>
+        </div>
+      </div>
+
+      <p class="nu-hint" id="nuHint">Pick a destination from the suggestions to search.</p>
+      <p class="nu-ai-status" id="nuAiStatus" role="status" hidden>Reading your request…</p>
+
+    </section>
+
+    <!-- Feature strip -->
+    <section class="nu-features">
+      <div class="nu-feature">
+        <span class="nu-feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9.5 9.5h.01M14.5 14.5h.01"/></svg>
+        </span>
+        <div>
+          <h3>Best Stay Deals</h3>
+          <p>Find competitive rates across thousands of properties.</p>
+        </div>
+      </div>
+      <div class="nu-feature">
+        <span class="nu-feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
+        </span>
+        <div>
+          <h3>Global Property Network</h3>
+          <p>Choose from hotels, apartments, villas, and resorts worldwide.</p>
+        </div>
+      </div>
+      <div class="nu-feature">
+        <span class="nu-feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.7a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg>
+        </span>
+        <div>
+          <h3>Always Here To Help</h3>
+          <p>Our support team is ready whenever your trip needs assistance.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent searches: localStorage-backed, replays a real past stay search -->
+    <section class="nu-section" id="recentStaysSection" hidden>
+      <div class="nu-section-head">
+        <h2>Recent searches</h2>
+        <button type="button" class="nu-clear" id="recentStaysClear">Clear</button>
+      </div>
+      <div class="nu-recent-viewport">
+        <div class="nu-recent" id="recentStaysList" role="list"></div>
+      </div>
+    </section>
+
+    <!-- Recommended + Nearby load async: pricing real properties takes seconds -->
+    <section class="nu-section" id="recommendedSection">
+      <div class="nu-section-head">
+        <h2>Recommended hotels</h2>
+        <div class="nu-arrows">
+          <button type="button" class="nu-arrow" data-rail="recommended" data-dir="-1" aria-label="Scroll left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="nu-arrow" data-rail="recommended" data-dir="1" aria-label="Scroll right">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="nu-rail" id="railRecommended">
+        {% for _ in range(3) %}<div class="nu-card nu-skeleton"><span class="nu-card-img"></span><span class="nu-card-body"><span class="nu-sk-line nu-sk-line--sm"></span><span class="nu-sk-line"></span><span class="nu-sk-line nu-sk-line--sm"></span></span></div>{% endfor %}
+      </div>
+    </section>
+
+    <section class="nu-section" id="nearbySection" hidden>
+      <div class="nu-section-head">
+        <h2>Nearby hotels</h2>
+        <div class="nu-arrows">
+          <button type="button" class="nu-arrow" data-rail="nearby" data-dir="-1" aria-label="Scroll left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="nu-arrow" data-rail="nearby" data-dir="1" aria-label="Scroll right">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="nu-rail" id="railNearby"></div>
+      <p class="nu-rail-note" id="nearbyNote" hidden></p>
+    </section>
+
+    <!-- Popular destinations -->
+    {% if destinations %}
+    <section class="nu-section">
+      <div class="nu-section-head">
+        <h2>Popular destinations</h2>
+        <div class="nu-arrows">
+          <button type="button" class="nu-arrow" data-rail="popular" data-dir="-1" aria-label="Scroll left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="nu-arrow" data-rail="popular" data-dir="1" aria-label="Scroll right">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="nu-rail" id="railPopular">
+        {% for d in destinations[:12] %}
+          <button type="button" class="nu-card nu-card--dest" data-city="{{ d.city }}">
+            <span class="nu-card-img">
+              <img src="{{ url_for('static', filename='img/destinations/' ~ d.photo) }}" alt="{{ d.alt }}" loading="lazy" />
+            </span>
+            <span class="nu-card-body">
+              <span class="nu-card-name">{{ d.city }}</span>
+              <span class="nu-card-loc">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+                <span>{{ d.country }}</span>
+              </span>
+            </span>
+          </button>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </main>
+
+  {% if lite_env == 'sandbox' %}
+    <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
+  <script>
+    StaysSearch.init({
+      input: "nuWhere", placeId: "nuPlaceId", list: "nuList",
+      checkin: "nuCheckin", checkout: "nuCheckout", hint: "nuHint", form: "staySearchForm"
+    });
+    StaysSearch.modeToggle({
+      tabs: "nuModeManual,nuModeAi", manualForm: "staySearchForm", aiForm: "stayAiForm",
+      aiText: "nuAiText", chips: "nuAiChips", status: "nuAiStatus", hint: "nuHint",
+      where: "nuWhere", checkin: "nuCheckin", checkout: "nuCheckout"
+    });
+    StaysSearch.rails();
+    StaysSearch.renderRecent();
+    StaysSearch.showcase();
+
+    const hotelSampleBtn = document.getElementById("nuHotelSampleBtn");
+    const hotelAiText = document.getElementById("nuAiText");
+    if (hotelSampleBtn && hotelAiText) {
+      hotelSampleBtn.addEventListener("click", function () {
+        hotelAiText.value = "5 star hotel in Dubai with a pool, Dec 12–15, 2 guests";
+        hotelAiText.dispatchEvent(new Event("input", { bubbles: true }));
+        hotelAiText.focus();
+        hotelAiText.setSelectionRange(hotelAiText.value.length, hotelAiText.value.length);
+      });
+    }
+
+    // Hotels keeps its own rotating examples, rendered by the same overlay
+    // mechanism used by Flights so both product pages align exactly.
+    if (hotelAiText) {
+      const hotelAiPlaceholder = document.getElementById("nuHotelAiPlaceholder");
+      const hotelAiExamples = [
+        "5 star hotel in Dubai with a pool, Dec 12–15, 2 guests",
+        "Boutique hotel in Paris near the Louvre next weekend",
+        "Family stay in Orlando with breakfast for 4 guests",
+        "Beach resort in Bali for 5 nights under $300 a night",
+        "Highly rated hotel in Tokyo with free cancellation"
+      ];
+      let hotelAiExampleIndex = 0;
+      const rotateHotelAiExample = function () {
+        if (hotelAiText.value.trim() || document.hidden) return;
+        hotelAiExampleIndex = (hotelAiExampleIndex + 1) % hotelAiExamples.length;
+        if (hotelAiPlaceholder) hotelAiPlaceholder.textContent = hotelAiExamples[hotelAiExampleIndex];
+      };
+      const syncHotelAiPlaceholder = function () {
+        if (!hotelAiPlaceholder) return;
+        const visible = !hotelAiText.value.trim();
+        hotelAiPlaceholder.hidden = !visible;
+        hotelAiPlaceholder.style.opacity = visible ? "1" : "0";
+      };
+      hotelAiText.addEventListener("beforeinput", function (event) {
+        if (event.inputType && !event.inputType.startsWith("delete") && hotelAiPlaceholder) {
+          hotelAiPlaceholder.hidden = true;
+          hotelAiPlaceholder.style.opacity = "0";
+        }
+      });
+      hotelAiText.addEventListener("input", syncHotelAiPlaceholder);
+      hotelAiText.addEventListener("change", syncHotelAiPlaceholder);
+      syncHotelAiPlaceholder();
+      window.setInterval(rotateHotelAiExample, 3800);
+    }
+  </script>
+  <script>
+    window.SKAIR_VOICE_CONFIG = { enabled: {{ voice_ai_enabled | tojson }} };
+    window.SKAIR_API_BASE_URL = {{ (config.get("SKAIR_API_BASE_URL", "") if config else "") | tojson }};
+  </script>
+  <script type="module">
+    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260813-hotels-voice') }}";
+    initVoiceSearch({
+      micButtonId: "stayVoiceMicBtn",
+      textareaId: "nuAiText",
+      formId: "stayAiForm",
+      ringSelector: ".nu-hotel-ai-ring",
+      wrapSelector: ".nu-hotel-ai-wrap",
+      skipIntentParse: true,
+    });
+  </script>
+</body>
+</html>

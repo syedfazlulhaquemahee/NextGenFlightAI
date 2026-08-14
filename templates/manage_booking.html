@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='manage-booking.css', v='20260427-bgfix3') }}" />
   {% include "partials/theme_head.html" %}
+  {% include "partials/flights_parity_head.html" %}
 </head>
 <body class="manage-booking-page">
 
@@ -89,6 +90,7 @@
                 <span class="mb-field-label">Date of birth</span>
                 <input
                   type="date"
+                  data-nx-calendar="past"
                   name="dob"
                   value="{{ form_values.dob }}"
                   autocomplete="bday"
@@ -245,7 +247,7 @@
                   <div class="mb-change-form-row">
                     <label class="mb-field">
                       <span class="mb-field-label">New departure date</span>
-                      <input type="date" name="departure_date" required />
+                      <input type="date" name="departure_date" required data-nx-calendar="future" />
                     </label>
                     <label class="mb-field">
                       <span class="mb-field-label">Cabin</span>

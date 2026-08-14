@@ -1,0 +1,400 @@
+/* Shared AI composer — loaded last on Flights and Hotels.
+   These classes deliberately own every visible measurement so both products
+   render one component instead of two look-alikes with competing legacy CSS. */
+
+/* The input pill itself sits at 94% width, centered, inside the full-width
+   row — Hotels' own .nu-hotel-ai-shell pattern. Flights' .ai-prompt-shell is
+   the equivalent immediate wrapper, so it gets the same treatment here. */
+body.home-page .ai-prompt-shell,
+body.hotels-page .nu-hotel-ai-shell {
+  width: 94% !important;
+  margin: 0 auto !important;
+}
+
+body.home-page .ai-reference-surface,
+html[data-theme="light"] body.home-page .ai-reference-surface,
+body.hotels-page .ai-reference-surface {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 64px !important;
+  min-height: 64px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(99, 102, 241, .22) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, .92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .10) !important;
+}
+
+body.home-page .ai-reference-surface::before,
+html[data-theme="light"] body.home-page .ai-reference-surface::before,
+body.hotels-page .ai-reference-surface::before {
+  content: none !important;
+  animation: none !important;
+  display: none !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-row,
+html[data-theme="light"] body.home-page .ai-reference-surface .ai-reference-row,
+body.hotels-page .ai-reference-surface .ai-reference-row {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) auto !important;
+  grid-template-rows: 1fr !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 62px !important;
+  min-height: 62px !important;
+  padding: 8px 10px !important;
+  border-radius: 15px !important;
+  background: transparent !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-leading,
+body.hotels-page .ai-reference-surface .ai-reference-leading,
+body.home-page .ai-reference-surface .ai-reference-mic,
+body.hotels-page .ai-reference-surface .ai-reference-mic {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-leading,
+body.hotels-page .ai-reference-surface .ai-reference-leading { color: #4f46e5 !important; }
+
+body.home-page .ai-reference-surface .ai-reference-mic,
+body.hotels-page .ai-reference-surface .ai-reference-mic { color: #53637a !important; }
+
+body.home-page .ai-reference-surface .ai-reference-leading svg,
+body.hotels-page .ai-reference-surface .ai-reference-leading svg,
+body.home-page .ai-reference-surface .ai-reference-mic svg,
+body.hotels-page .ai-reference-surface .ai-reference-mic svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+body.home-page .ai-reference-surface .ai-input,
+html[data-theme="light"] body.home-page .ai-reference-surface .ai-input,
+body.hotels-page .ai-reference-surface .nu-hotel-ai-input {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #111322 !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  line-height: 24px !important;
+  box-shadow: none !important;
+  resize: none !important;
+}
+
+body.home-page .ai-reference-surface .ai-input-toolbar,
+body.home-page .ai-reference-surface .nu-hotel-ai-actions,
+body.hotels-page .ai-reference-surface .nu-hotel-ai-actions {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-submit,
+body.hotels-page .ai-reference-surface .ai-reference-submit {
+  display: grid !important;
+  place-items: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #4f46e5 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-submit:hover,
+body.hotels-page .ai-reference-surface .ai-reference-submit:hover { background: #4338ca !important; }
+
+body.home-page .ai-reference-surface .ai-reference-submit svg,
+body.hotels-page .ai-reference-surface .ai-reference-submit svg {
+  display: block !important;
+  width: 21px !important;
+  height: 21px !important;
+}
+
+/* The submit button is a 2-child grid cell (icon + loading spinner). Hotels'
+   own stylesheet hides the spinner by default; Flights never loaded that
+   file, so the spinner sat as a second (empty) grid row and pushed the
+   search icon up off-center. */
+body.home-page .ai-reference-surface .ai-reference-submit .nu-ai-spinner,
+body.hotels-page .ai-reference-surface .ai-reference-submit .nu-ai-spinner {
+  display: none !important;
+  width: 17px !important;
+  height: 17px !important;
+  border-radius: 50% !important;
+  border: 2px solid rgba(255, 255, 255, .42) !important;
+  border-top-color: #fff !important;
+  animation: nu-spin .7s linear infinite !important;
+}
+body.home-page .ai-form.is-busy .ai-reference-submit svg,
+body.hotels-page .nu-search--ai.is-busy .ai-reference-submit svg {
+  display: none !important;
+}
+body.home-page .ai-form.is-busy .ai-reference-submit .nu-ai-spinner,
+body.hotels-page .nu-search--ai.is-busy .ai-reference-submit .nu-ai-spinner {
+  display: block !important;
+}
+@keyframes nu-spin { to { transform: rotate(360deg); } }
+
+body.home-page .ai-reference-surface .ai-placeholder-overlay,
+body.hotels-page .ai-reference-surface .nu-hotel-ai-placeholder-overlay {
+  top: 50% !important;
+  left: 60px !important;
+  right: 112px !important;
+  color: #94a3b8 !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 24px !important;
+  transform: translateY(-50%) !important;
+}
+
+/* The native value is the source of truth. Regardless of an animation or a
+   focus handler, an inline cue cannot render while the composer has text. */
+body.home-page .ai-reference-surface:has(textarea.ai-input:not(:placeholder-shown)) .ai-placeholder-overlay,
+body.hotels-page .ai-reference-surface:has(textarea.nu-hotel-ai-input:not(:placeholder-shown)) .nu-hotel-ai-placeholder-overlay {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+@media (max-width: 760px) {
+  body.home-page .ai-prompt-shell,
+  body.hotels-page .nu-hotel-ai-shell { width: 100% !important; }
+  body.home-page .ai-reference-surface,
+  html[data-theme="light"] body.home-page .ai-reference-surface,
+  body.hotels-page .ai-reference-surface { height: 64px !important; min-height: 64px !important; border-radius: 16px !important; }
+  body.home-page .ai-reference-surface .ai-reference-row,
+  html[data-theme="light"] body.home-page .ai-reference-surface .ai-reference-row,
+  body.hotels-page .ai-reference-surface .ai-reference-row { height: 62px !important; min-height: 62px !important; border-radius: 15px !important; }
+  body.home-page .ai-reference-surface .ai-reference-leading { display: none !important; }
+  body.home-page .ai-reference-surface .ai-reference-mic { position: absolute !important; z-index: 3; left: 10px; top: 50%; transform: translateY(-50%); }
+  body.hotels-page .ai-reference-surface .ai-reference-leading { display: none !important; }
+  body.hotels-page .ai-reference-surface .ai-reference-mic { grid-column: 1 !important; grid-row: 1 !important; }
+  body.home-page .ai-reference-surface .ai-placeholder-overlay,
+  body.hotels-page .ai-reference-surface .nu-hotel-ai-placeholder-overlay { left: 60px !important; right: 62px !important; }
+  body.home-page .ai-reference-surface .ai-reference-submit,
+  body.hotels-page .ai-reference-surface .ai-reference-submit { width: 42px !important; height: 42px !important; min-width: 42px !important; }
+}
+
+/* Expanded composer, shared by both products: once a real request begins
+   (more than five characters), the text area gets its own row above a
+   dedicated bottom action row instead of squeezing everything into one
+   64px pill. Comes after the shared one-line measurements so it can grow
+   instead of being clipped. Flights and Hotels' composer markup uses the
+   same class names post-unification (.ai-reference-row, .ai-reference-
+   leading, .nu-hotel-ai-actions, .nu-hotel-ai-input), so one rule set
+   covers both — toggled by JS via .is-multiline on the row. */
+body.home-page .ai-reference-surface:has(.ai-reference-row.is-multiline),
+html[data-theme="light"] body.home-page .ai-reference-surface:has(.ai-reference-row.is-multiline),
+body.hotels-page .ai-reference-surface:has(.ai-reference-row.is-multiline) {
+  height: auto !important;
+  min-height: 100px !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-row.is-multiline,
+html[data-theme="light"] body.home-page .ai-reference-surface .ai-reference-row.is-multiline,
+body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline {
+  grid-template-columns: 38px minmax(0, 1fr) auto !important;
+  grid-template-rows: minmax(40px, auto) 44px !important;
+  align-items: start !important;
+  height: auto !important;
+  min-height: 98px !important;
+  padding: 10px 10px 8px !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-row.is-multiline .nu-hotel-ai-input,
+body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline .nu-hotel-ai-input {
+  grid-column: 1 / -1 !important;
+  grid-row: 1 !important;
+  align-self: start !important;
+  height: auto !important;
+  min-height: 40px !important;
+  max-height: 96px !important;
+  padding: 0 4px 4px !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-leading,
+body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-leading {
+  display: grid !important;
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  align-self: center !important;
+}
+
+body.home-page .ai-reference-surface .ai-reference-row.is-multiline .nu-hotel-ai-actions,
+body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline .nu-hotel-ai-actions {
+  grid-column: 3 !important;
+  grid-row: 2 !important;
+  align-self: center !important;
+  justify-self: end !important;
+}
+
+@media (max-width: 760px) {
+  body.home-page .ai-reference-surface:has(.ai-reference-row.is-multiline),
+  html[data-theme="light"] body.home-page .ai-reference-surface:has(.ai-reference-row.is-multiline),
+  body.hotels-page .ai-reference-surface:has(.ai-reference-row.is-multiline) { min-height: 100px !important; }
+  body.home-page .ai-reference-surface .ai-reference-row.is-multiline,
+  html[data-theme="light"] body.home-page .ai-reference-surface .ai-reference-row.is-multiline,
+  body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline { min-height: 98px !important; }
+  /* Mobile hides the sample-prompt icon even in single-line mode to save
+     width — keep it hidden here too rather than re-showing it into the
+     same cell the mic now occupies. */
+  body.home-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-leading,
+  body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-leading {
+    display: none !important;
+  }
+  body.home-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-mic,
+  body.hotels-page .ai-reference-surface .ai-reference-row.is-multiline .ai-reference-mic {
+    position: static !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    transform: none !important;
+  }
+}
+
+/* Outer AI panel: Hotels has no card chrome around its Ask AI surface at
+   all — the surface floats directly in the hero. Strip Flights' leftover
+   "glass card" wrapper (a prior redesign layer's background/blur/width
+   inset) down to the same bare, full-width wrapper. */
+body.home-page .home-search-stack .ai-wrap,
+body.home-page .ai-wrap {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+body.home-page .ai-card {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+body.home-page .ai-card::before,
+body.home-page .ai-card::after,
+body.home-page .ai-card > .ai-card-accent {
+  content: none !important;
+  display: none !important;
+}
+
+/* Suggestion chips: one row/pill spec shared by both products — the
+   Flights row previously carried a fancier "tactile button" treatment
+   (per-chip accent colors, rise-in animation, mobile scroll-snap) that
+   Hotels never had. Reduce it to Hotels' plain wrap-and-pill chips. */
+body.home-page .ai-suggest-chips:not(.is-product-hidden),
+body.hotels-page .nu-ai-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 14px 0 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+body.home-page .ai-suggest-chips::after { content: none !important; }
+
+body.home-page .ai-suggest-chip,
+html[data-theme="light"] body.home-page .ai-suggest-chip,
+body.hotels-page .nu-ai-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 7px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, .24) !important;
+  background: rgba(12, 18, 34, .42) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: rgba(255, 255, 255, .92) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, .92) !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 18px !important;
+  letter-spacing: normal !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  transform: none !important;
+  animation: none !important;
+  transition: background .15s ease, border-color .15s ease !important;
+}
+body.home-page .ai-suggest-chip-icon { display: none !important; }
+body.home-page .ai-suggest-chip-title,
+html[data-theme="light"] body.home-page .ai-suggest-chip-title {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: normal !important;
+}
+
+body.home-page .ai-suggest-chip:hover,
+html[data-theme="light"] body.home-page .ai-suggest-chip:hover,
+body.hotels-page .nu-ai-chip:hover {
+  background: rgba(12, 18, 34, .62) !important;
+  border-color: rgba(255, 255, 255, .42) !important;
+  color: rgba(255, 255, 255, .92) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+body.home-page .ai-suggest-chip:active,
+html[data-theme="light"] body.home-page .ai-suggest-chip:active,
+body.hotels-page .nu-ai-chip:active {
+  background: rgba(12, 18, 34, .62) !important;
+  transform: none !important;
+}
+html[data-theme="light"] body.home-page .ai-suggest-chip:hover .ai-suggest-chip-title,
+html[data-theme="light"] body.home-page .ai-suggest-chip:active .ai-suggest-chip-title {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}

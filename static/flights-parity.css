@@ -1,0 +1,538 @@
+/*
+ * Flights Hotels-parity system
+ *
+ * Flight pages retain their specialized content and interactions, but this
+ * layer gives every flight workflow the same visual language as Stays:
+ * Inter typography, the Hotels type scale, indigo controls, rounded 12px
+ * surfaces, and identical dark/light palette tokens.
+ */
+
+body.results-page,
+body.booking-detail-page,
+body.manage-booking-page {
+  --fp-bg: #0e1320;
+  --fp-surface: #161d2c;
+  --fp-surface-2: #1d2536;
+  --fp-elevated: #1a2231;
+  --fp-heading: #f4f5f7;
+  --fp-text: #f4f5f7;
+  --fp-text-2: #e2e6ec;
+  --fp-muted: #a7b0bd;
+  --fp-border: #2a3346;
+  --fp-primary: #6366f1;
+  --fp-primary-hover: #818cf8;
+  --fp-radius: 12px;
+  --fp-radius-sm: 8px;
+  --fp-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--fp-bg) !important;
+  color: var(--fp-text);
+  font-family: var(--fp-font) !important;
+}
+
+body.results-page *,
+body.booking-detail-page *,
+body.manage-booking-page * {
+  font-family: var(--fp-font);
+}
+
+html[data-theme="light"] body.results-page,
+html[data-theme="light"] body.booking-detail-page,
+html[data-theme="light"] body.manage-booking-page {
+  --fp-bg: #f4f6fa;
+  --fp-surface: #ffffff;
+  --fp-surface-2: #f3f4f6;
+  --fp-elevated: #ffffff;
+  --fp-heading: #1f2a37;
+  --fp-text: #111322;
+  --fp-text-2: #1f2a37;
+  --fp-muted: #4d5761;
+  --fp-border: #e5e7eb;
+  --fp-primary: #4f46e5;
+  --fp-primary-hover: #4338ca;
+}
+
+/* Base Hotels type scale. Page-specific tiny operational labels retain their
+   compact sizing, while headings and interactive text become consistent. */
+body.results-page h1,
+body.booking-detail-page h1,
+body.manage-booking-page h1 {
+  color: var(--fp-heading) !important;
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -.02em !important;
+}
+
+body.results-page h2,
+body.booking-detail-page h2,
+body.manage-booking-page h2 {
+  color: var(--fp-heading) !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  letter-spacing: -.01em !important;
+}
+
+body.results-page h3,
+body.booking-detail-page h3,
+body.manage-booking-page h3 {
+  color: var(--fp-heading) !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+body.results-page input,
+body.results-page select,
+body.results-page textarea,
+body.booking-detail-page input,
+body.booking-detail-page select,
+body.booking-detail-page textarea,
+body.manage-booking-page input,
+body.manage-booking-page select,
+body.manage-booking-page textarea,
+body.results-page button,
+body.booking-detail-page button,
+body.manage-booking-page button {
+  font-family: var(--fp-font) !important;
+}
+
+/* Search results */
+body.results-page .srb-bar,
+body.results-page .flight-card,
+body.results-page .results-filter-panel,
+body.results-page .results-filter-drawer,
+body.results-page .fare-tier-card,
+body.results-page .results-premium-toolbar {
+  border-color: var(--fp-border) !important;
+  border-radius: var(--fp-radius) !important;
+  background: var(--fp-surface) !important;
+  box-shadow: none !important;
+}
+
+/* The results toolbar only contains the sort control. It is not a card:
+   keeping it in the shared surface selector created a large empty white bar
+   around the dropdown on the flight-results page. */
+body.results-page .results-premium-toolbar {
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 761px) {
+  body.results-page .results-premium-toolbar {
+    display: flex !important;
+  }
+
+  body.results-page .results-top-sort-select {
+    width: 174px !important;
+    min-height: 38px !important;
+    padding: 0 34px 0 12px !important;
+    border-radius: 9px !important;
+    font-size: 12.5px !important;
+    font-weight: 650 !important;
+    box-shadow: 0 1px 4px rgba(15,23,42,.05) !important;
+    background-position: right 11px center !important;
+  }
+}
+
+body.results-page .flight-card:hover,
+body.results-page .flight-card:focus-within {
+  border-color: var(--fp-primary) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, .22), 0 4px 6px -4px rgba(0, 0, 0, .18) !important;
+}
+
+/* Results need a visible surface hierarchy: the page recedes slightly while
+   every flight remains a crisp, readable card. */
+body.results-page {
+  background:
+    radial-gradient(900px 420px at 50% -180px, rgba(99, 102, 241, .07), transparent 70%),
+    var(--fp-bg) !important;
+}
+
+body.results-page .flight-card {
+  border-color: rgba(108, 125, 153, .38) !important;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .12) !important;
+}
+
+html[data-theme="light"] body.results-page .flight-card {
+  border-color: rgba(71, 85, 105, .20) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .07) !important;
+}
+
+html[data-theme="light"] body.results-page .flight-card:hover,
+html[data-theme="light"] body.results-page .flight-card:focus-within {
+  border-color: rgba(79, 70, 229, .42) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .12) !important;
+}
+
+body.results-page .srb-seg-val,
+body.results-page .fc-time,
+body.results-page .fc-price-amt,
+body.results-page .fc-airline,
+body.results-page .results-head h1 { color: var(--fp-text) !important; }
+body.results-page .srb-route-sub,
+body.results-page .fc-meta,
+body.results-page .fc-via,
+body.results-page .muted { color: var(--fp-muted) !important; }
+body.results-page .fc-book,
+body.results-page .results-head-edit-btn,
+body.results-page .results-filter-apply,
+body.results-page .fare-tier-choose {
+  border-radius: var(--fp-radius-sm) !important;
+  background: var(--fp-primary) !important;
+  color: #fff !important;
+}
+body.results-page .fc-book:hover,
+body.results-page .results-head-edit-btn:hover,
+body.results-page .results-filter-apply:hover,
+body.results-page .fare-tier-choose:hover { background: var(--fp-primary-hover) !important; }
+
+/* Review, seat selection, and checkout */
+body.review-page .review-card,
+body.review-page .seat-panel,
+body.booking-page .checkout-card,
+body.booking-page .checkout-section,
+body.booking-page .checkout-summary,
+body.booking-page .checkout-rail-card,
+body.booking-page .checkout-payment-card,
+body.booking-page .checkout-traveler-card {
+  background: var(--fp-surface) !important;
+  border-color: var(--fp-border) !important;
+  border-radius: var(--fp-radius) !important;
+  box-shadow: none !important;
+}
+
+body.review-page .review-back,
+body.review-page .muted,
+body.booking-page .muted,
+body.booking-page .checkout-help-text { color: var(--fp-muted) !important; }
+body.review-page .review-continue,
+body.review-page .seat-continue,
+body.booking-page .checkout-submit,
+body.booking-page .checkout-next,
+body.booking-page .checkout-primary-action {
+  background: var(--fp-primary) !important;
+  border-radius: var(--fp-radius-sm) !important;
+  color: #fff !important;
+}
+
+/* Confirmation, itinerary, and booking management use local component
+   variables—map them to the Hotels palette without changing their markup. */
+body.confirmation-page,
+body.booking-detail-page {
+  --c-page: var(--fp-bg) !important;
+  --c-card: var(--fp-surface) !important;
+  --c-card-bd: var(--fp-border) !important;
+  --c-text: var(--fp-text) !important;
+  --c-muted: var(--fp-muted) !important;
+  --c-hero-bg: var(--fp-surface-2) !important;
+  --c-hero-title: var(--fp-heading) !important;
+  --c-ind: var(--fp-primary) !important;
+  --c-ind-lnk: var(--fp-primary-hover) !important;
+}
+
+body.manage-booking-page .mb-hero-band,
+body.manage-booking-page .mb-card,
+body.manage-booking-page .mb-search-card,
+body.manage-booking-page .mb-booking-card,
+body.manage-booking-page .mb-panel {
+  background: var(--fp-surface) !important;
+  border-color: var(--fp-border) !important;
+  border-radius: var(--fp-radius) !important;
+  box-shadow: none !important;
+}
+body.manage-booking-page .mb-hero-title,
+body.manage-booking-page .mb-section-title { color: var(--fp-heading) !important; }
+body.manage-booking-page .mb-hero-lede,
+body.manage-booking-page .mb-muted { color: var(--fp-muted) !important; }
+
+body.manage-booking-page .mb-primary-btn,
+body.manage-booking-page .mb-submit,
+body.manage-booking-page .mb-action-primary {
+  background: var(--fp-primary) !important;
+  border-radius: var(--fp-radius-sm) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 860px) {
+  body.results-page h1,
+  body.booking-detail-page h1,
+  body.manage-booking-page h1 { font-size: 25px !important; }
+  body.results-page h2,
+  body.booking-detail-page h2,
+  body.manage-booking-page h2 { font-size: 20px !important; }
+}
+
+/* Results: compact mobile search editor
+   The full desktop refine form is useful on a wide screen, but turning every
+   group into its own card made the mobile sheet unnecessarily tall.  Keep the
+   very same form controls (and therefore the same search request), arranged
+   as one concise edit flow instead. */
+@media (max-width: 760px) {
+  body.results-page #refine .results-query-card {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    max-height: min(550px, calc(100dvh - 16px)) !important;
+    border-radius: 20px !important;
+  }
+
+  body.results-page #refine .results-query-form {
+    gap: 10px !important;
+    max-height: min(550px, calc(100dvh - 16px)) !important;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.results-page #refine .results-query-form::before {
+    width: 32px !important;
+    height: 3px !important;
+    margin: 0 0 1px !important;
+  }
+
+  body.results-page #refine .results-mobile-editor {
+    display: flex !important;
+    align-items: center;
+    min-height: 32px;
+    width: 100%;
+  }
+
+  body.results-page #refine .results-mobile-editor-head {
+    width: 100%;
+  }
+
+  body.results-page #refine .results-mobile-editor-copy {
+    flex: 1 1 auto;
+  }
+
+  body.results-page #refine .results-mobile-editor-kicker {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-mobile-editor-head h2 {
+    font-size: 18px !important;
+    line-height: 1.1 !important;
+  }
+
+  body.results-page #refine .results-mobile-editor-close {
+    margin-left: auto !important;
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  body.results-page #refine .results-mobile-summary-list,
+  body.results-page #refine .results-mobile-filter-panel,
+  body.results-page #refine .results-query-control--sort,
+  body.results-page #refine #resultsManualComboWrap,
+  body.results-page #refine .results-query-footer-actions,
+  body.results-page #refine .results-mobile-sheet-link {
+    display: none !important;
+  }
+
+  /* All core controls share the sheet surface rather than four large cards. */
+  body.results-page #refine .results-query-block-route,
+  body.results-page #refine .results-query-block-dates,
+  body.results-page #refine .results-query-toolbar-meta {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  body.results-page #refine .results-query-control--trip {
+    padding-bottom: 9px !important;
+    border-bottom: 1px solid var(--fp-border) !important;
+  }
+
+  body.results-page #refine .results-query-control--trip .results-query-control-label,
+  body.results-page #refine .results-mobile-block-label {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-query-toggle {
+    gap: 4px !important;
+    padding: 3px !important;
+    border-radius: 11px !important;
+  }
+
+  body.results-page #refine .results-query-toggle-btn {
+    min-height: 38px !important;
+    padding: 0 10px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+  }
+
+  body.results-page #refine .results-query-block-route,
+  body.results-page #refine .results-query-block-dates {
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--fp-border) !important;
+  }
+
+  body.results-page #refine .results-query-route-grid {
+    grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr) !important;
+    grid-template-areas: "from swap to" !important;
+    gap: 7px !important;
+    align-items: end !important;
+  }
+
+  body.results-page #refine .results-query-route-grid .results-query-field:last-child {
+    grid-area: to !important;
+  }
+
+  body.results-page #refine .results-query-swap {
+    display: grid !important;
+    place-items: center !important;
+    align-self: end !important;
+    justify-self: center !important;
+    width: 38px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+    color: var(--fp-text) !important;
+    font-size: 0 !important;
+  }
+
+  body.results-page #refine .results-query-swap::before {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-query-swap svg {
+    display: block !important;
+    width: 19px !important;
+    height: 19px !important;
+    color: currentColor !important;
+    pointer-events: none;
+    transform: none !important;
+  }
+
+  body.results-page #refine .results-query-date-grid,
+  body.results-page #refine .results-query-toolbar-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  body.results-page #refine .results-query-toolbar-meta {
+    display: grid !important;
+    align-items: stretch !important;
+  }
+
+  body.results-page #refine .results-query-toolbar-meta .results-mobile-block-label {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-query-block-route .results-query-field > label,
+  body.results-page #refine .results-query-block-dates .results-query-field > label {
+    margin: 0 0 4px 1px !important;
+    font-size: 10px !important;
+    font-weight: 650 !important;
+  }
+
+  body.results-page #refine .results-query-field input.airport-input,
+  body.results-page #refine .results-query-field .calendar-display-input,
+  body.results-page #refine .results-query-toolbar-meta .results-query-select {
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+  }
+
+  /* The display inputs themselves are the calendar triggers: no dead visual
+     holder or overlay sits above them on touch devices. */
+  body.results-page #refine .calendar-field .calendar-display-input {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation;
+    cursor: pointer !important;
+  }
+
+  body.results-page #refine .field.calendar-field::after {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-date-icon {
+    position: absolute;
+    z-index: 2;
+    right: 12px;
+    /* The field includes its label, so the optical centre is slightly above
+       the wrapper midpoint. This aligns the SVG with the text baseline and
+       the centre of the 42px input in both date columns. */
+    top: calc(50% - 1px);
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    color: rgb(49, 157, 189);
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  body.results-page #refine .results-date-icon svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+  }
+
+  body.results-page #refine .results-query-field-return .results-date-icon {
+    right: 12px;
+    top: calc(50% - 1px);
+  }
+
+  body.results-page #refine .results-query-toolbar-meta .results-query-select-wrap {
+    min-height: 42px !important;
+  }
+
+  body.results-page #refine .results-query-footer {
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  body.results-page #refine .results-query-nonstop--compact {
+    display: inline-flex !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    gap: 8px !important;
+  }
+
+  body.results-page #refine .results-query-nonstop--compact input {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  body.results-page #refine .results-query-nonstop--compact strong {
+    font-size: 12px !important;
+    font-weight: 650 !important;
+  }
+
+  body.results-page #refine .results-query-nonstop--compact small {
+    display: none !important;
+  }
+
+  body.results-page #refine .results-mobile-sheet-actions {
+    gap: 0 !important;
+    bottom: calc(-12px - env(safe-area-inset-bottom, 0px)) !important;
+    margin: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.results-page #refine .results-mobile-sheet-actions .btn.primary {
+    min-height: 46px !important;
+    border-radius: 11px !important;
+    font-size: 14px !important;
+    box-shadow: 0 8px 18px rgba(79, 70, 229, .22) !important;
+  }
+
+  /* The calendar is appended to <body>; keep it above the mobile sheet. */
+  body.results-mobile-edit-open .ndp-popover {
+    z-index: 4000 !important;
+  }
+}

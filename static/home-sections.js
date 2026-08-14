@@ -1,11 +1,12 @@
 /*
  * Homepage discovery sections:
  * - "Recent searches": localStorage-backed, functional replay of real past
- *   searches (also doubles as the "light personalization" signal below).
- * - "Popular destinations": real photos + editorial content, travel-intent
- *   category tabs, a live "from $X" fare pulled from the real search
- *   backend (never fabricated — omitted if the lookup fails), and an
- *   editorial two-destination comparison tool.
+ *   searches.
+ * - "Popular flights near you": real photos, a real nearest-airport origin
+ *   from device geolocation (falls back to New York/JFK), and live fares
+ *   from the real search backend for both an international and a domestic
+ *   tab — never fabricated, a route with no live result just shows without
+ *   a price badge instead of a fake number.
  */
 (function () {
   "use strict";
@@ -126,8 +127,9 @@
     var section = document.getElementById("recentSearchesSection");
     var list = document.getElementById("recentSearchesList");
     if (!section || !list || section.hidden) return;
-    var hasOverflow = list.scrollWidth - list.clientWidth > 4;
-    section.classList.toggle("has-overflow", hasOverflow);
+    var atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 4;
+    section.classList.toggle("has-overflow", !atEnd);
+    section.classList.toggle("has-overflow-start", list.scrollLeft > 4);
   }
 
   function replaySearch(entry) {
@@ -230,8 +232,8 @@
     );
   }
 
-  function readDestinationsData() {
-    var node = document.getElementById("destinationsData");
+  function readJsonScript(id) {
+    var node = document.getElementById(id);
     if (!node) return [];
     try {
       var list = JSON.parse(node.textContent || "[]");
@@ -286,224 +288,6 @@
     } catch (e) {}
   }
 
-  function updateDestinationOverflowHint() {
-    var grid = document.getElementById("popularDestinationsGrid");
-    if (!grid || grid.classList.contains("is-expanded")) {
-      if (grid) grid.classList.remove("has-overflow");
-      return;
-    }
-    var hasOverflow = grid.scrollWidth - grid.clientWidth > 4;
-    grid.classList.toggle("has-overflow", hasOverflow);
-  }
-
-  function initDestinationTabs() {
-    var tabsWrap = document.querySelector(".home-destination-tabs");
-    var grid = document.getElementById("popularDestinationsGrid");
-    if (!tabsWrap || !grid) return;
-    var tabs = Array.prototype.slice.call(tabsWrap.querySelectorAll(".home-destination-tab"));
-    var cards = Array.prototype.slice.call(grid.querySelectorAll(".home-destination-card"));
-
-    function applyFilter(categorySlug) {
-      cards.forEach(function (card) {
-        var cats = (card.getAttribute("data-dest-categories") || "").split(",").filter(Boolean);
-        card.hidden = !(!categorySlug || cats.indexOf(categorySlug) !== -1);
-      });
-      grid.scrollLeft = 0;
-      window.setTimeout(updateDestinationOverflowHint, 50);
-    }
-
-    tabs.forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        tabs.forEach(function (t) {
-          t.classList.remove("is-active");
-          t.setAttribute("aria-selected", "false");
-        });
-        tab.classList.add("is-active");
-        tab.setAttribute("aria-selected", "true");
-        applyFilter(tab.getAttribute("data-category") || "");
-      });
-    });
-
-    grid.addEventListener(
-      "scroll",
-      function () {
-        if (grid.classList.contains("is-expanded")) return;
-        var atEnd = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 4;
-        grid.classList.toggle("has-overflow", !atEnd);
-      },
-      { passive: true }
-    );
-
-    window.addEventListener("resize", updateDestinationOverflowHint);
-    window.setTimeout(updateDestinationOverflowHint, 300);
-  }
-
-  function initDestinationViewAllToggle() {
-    var toggle = document.getElementById("destinationViewAllToggle");
-    var grid = document.getElementById("popularDestinationsGrid");
-    if (!toggle || !grid) return;
-
-    toggle.addEventListener("click", function () {
-      var expanded = grid.classList.toggle("is-expanded");
-      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
-      toggle.querySelector(".home-destination-viewall-label").textContent = expanded ? "Show fewer" : "View all";
-      if (expanded) {
-        grid.classList.remove("has-overflow");
-      } else {
-        window.setTimeout(updateDestinationOverflowHint, 50);
-      }
-    });
-  }
-
-  var COMPARE_MAX = 2;
-
-  function initCompareTool(destinationsBySlug) {
-    var grid = document.getElementById("popularDestinationsGrid");
-    var bar = document.getElementById("compareBar");
-    var barLabel = document.getElementById("compareBarLabel");
-    var barCta = document.getElementById("compareBarCta");
-    var barClear = document.getElementById("compareBarClear");
-    var modal = document.getElementById("compareModal");
-    var modalBody = document.getElementById("compareModalBody");
-    var modalClose = document.getElementById("compareModalClose");
-    if (!grid || !bar || !modal) return;
-
-    var selection = [];
-
-    function toggleBtnState(slug, active) {
-      var btn = grid.querySelector('[data-compare-toggle="' + slug + '"]');
-      if (!btn) return;
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-      btn.classList.toggle("is-active", active);
-    }
-
-    function updateBar() {
-      if (!selection.length) {
-        bar.hidden = true;
-        return;
-      }
-      bar.hidden = false;
-      var names = selection.map(function (slug) {
-        var d = destinationsBySlug[slug];
-        return d ? d.city : slug;
-      });
-      barLabel.textContent =
-        selection.length === 1
-          ? "Comparing: " + names[0] + " — pick one more"
-          : "Comparing: " + names.join(" vs ");
-      barCta.disabled = selection.length !== COMPARE_MAX;
-    }
-
-    function toggleSlug(slug) {
-      var idx = selection.indexOf(slug);
-      if (idx !== -1) {
-        selection.splice(idx, 1);
-        toggleBtnState(slug, false);
-      } else {
-        if (selection.length >= COMPARE_MAX) {
-          var removed = selection.shift();
-          toggleBtnState(removed, false);
-        }
-        selection.push(slug);
-        toggleBtnState(slug, true);
-      }
-      updateBar();
-    }
-
-    grid.querySelectorAll("[data-compare-toggle]").forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();
-        toggleSlug(btn.getAttribute("data-compare-toggle"));
-      });
-    });
-
-    barClear.addEventListener("click", function () {
-      selection.slice().forEach(function (slug) { toggleBtnState(slug, false); });
-      selection = [];
-      updateBar();
-    });
-
-    var TRAIT_LABELS = {
-      food: "Food",
-      nightlife: "Nightlife",
-      culture: "Culture & history",
-      budget: "Budget-friendly",
-      nature: "Nature & beaches",
-      shopping: "Shopping",
-    };
-
-    function stars(n) {
-      var full = Math.max(0, Math.min(5, n || 0));
-      return "★★★★★".slice(0, full) + "☆☆☆☆☆".slice(0, 5 - full);
-    }
-
-    function renderComparison() {
-      if (selection.length !== COMPARE_MAX) return;
-      var a = destinationsBySlug[selection[0]];
-      var b = destinationsBySlug[selection[1]];
-      if (!a || !b) return;
-
-      var html = "";
-      html += '<p class="home-compare-editorial-note">Our take — an editorial comparison to help you decide, not measured data.</p>';
-      html += '<div class="home-compare-heads">';
-      [a, b].forEach(function (d) {
-        html +=
-          '<div class="home-compare-head">' +
-          '<span class="home-compare-head-city">' + d.city + "</span>" +
-          '<span class="home-compare-head-country">' + d.country + "</span>" +
-          "</div>";
-      });
-      html += "</div>";
-
-      html += '<div class="home-compare-rows">';
-      Object.keys(TRAIT_LABELS).forEach(function (key) {
-        html +=
-          '<div class="home-compare-row">' +
-          '<span class="home-compare-cell home-compare-cell--a">' + stars((a.traits || {})[key]) + "</span>" +
-          '<span class="home-compare-cell-label">' + TRAIT_LABELS[key] + "</span>" +
-          '<span class="home-compare-cell home-compare-cell--b">' + stars((b.traits || {})[key]) + "</span>" +
-          "</div>";
-      });
-      html += "</div>";
-
-      var aBudget = (a.traits || {}).budget || 0;
-      var bBudget = (b.traits || {}).budget || 0;
-      var cheaper = aBudget >= bBudget ? a : b;
-      var pricier = cheaper === a ? b : a;
-      var pricierStrength = (pricier.traits || {}).nightlife >= (pricier.traits || {}).culture ? "nightlife" : "culture and history";
-      var verdict =
-        cheaper.city + " is the easier choice on budget; " + pricier.city + " has the edge on " + pricierStrength + ".";
-      html += '<p class="home-compare-verdict">' + verdict + "</p>";
-
-      html +=
-        '<div class="home-compare-cta-row">' +
-        '<a class="home-compare-explore" href="/destinations/' + a.slug + '">Explore ' + a.city + "</a>" +
-        '<a class="home-compare-explore" href="/destinations/' + b.slug + '">Explore ' + b.city + "</a>" +
-        "</div>";
-
-      modalBody.innerHTML = html;
-    }
-
-    barCta.addEventListener("click", function () {
-      if (selection.length !== COMPARE_MAX) return;
-      renderComparison();
-      modal.hidden = false;
-      document.body.classList.add("home-compare-open");
-    });
-
-    function closeModal() {
-      modal.hidden = true;
-      document.body.classList.remove("home-compare-open");
-    }
-    modalClose.addEventListener("click", closeModal);
-    modal.addEventListener("click", function (e) {
-      if (e.target === modal) closeModal();
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !modal.hidden) closeModal();
-    });
-  }
-
   function formatMoney(amount, currency) {
     try {
       return new Intl.NumberFormat("en-US", {
@@ -521,17 +305,9 @@
     function short(iso) {
       var parts = iso.split("-").map(Number);
       var d = new Date(parts[0], parts[1] - 1, parts[2]);
-      return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(d);
+      return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
     }
     return short(departIso) + " – " + short(returnIso);
-  }
-
-  function getPersonalizedOrigin() {
-    var entries = readRecent();
-    for (var i = 0; i < entries.length; i += 1) {
-      if (entries[i].mode === "manual" && entries[i].origin) return entries[i].origin;
-    }
-    return "";
   }
 
   /* Submits the real, visible manual-search form so the date-picker/trip-type
@@ -577,80 +353,184 @@
     mf.submit();
   }
 
-  function initLivePricing() {
-    var slots = Array.prototype.slice.call(document.querySelectorAll("[data-price-slot]"));
-    if (!slots.length) return;
+  /* "Popular flights near you": real device geolocation -> nearest major
+     airport (falls back to New York/JFK if denied, unavailable, or slow) ->
+     one live-pricing lookup covering both tabs' routes, so switching tabs is
+     instant with no refetch. A route whose live fare lookup fails still
+     shows its (real) photo/city/dates, just without a price badge — the
+     rest of the app's "never fabricate a number" rule, applied here too. */
+  var POPULAR_FLIGHTS_DEFAULT_ORIGIN = { code: "JFK", city: "New York" };
+  var POPULAR_FLIGHTS_CARD_COUNT = 4;
 
-    slots.forEach(function (slot) {
-      var skeleton = document.createElement("span");
-      skeleton.className = "home-destination-price-skeleton";
-      skeleton.setAttribute("aria-hidden", "true");
-      slot.appendChild(skeleton);
+  function initPopularFlights() {
+    var grid = document.getElementById("popularFlightsGrid");
+    var tabsWrap = document.querySelector(".home-flights-tabs");
+    var sub = document.getElementById("popularFlightsSub");
+    var note = document.getElementById("popularFlightsNote");
+    if (!grid || !tabsWrap) return;
+
+    var allDestinations = {
+      international: readJsonScript("destinationsData"),
+      domestic: readJsonScript("domesticDestinationsData"),
+    };
+    var byScope = { international: [], domestic: [] };
+    var activeScope = "international";
+    var resolved = null; // { originCity, originCode, prices: { CODE: {price, currency, depart_date, return_date} } }
+
+    // Each destination is independently optimized (see /api/popular-flights
+    // and _smart_destination_date_candidates on the backend): a short
+    // weekend, a midweek trip, and a long weekend are all priced for real,
+    // and whichever is genuinely cheapest for that specific route wins — so
+    // cards routinely show different dates from each other, not one shared
+    // weekend applied to everything.
+    function buildFlightCard(dest, priceInfo) {
+      var dateLabel = formatWeekendLabel(priceInfo.depart_date, priceInfo.return_date);
+      var card = document.createElement("button");
+      card.type = "button";
+      card.className = "home-flight-card";
+      card.setAttribute("aria-label", resolved.originCity + " to " + dest.city + ", from " + formatMoney(priceInfo.price, priceInfo.currency));
+
+      var photo = document.createElement("span");
+      photo.className = "home-flight-photo";
+      var img = document.createElement("img");
+      img.className = "home-flight-img";
+      img.src = "/static/img/destinations/" + dest.photo;
+      img.alt = dest.alt || dest.city;
+      img.loading = "lazy";
+      photo.appendChild(img);
+      var badge = document.createElement("span");
+      badge.className = "home-flight-price-badge";
+      badge.textContent = "From " + formatMoney(priceInfo.price, priceInfo.currency);
+      photo.appendChild(badge);
+      card.appendChild(photo);
+
+      var body = document.createElement("span");
+      body.className = "home-flight-body";
+      var route = document.createElement("span");
+      route.className = "home-flight-route";
+      route.textContent = resolved.originCity + " to " + dest.city;
+      var meta = document.createElement("span");
+      meta.className = "home-flight-meta";
+      meta.textContent = dateLabel ? dateLabel + " · Round-trip" : "Round-trip";
+      body.appendChild(route);
+      body.appendChild(meta);
+      card.appendChild(body);
+
+      card.addEventListener("click", function () {
+        goToLiveResults(resolved.originCode, dest.city, priceInfo.depart_date, priceInfo.return_date);
+      });
+      return card;
+    }
+
+    function renderScope(scope) {
+      if (!resolved) return;
+      grid.setAttribute("aria-busy", "false");
+      grid.innerHTML = "";
+      (byScope[scope] || []).forEach(function (dest) {
+        // A destination with no verified fare across any candidate trip
+        // has no real dates to show — omit it rather than guess.
+        var priceInfo = resolved.prices[dest.code];
+        if (priceInfo) grid.appendChild(buildFlightCard(dest, priceInfo));
+      });
+      note.hidden = !!grid.children.length;
+      if (!grid.children.length) note.textContent = "No live flights found for this scope right now.";
+    }
+
+    tabsWrap.querySelectorAll(".home-flights-tab").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabsWrap.querySelectorAll(".home-flights-tab").forEach(function (t) {
+          t.classList.remove("is-active");
+          t.setAttribute("aria-selected", "false");
+        });
+        tab.classList.add("is-active");
+        tab.setAttribute("aria-selected", "true");
+        activeScope = tab.getAttribute("data-scope") || "international";
+        renderScope(activeScope);
+      });
     });
 
-    var codes = slots.map(function (s) { return s.getAttribute("data-dest-code"); });
-    var origin = getPersonalizedOrigin();
-
-    fetch("/api/destination-prices", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ origin: origin, destinations: codes }),
-    })
-      .then(function (res) { return res.ok ? res.json() : null; })
-      .then(function (data) {
-        if (!data) throw new Error("destination price lookup failed");
-        var prices = data.prices || {};
-        var dateLabel = formatWeekendLabel(data.depart_date, data.return_date);
-        slots.forEach(function (slot) {
-          var code = slot.getAttribute("data-dest-code");
-          var city = slot.getAttribute("data-dest-city");
-          var info = prices[code];
-          if (info && info.price) {
-            slot.textContent = formatMoney(info.price, info.currency) + " round trip";
-            slot.classList.add("is-loaded");
-            slot.disabled = false;
-            slot.setAttribute("aria-label", "See live flight results to " + city + " for " + dateLabel);
-            slot.addEventListener("click", function () {
-              goToLiveResults(origin, city, data.depart_date, data.return_date);
-            });
-          } else {
-            slot.remove();
-          }
-        });
-      })
-      .catch(function () {
-        slots.forEach(function (slot) { slot.remove(); });
+    function resolveOrigin() {
+      return new Promise(function (resolve) {
+        var settled = false;
+        function finish(origin) {
+          if (settled) return;
+          settled = true;
+          resolve(origin && origin.code ? origin : POPULAR_FLIGHTS_DEFAULT_ORIGIN);
+        }
+        if (!navigator.geolocation) return finish(null);
+        var timer = setTimeout(function () { finish(null); }, 6000);
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            fetch("/api/nearest-airport", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            })
+              .then(function (res) { return res.ok ? res.json() : null; })
+              .then(function (data) { clearTimeout(timer); finish(data); })
+              .catch(function () { clearTimeout(timer); finish(null); });
+          },
+          function () { clearTimeout(timer); finish(null); },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
       });
+    }
+
+    resolveOrigin().then(function (origin) {
+      // A route to itself ("Los Angeles to Los Angeles") can happen whenever
+      // the detected origin is also one of the curated domestic cities —
+      // drop that one entry rather than showing a nonsense card.
+      var originCityNorm = (origin.city || "").trim().toLowerCase();
+      function excludesOrigin(d) {
+        return d.code !== origin.code && d.city.trim().toLowerCase() !== originCityNorm;
+      }
+      byScope.international = allDestinations.international.filter(excludesOrigin).slice(0, POPULAR_FLIGHTS_CARD_COUNT);
+      byScope.domestic = allDestinations.domestic.filter(excludesOrigin).slice(0, POPULAR_FLIGHTS_CARD_COUNT);
+
+      var codes = [];
+      byScope.international.concat(byScope.domestic).forEach(function (d) {
+        if (codes.indexOf(d.code) === -1) codes.push(d.code);
+      });
+      if (!codes.length) return;
+
+      fetch("/api/popular-flights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: origin.code, destinations: codes }),
+      })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+          if (!data) throw new Error("popular flights lookup failed");
+          resolved = {
+            originCity: origin.city,
+            originCode: origin.code,
+            prices: data.prices || {},
+          };
+          if (sub) sub.textContent = "Find deals on domestic and international flights from " + origin.city;
+          renderScope(activeScope);
+        })
+        .catch(function () {
+          grid.setAttribute("aria-busy", "false");
+          grid.innerHTML = "";
+          note.textContent = "Live flight deals aren't available right now — try again shortly.";
+          note.hidden = false;
+        });
+    });
   }
 
-  var destinationsList = readDestinationsData();
-  var destinationsBySlug = {};
   var destinationsByCode = {};
-  destinationsList.forEach(function (d) {
-    destinationsBySlug[d.slug] = d;
+  readJsonScript("destinationsData").forEach(function (d) {
     destinationsByCode[d.code] = d;
   });
 
   recordSubmissions();
   renderRecent();
-  initDestinationTabs();
-  initDestinationViewAllToggle();
-  initCompareTool(destinationsBySlug);
-  initLivePricing();
+  initPopularFlights();
   applyDestQueryHandoff(destinationsByCode);
 
   window.addEventListener("resize", updateRecentOverflowHint);
   var recentScrollEl = document.getElementById("recentSearchesList");
   if (recentScrollEl) {
-    recentScrollEl.addEventListener(
-      "scroll",
-      function () {
-        var section = document.getElementById("recentSearchesSection");
-        if (!section) return;
-        var atEnd = recentScrollEl.scrollLeft + recentScrollEl.clientWidth >= recentScrollEl.scrollWidth - 4;
-        section.classList.toggle("has-overflow", !atEnd);
-      },
-      { passive: true }
-    );
+    recentScrollEl.addEventListener("scroll", updateRecentOverflowHint, { passive: true });
   }
 })();

@@ -139,7 +139,7 @@
           </div>
           <div class="field">
             <label for="traveler_{{ traveler.index }}_passport_expires_on">Passport expiry</label>
-            <input id="traveler_{{ traveler.index }}_passport_expires_on" name="traveler_{{ traveler.index }}_passport_expires_on" type="date" value="{{ traveler.passport_expires_on }}" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') else '' }}" required />
+            <input id="traveler_{{ traveler.index }}_passport_expires_on" name="traveler_{{ traveler.index }}_passport_expires_on" type="date" value="{{ traveler.passport_expires_on }}" class="{{ 'field-invalid' if errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') else '' }}" required data-nx-calendar="future" />
             {% if errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') %}<div class="field-error">{{ errors.get('traveler_' ~ traveler.index ~ '_passport_expires_on') }}</div>{% endif %}
           </div>
         </div>

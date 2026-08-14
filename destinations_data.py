@@ -236,8 +236,63 @@ DESTINATIONS = [
     },
 ]
 
+# Domestic (United States) routes for the homepage's "Popular flights near
+# you" widget — a lighter schema than DESTINATIONS since that section has no
+# package-builder, comparison tool, or destination landing page to feed.
+DOMESTIC_DESTINATIONS = [
+    {
+        "slug": "los-angeles",
+        "city": "Los Angeles",
+        "country": "United States",
+        "code": "LAX",
+        "photo": "losangeles.jpg",
+        "alt": "The downtown Los Angeles skyline at dusk with palm trees in the foreground",
+    },
+    {
+        "slug": "miami",
+        "city": "Miami",
+        "country": "United States",
+        "code": "MIA",
+        "photo": "miami.jpg",
+        "alt": "Miami's waterfront skyscrapers along Biscayne Bay",
+    },
+    {
+        "slug": "las-vegas",
+        "city": "Las Vegas",
+        "country": "United States",
+        "code": "LAS",
+        "photo": "lasvegas.jpg",
+        "alt": "The Las Vegas Strip lit up at night",
+    },
+    {
+        "slug": "chicago",
+        "city": "Chicago",
+        "country": "United States",
+        "code": "ORD",
+        "photo": "chicago.jpg",
+        "alt": "Millennium Park and the Cloud Gate sculpture in Chicago",
+    },
+    {
+        "slug": "san-francisco",
+        "city": "San Francisco",
+        "country": "United States",
+        "code": "SFO",
+        "photo": "sanfrancisco.jpg",
+        "alt": "The Golden Gate Bridge in San Francisco at night",
+    },
+    {
+        "slug": "orlando",
+        "city": "Orlando",
+        "country": "United States",
+        "code": "MCO",
+        "photo": "orlando.jpg",
+        "alt": "The downtown Orlando skyline reflected in Lake Eola at dusk",
+    },
+]
+
 _BY_SLUG = {d["slug"]: d for d in DESTINATIONS}
 _BY_CODE = {d["code"]: d for d in DESTINATIONS}
+_DOMESTIC_BY_CODE = {d["code"]: d for d in DOMESTIC_DESTINATIONS}
 
 
 def get_destination(slug: str) -> dict | None:
@@ -246,6 +301,10 @@ def get_destination(slug: str) -> dict | None:
 
 def get_destination_by_code(code: str) -> dict | None:
     return _BY_CODE.get((code or "").strip().upper())
+
+
+def get_domestic_destination_by_code(code: str) -> dict | None:
+    return _DOMESTIC_BY_CODE.get((code or "").strip().upper())
 
 
 def destinations_for_category(category_slug: str) -> list[dict]:

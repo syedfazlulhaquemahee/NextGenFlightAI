@@ -1,353 +1,326 @@
 /*
- * Styles for the Cally-based date picker (static/date-picker.js).
- * Convention used throughout this codebase: dark = default (no data-theme
- * attribute), light = html[data-theme="light"] explicit overrides.
+ * Compact range calendar shared across Flights, Stays, and account forms.
+ * It follows shadcn's Calendar/DayPicker layout: a small surface, 36px date
+ * cells, two months only when there is room, and an indigo selected range.
  */
 
-.ndp-popover{
+.ndp-popover {
   position: absolute;
   z-index: 2600;
-  width: 336px;
+  width: 328px;
   max-width: calc(100vw - 24px);
-  padding: 14px;
-  border-radius: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background:
-    radial-gradient(260px 180px at 12% 0%, rgba(45, 212, 191, 0.14), transparent 62%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(7, 15, 29, 0.98));
-  box-shadow:
-    0 22px 58px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: #eef6ff;
-  backdrop-filter: blur(18px) saturate(130%);
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .94);
+  box-shadow: 0 14px 30px rgba(2, 6, 23, .3), 0 1px 3px rgba(2, 6, 23, .24);
+  color: #f8fafc;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
 }
 
-/* Two-month (range, non-compact) layout needs room for both months side by side. */
-.ndp-popover.ndp-two-col{
-  width: 700px;
-}
+/* The regular shadcn range example shows two compact months on desktop. */
+.ndp-popover.ndp-two-col { width: 616px; }
+.ndp-popover[hidden] { display: none !important; }
 
-.ndp-popover[hidden]{
-  display: none !important;
-}
+/* The shadcn Calendar is intentionally calendar-only: no oversized title or
+   action bar. Selection is committed when the user completes the range. */
+.ndp-hint,
+.ndp-footer { display: none; }
 
-.ndp-hint{
-  padding: 2px 6px 10px;
-  font-size: 0.72rem;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(198, 210, 229, 0.68);
-  transition: color .15s;
-}
-
-.ndp-hint.is-active{
-  color: #5eead4;
-}
-
-.ndp-body{
+.ndp-body {
   display: flex;
   flex-wrap: nowrap;
-  gap: 20px;
+  gap: 16px;
   justify-content: center;
 }
 
-.ndp-footer{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ndp-btn{
+.ndp-btn {
   appearance: none;
   border: 0;
-  border-radius: 12px;
-  padding: 9px 16px;
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
   cursor: pointer;
 }
 
-.ndp-btn--ghost{
-  background: transparent;
-  color: rgba(238, 246, 255, 0.72);
-}
-
+.ndp-btn--ghost { background: transparent; color: rgba(226, 232, 240, .8); }
 .ndp-btn--ghost:hover,
-.ndp-btn--ghost:focus-visible{
-  outline: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: #eef6ff;
-}
+.ndp-btn--ghost:focus-visible { outline: 0; background: rgba(148, 163, 184, .14); color: #fff; }
 
-.ndp-btn--primary{
-  background: linear-gradient(135deg, #5eead4, #7dd3fc 54%, #818cf8);
-  color: #05111e;
-  box-shadow: 0 10px 22px rgba(45, 212, 191, 0.22);
+.ndp-btn--primary {
+  background: #6366f1;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(2, 6, 23, .2);
 }
-
 .ndp-btn--primary:hover,
-.ndp-btn--primary:focus-visible{
-  outline: none;
-  filter: brightness(1.05);
-}
+.ndp-btn--primary:focus-visible { outline: 0; background: #4f46e5; }
 
 /* ---- Cally calendar elements ---- */
 .ndp-body calendar-range,
-.ndp-body calendar-date{
-  --color-accent: #5eead4;
-  --color-text-on-accent: #05111e;
-  color: #eef6ff;
+.ndp-body calendar-date,
+.ndp-body calendar-month {
+  --color-accent: #6366f1;
+  --color-text-on-accent: #fff;
+  color: #f8fafc;
   font-family: inherit;
 }
 
-.ndp-body calendar-month{
-  --color-accent: #5eead4;
-  --color-text-on-accent: #05111e;
-}
-
 .ndp-body calendar-range::part(container),
-.ndp-body calendar-date::part(container){
-  gap: 10px;
-}
+.ndp-body calendar-date::part(container) { gap: 8px; }
 
-/* Lay multiple <calendar-month> children out side by side (range mode). */
 .ndp-body calendar-range::part(months),
-.ndp-body calendar-date::part(months){
+.ndp-body calendar-date::part(months) {
   display: flex;
   flex-direction: row;
-  gap: 20px;
+  gap: 16px;
 }
 
 .ndp-body calendar-range::part(header),
-.ndp-body calendar-date::part(header){
-  padding: 2px 4px 8px;
-  font-weight: 700;
+.ndp-body calendar-date::part(header) {
+  min-height: 30px;
+  padding: 0 2px 6px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .ndp-body calendar-range::part(button),
-.ndp-body calendar-date::part(button){
-  border-radius: 10px;
-  color: #eef6ff;
+.ndp-body calendar-date::part(button) {
+  border-radius: 6px;
+  color: #f8fafc;
 }
 
 .ndp-body calendar-range::part(button previous),
 .ndp-body calendar-range::part(button next),
 .ndp-body calendar-date::part(button previous),
-.ndp-body calendar-date::part(button next){
+.ndp-body calendar-date::part(button next) {
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  background: transparent;
 }
 
 .ndp-body calendar-range::part(button previous):hover,
 .ndp-body calendar-range::part(button next):hover,
 .ndp-body calendar-date::part(button previous):hover,
-.ndp-body calendar-date::part(button next):hover{
-  background: rgba(255, 255, 255, 0.12);
-}
+.ndp-body calendar-date::part(button next):hover { background: rgba(148, 163, 184, .14); }
 
-/* Nav buttons default to literal "Previous"/"Next" text via a named slot —
-   we replace that slot content with an icon (see date-picker.js), so size
-   and center the icon itself here. */
 .ndp-body calendar-range [slot="previous"],
 .ndp-body calendar-range [slot="next"],
 .ndp-body calendar-date [slot="previous"],
-.ndp-body calendar-date [slot="next"]{
+.ndp-body calendar-date [slot="next"] {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
-  color: inherit;
 }
 
 .ndp-body calendar-range [slot="previous"] svg,
 .ndp-body calendar-range [slot="next"] svg,
 .ndp-body calendar-date [slot="previous"] svg,
-.ndp-body calendar-date [slot="next"] svg{
-  width: 100%;
-  height: 100%;
-}
+.ndp-body calendar-date [slot="next"] svg { width: 100%; height: 100%; }
 
 .ndp-body calendar-range::part(button disabled),
-.ndp-body calendar-date::part(button disabled){
-  opacity: 0.3;
-}
+.ndp-body calendar-date::part(button disabled) { opacity: .35; }
 
 .ndp-body calendar-range::part(button day),
-.ndp-body calendar-date::part(button day){
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  font-size: 0.86rem;
-  font-weight: 500;
-  color: rgba(238, 246, 255, 0.92);
+.ndp-body calendar-date::part(button day) {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  color: rgba(248, 250, 252, .94);
+  font-size: 12px;
+  font-weight: 400;
 }
 
+.ndp-body calendar-range::part(button day):hover,
+.ndp-body calendar-date::part(button day):hover { background: rgba(148, 163, 184, .14); }
+
 .ndp-body calendar-range::part(today),
-.ndp-body calendar-date::part(today){
-  box-shadow: inset 0 0 0 1.5px rgba(125, 211, 252, 0.62);
-}
+.ndp-body calendar-date::part(today) { box-shadow: inset 0 0 0 1px #818cf8; }
 
 .ndp-body calendar-range::part(selected),
 .ndp-body calendar-date::part(selected),
 .ndp-body calendar-range::part(range-start),
-.ndp-body calendar-range::part(range-end){
-  background: linear-gradient(135deg, #5eead4, #7dd3fc 54%, #818cf8) !important;
-  color: #05111e !important;
-  font-weight: 700;
+.ndp-body calendar-range::part(range-end) {
+  background: #6366f1 !important;
+  color: #fff !important;
+  font-weight: 600;
 }
 
-.ndp-body calendar-range::part(range-inner){
-  background: rgba(94, 234, 212, 0.16) !important;
-  color: #eef6ff !important;
+.ndp-body calendar-range::part(range-inner) {
+  background: rgba(99, 102, 241, .24) !important;
+  color: #f8fafc !important;
 }
 
 .ndp-body calendar-range::part(outside),
 .ndp-body calendar-date::part(outside),
 .ndp-body calendar-range::part(disallowed),
-.ndp-body calendar-date::part(disallowed){
-  opacity: 0.28;
-}
+.ndp-body calendar-date::part(disallowed) { opacity: .36; }
 
 /* ---- Light theme ---- */
-html[data-theme="light"] .ndp-popover{
-  border-color: rgba(15, 23, 42, 0.1);
-  background:
-    radial-gradient(260px 180px at 12% 0%, rgba(20, 184, 166, 0.12), transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
-  box-shadow:
-    0 22px 58px rgba(15, 23, 42, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+html[data-theme="light"] .ndp-popover {
+  border-color: rgba(15, 23, 42, .14);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .16), 0 1px 2px rgba(15, 23, 42, .08);
   color: #0f172a;
 }
 
-html[data-theme="light"] .ndp-hint{
-  color: rgba(71, 85, 105, 0.72);
-}
-
-html[data-theme="light"] .ndp-hint.is-active{
-  color: #0f766e;
-}
-
-html[data-theme="light"] .ndp-footer{
-  border-top-color: rgba(15, 23, 42, 0.08);
-}
-
-html[data-theme="light"] .ndp-btn--ghost{
-  color: rgba(15, 23, 42, 0.68);
-}
-
+html[data-theme="light"] .ndp-btn--ghost { color: #475569; }
 html[data-theme="light"] .ndp-btn--ghost:hover,
-html[data-theme="light"] .ndp-btn--ghost:focus-visible{
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
-}
-
-html[data-theme="light"] .ndp-btn--primary{
-  background: linear-gradient(135deg, #0f766e, #0891b2 54%, #2563eb);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(8, 145, 178, 0.2);
-}
+html[data-theme="light"] .ndp-btn--ghost:focus-visible { background: #f1f5f9; color: #0f172a; }
+html[data-theme="light"] .ndp-btn--primary { background: #4f46e5; }
+html[data-theme="light"] .ndp-btn--primary:hover,
+html[data-theme="light"] .ndp-btn--primary:focus-visible { background: #4338ca; }
 
 html[data-theme="light"] .ndp-body calendar-range,
 html[data-theme="light"] .ndp-body calendar-date,
-html[data-theme="light"] .ndp-body calendar-month{
-  --color-accent: #0f766e;
-  --color-text-on-accent: #ffffff;
+html[data-theme="light"] .ndp-body calendar-month {
+  --color-accent: #4f46e5;
+  --color-text-on-accent: #fff;
   color: #0f172a;
 }
 
+html[data-theme="light"] .ndp-body calendar-range::part(header),
+html[data-theme="light"] .ndp-body calendar-date::part(header),
 html[data-theme="light"] .ndp-body calendar-range::part(button),
-html[data-theme="light"] .ndp-body calendar-date::part(button){
-  color: #0f172a;
-}
-
-html[data-theme="light"] .ndp-body calendar-range::part(button previous),
-html[data-theme="light"] .ndp-body calendar-range::part(button next),
-html[data-theme="light"] .ndp-body calendar-date::part(button previous),
-html[data-theme="light"] .ndp-body calendar-date::part(button next){
-  background: rgba(15, 23, 42, 0.05);
-}
+html[data-theme="light"] .ndp-body calendar-date::part(button),
+html[data-theme="light"] .ndp-body calendar-range::part(button day),
+html[data-theme="light"] .ndp-body calendar-date::part(button day) { color: #0f172a; }
 
 html[data-theme="light"] .ndp-body calendar-range::part(button previous):hover,
 html[data-theme="light"] .ndp-body calendar-range::part(button next):hover,
 html[data-theme="light"] .ndp-body calendar-date::part(button previous):hover,
-html[data-theme="light"] .ndp-body calendar-date::part(button next):hover{
-  background: rgba(15, 23, 42, 0.1);
-}
-
-html[data-theme="light"] .ndp-body calendar-range::part(button day),
-html[data-theme="light"] .ndp-body calendar-date::part(button day){
-  color: rgba(15, 23, 42, 0.86);
-}
+html[data-theme="light"] .ndp-body calendar-date::part(button next):hover,
+html[data-theme="light"] .ndp-body calendar-range::part(button day):hover,
+html[data-theme="light"] .ndp-body calendar-date::part(button day):hover { background: #f1f5f9; }
 
 html[data-theme="light"] .ndp-body calendar-range::part(today),
-html[data-theme="light"] .ndp-body calendar-date::part(today){
-  box-shadow: inset 0 0 0 1.5px rgba(8, 145, 178, 0.5);
-}
+html[data-theme="light"] .ndp-body calendar-date::part(today) { box-shadow: inset 0 0 0 1px #6366f1; }
 
 html[data-theme="light"] .ndp-body calendar-range::part(selected),
 html[data-theme="light"] .ndp-body calendar-date::part(selected),
 html[data-theme="light"] .ndp-body calendar-range::part(range-start),
-html[data-theme="light"] .ndp-body calendar-range::part(range-end){
-  background: linear-gradient(135deg, #0f766e, #0891b2 54%, #2563eb) !important;
-  color: #ffffff !important;
-}
+html[data-theme="light"] .ndp-body calendar-range::part(range-end) { background: #4f46e5 !important; color: #fff !important; }
 
-html[data-theme="light"] .ndp-body calendar-range::part(range-inner){
-  background: rgba(20, 184, 166, 0.12) !important;
-  color: #0f172a !important;
-}
+html[data-theme="light"] .ndp-body calendar-range::part(range-inner) { background: #e0e7ff !important; color: #1e1b4b !important; }
 
-/* ---- Small viewports: keep everything on-screen and comfortably tappable --- */
-@media (max-width: 760px){
+/* Keep the original compact mobile footprint: a single 34px-cell month. */
+@media (max-width: 760px) {
   .ndp-popover,
-  .ndp-popover.ndp-two-col{
-    width: calc(100vw - 24px);
-    max-width: 380px;
-    padding: 12px;
-  }
-
+  .ndp-popover.ndp-two-col { width: min(328px, calc(100vw - 24px)); padding: 12px; }
   .ndp-body calendar-range::part(button day),
-  .ndp-body calendar-date::part(button day){
-    width: 40px;
-    height: 40px;
-  }
-
-  .ndp-footer{
-    position: sticky;
-    bottom: 0;
-  }
+  .ndp-body calendar-date::part(button day) { width: 34px; height: 34px; }
 }
 
-/* Calendar field disabled state (one-way trips: no return date) */
-.calendar-field.is-disabled .calendar-display-input{
-  opacity: 0.45;
-  cursor: not-allowed;
+/* Date controls converted from native inputs retain their page's field styling. */
+.ndp-native-display { cursor: pointer; }
+.ndp-native-display:disabled { cursor: not-allowed; }
+
+.calendar-field.is-disabled .calendar-display-input { opacity: .45; cursor: not-allowed; }
+body.home-page .gf-cal-anchors input:disabled { pointer-events: none; }
+
+/* Results top-bar editor uses the very same Cally / shadcn calendar, mounted
+   inline instead of in a popover.  Keep its original compact panel footprint
+   without reintroducing a second calendar implementation. */
+.srb-shadcn-calendar {
+  width: 100%;
+  min-height: 294px;
+  padding: 12px 10px 8px;
+  box-sizing: border-box;
 }
 
-/*
- * The depart/return display inputs are stacked, full-size, invisible overlay
- * inputs covering the whole "Dates" segment (see .gf-cal-anchors in
- * home-page.css). When the return input is disabled (one-way trips), it
- * still sits on top in paint order and a disabled input does not forward
- * clicks to whatever is behind it — it just swallows them. Without this, the
- * entire dates segment silently stops responding in one-way mode.
- */
-body.home-page .gf-cal-anchors input:disabled{
-  pointer-events: none;
+.srb-shadcn-calendar calendar-range,
+.srb-shadcn-calendar calendar-date {
+  width: 100%;
+  justify-content: center;
 }
+
+.srb-shadcn-calendar calendar-range::part(months),
+.srb-shadcn-calendar calendar-date::part(months) {
+  justify-content: center;
+}
+
+/* Checkout's date of birth picker needs month/year controls for historical
+   dates, so it remains a single-date Flatpickr instance. Its surface, cells,
+   arrows, and brand color intentionally match the shared shadcn calendar. */
+.flatpickr-calendar.checkout-dob-calendar {
+  width: min(328px, calc(100vw - 24px)) !important;
+  padding: 12px !important;
+  border: 1px solid rgba(148, 163, 184, .22) !important;
+  border-radius: 10px !important;
+  background: rgba(15, 23, 42, .94) !important;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, .3), 0 1px 3px rgba(2, 6, 23, .24) !important;
+  color: #f8fafc !important;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-months { margin-bottom: 6px !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-months .flatpickr-month { min-height: 30px !important; color: #f8fafc !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month { min-height: 30px !important; color: #f8fafc !important; font-size: 13px !important; font-weight: 600 !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month .numInputWrapper {
+  height: 28px !important;
+  min-height: 28px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background-color: transparent !important;
+}
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month input.cur-year { color: #f8fafc !important; font-size: 13px !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-prev-month,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-next-month {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  color: #f8fafc !important;
+  background: transparent !important;
+}
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-prev-month:hover,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-next-month:hover { background: rgba(148, 163, 184, .14) !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-weekdays { gap: 2px !important; margin-bottom: 2px !important; padding-bottom: 0 !important; border-bottom: 0 !important; }
+.flatpickr-calendar.checkout-dob-calendar span.flatpickr-weekday { color: rgba(226, 232, 240, .65) !important; font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+.flatpickr-calendar.checkout-dob-calendar .dayContainer { gap: 2px !important; padding-top: 2px !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 6px !important;
+  color: rgba(248, 250, 252, .94) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day:hover { background: rgba(148, 163, 184, .14) !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day.today { border-color: #818cf8 !important; }
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day.selected,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day.startRange,
+.flatpickr-calendar.checkout-dob-calendar .flatpickr-day.endRange { background: #6366f1 !important; color: #fff !important; font-weight: 600 !important; }
+
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar {
+  border-color: rgba(15, 23, 42, .14) !important;
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .16), 0 1px 2px rgba(15, 23, 42, .08) !important;
+}
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-months .flatpickr-month,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month .flatpickr-monthDropdown-months,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-current-month input.cur-year,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-prev-month,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-next-month,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day { color: #0f172a !important; }
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-prev-month:hover,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-next-month:hover,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day:hover { background: #f1f5f9 !important; }
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.selected,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.startRange,
+html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.endRange { background: #4f46e5 !important; color: #fff !important; }
