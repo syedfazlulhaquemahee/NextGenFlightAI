@@ -107,6 +107,7 @@
   var activeMode = "";
   var locationCoordinates = null;
   var locationRequested = false;
+  var autoLocationChecked = false;
   var destinationCommitted = "";
   var datesCommittedKey = "";
   var stayCache = Object.create(null);
@@ -293,12 +294,16 @@
       .then(function (payload) {
         if (!finishRequest(request, false)) return;
         cachePayload(key, payload);
+        if ((!payload.recommended || !payload.recommended.length) && (!payload.nearby || !payload.nearby.length)) {
+          showLocationRatesUnavailable();
+          return;
+        }
         showPayload(payload, { local: true });
       })
       .catch(function (error) {
         if (!isCurrentRequest(request) || isAbort(error)) return;
         finishRequest(request, true);
-        shelf.hidden = true;
+        showLocationRatesUnavailable();
       });
   }
 
@@ -312,6 +317,28 @@
     }
     if (locationCoordinates) {
       loadLocationStays();
+      return;
+    }
+    // If the visitor has already allowed location, load it without making
+    // them press the button again. SkairGeo's auto mode never opens a new
+    // permission prompt: it only calls the browser when permission is known
+    // to be granted, and otherwise falls back to the explicit button below.
+    if (!autoLocationChecked && window.SkairGeo) {
+      autoLocationChecked = true;
+      shelf.hidden = false;
+      recommendedGroup.hidden = true;
+      nearbyGroup.hidden = true;
+      if (title) title.textContent = "Hotels near you";
+      if (summary) summary.textContent = "Checking your location…";
+      if (locationButton) locationButton.hidden = true;
+      window.SkairGeo.requestLocation({ auto: true, timeout: 10000 }).then(function (coords) {
+        if (coords) {
+          locationCoordinates = coords;
+          loadLocationStays();
+        } else {
+          showLocationPermissionState();
+        }
+      });
       return;
     }
     if (locationRequested) return;
@@ -373,6 +400,23 @@
     });
   }
 
+  function showLocationRatesUnavailable() {
+    shelf.hidden = false;
+    activeMode = "location-rates-unavailable";
+    recommendedGroup.hidden = true;
+    nearbyGroup.hidden = true;
+    if (title) title.textContent = "Hotels near you";
+    if (summary) {
+      summary.textContent = "We found your location, but live nearby rates are unavailable right now. Try again or explore all hotels.";
+    }
+    if (allLink) allLink.href = "/hotels";
+    if (locationButton) {
+      locationButton.hidden = false;
+      locationButton.disabled = false;
+      locationButton.textContent = "Try again";
+    }
+  }
+
   function showLocationPermissionState(error) {
     shelf.hidden = false;
     activeMode = "location-unavailable";
@@ -388,6 +432,8 @@
           "turn Location back to Allow, then use the button below again — no reload needed.";
       } else if (error && error.code === 3) {
         summary.textContent = "We could not determine your location. Please try again.";
+      } else if (error && error.code === 2) {
+        summary.textContent = "Your device could not provide a location. Check that Location Services are enabled, then try again.";
       } else {
         summary.textContent = "Use your location to see current nightly rates nearby.";
       }
