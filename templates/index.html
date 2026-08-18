@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-modal-disclaimer') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260817-hotels-pill') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='flight-stays.css', v='20260817-member-prices') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260818-ios-ai-input') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260818-ios-ai-input-lock') }}" />
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -157,7 +157,7 @@
                   rows="1"
                   wrap="soft"
                   maxlength="500"
-                  style="white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow-x: hidden;"
+                  style="font-size: 16px !important; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow-x: hidden;"
                   placeholder="Try: NYC to London next month, or a 5 star hotel in Dubai — or both"
                   aria-describedby="aiSearchKeyboardHint"
                 ></textarea>
