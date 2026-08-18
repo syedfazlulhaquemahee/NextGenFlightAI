@@ -82,6 +82,7 @@
     </nav>
     <div class="hdr-mobile-actions">
       <form method="post" action="{{ url_for('user_portal_logout') }}" class="hdr-mobile-actions-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
         <button class="hdr-mobile-outline-btn" type="submit">Sign out</button>
       </form>
     </div>

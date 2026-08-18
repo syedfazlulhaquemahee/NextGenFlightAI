@@ -363,8 +363,12 @@
         locationCoordinates = coords;
         if (activeMode === "local-pending") loadLocationStays();
       } else if (activeMode === "local-pending") {
-        var errorCode = window.SkairGeo ? window.SkairGeo.getLastErrorCode() : 1;
-        showLocationPermissionState({ code: errorCode || 1 });
+        // Pass the real code through as-is — defaulting an unknown/missing
+        // code to "1" (denied) was mislabeling genuine timeouts and other
+        // failures as "blocked," which isn't true and sends the visitor to
+        // the wrong fix (browser settings instead of just trying again).
+        var errorCode = window.SkairGeo ? window.SkairGeo.getLastErrorCode() : null;
+        showLocationPermissionState(errorCode ? { code: errorCode } : null);
       }
     });
   }
@@ -379,7 +383,9 @@
       if (!navigator.geolocation) {
         summary.textContent = "Location is not supported by this browser.";
       } else if (error && error.code === 1) {
-        summary.textContent = "Location access is blocked. Allow it in your browser settings, then try again.";
+        summary.textContent =
+          "You've blocked location for this site. Click the icon at the left of your address bar, " +
+          "turn Location back to Allow, then use the button below again — no reload needed.";
       } else if (error && error.code === 3) {
         summary.textContent = "We could not determine your location. Please try again.";
       } else {

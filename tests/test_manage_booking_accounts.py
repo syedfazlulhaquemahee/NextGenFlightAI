@@ -13,6 +13,11 @@ class ManageBookingAccountTests(unittest.TestCase):
         self._orig_duffel_token = flight_app.DUFFEL_ACCESS_TOKEN
         self._orig_account_db_path = flight_app.ACCOUNT_DB_PATH
         self._orig_account_db_ready = flight_app._ACCOUNT_DB_READY
+        self._orig_email_enabled = os.environ.get("NGF_EMAIL_ENABLED")
+        # Account-flow tests should never attempt delivery through a developer's
+        # real SMTP account. Individual tests mock the email operation when
+        # asserting email-specific behavior.
+        os.environ["NGF_EMAIL_ENABLED"] = "false"
         self._tmpdir = tempfile.TemporaryDirectory()
         flight_app.DUFFEL_ACCESS_TOKEN = "duffel_test_mock"
         flight_app.ACCOUNT_DB_PATH = os.path.join(self._tmpdir.name, "accounts-test.db")
@@ -26,6 +31,10 @@ class ManageBookingAccountTests(unittest.TestCase):
         flight_app._ACCOUNT_DB_READY = self._orig_account_db_ready
         flight_app.USER_ACCOUNT_CACHE.clear()
         flight_app.MANAGE_BOOKING_ATTEMPT_CACHE.clear()
+        if self._orig_email_enabled is None:
+            os.environ.pop("NGF_EMAIL_ENABLED", None)
+        else:
+            os.environ["NGF_EMAIL_ENABLED"] = self._orig_email_enabled
         self._tmpdir.cleanup()
 
     @staticmethod
@@ -218,6 +227,45 @@ class ManageBookingAccountTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Invalid email or password.", response.data)
         self.assertNotIn(b'id="portalMenuDropdown"', response.data)
+
+    @patch.object(flight_app.email_service, "send_welcome_email", return_value=(True, "sent"))
+    def test_home_header_sign_out_submits_csrf_token(self, mock_send_welcome):
+        self.client.post(
+            "/manage-booking/account/signup",
+            data=self._signup_payload(""),
+            follow_redirects=True,
+        )
+
+        # Exercise the production CSRF path: the shared home-page account
+        # menu must supply the token that /portal/logout validates.
+        previous_testing = bool(flight_app.app.config.get("TESTING"))
+        flight_app.app.config["TESTING"] = False
+        try:
+            home = self.client.get("/")
+            self.assertEqual(home.status_code, 200)
+            self.assertIn(b'action="/portal/logout"', home.data)
+
+            with self.client.session_transaction() as session_state:
+                csrf_token = str(session_state.get(flight_app._B2C_CSRF_SESSION_KEY) or "")
+            self.assertTrue(csrf_token)
+            self.assertIn(
+                f'name="_csrf" value="{csrf_token}"'.encode(),
+                home.data,
+            )
+
+            response = self.client.post(
+                "/portal/logout",
+                data={"_csrf": csrf_token},
+                follow_redirects=False,
+            )
+        finally:
+            flight_app.app.config["TESTING"] = previous_testing
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/auth?mode=login", response.headers["Location"])
+        with self.client.session_transaction() as session_state:
+            self.assertFalse(session_state.get("ngf_account_email"))
+            self.assertFalse(session_state.get("ngf_account_nonce"))
 
     def test_signup_requires_password_confirmation_match(self):
         payload = self._signup_payload("")

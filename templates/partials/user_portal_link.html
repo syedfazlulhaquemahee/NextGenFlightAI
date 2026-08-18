@@ -37,6 +37,7 @@
       </a>
       <div class="portal-menu-divider" role="separator"></div>
       <form method="post" action="{{ url_for('user_portal_logout') }}" style="display:contents">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
         <button class="portal-menu-item portal-menu-item--danger" type="submit" role="menuitem">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
           Sign out
