@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Checkout — {{ hotel.name }} • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260818-cta-flow-spacing') }}" />
+  <style>
+    .hotel-checkout-page {
+      --c-green: #22c55e; --c-green-bg: rgba(34,197,94,.14); --c-green-bd: rgba(34,197,94,.30);
+      --c-red: #ef4444; --c-red-bg: rgba(239,68,68,.14); --c-red-bd: rgba(239,68,68,.30);
+      --c-ind: #6366f1; --c-ind-bg: rgba(99,102,241,.12);
+    }
+    html:not([data-theme="light"]) .hotel-checkout-page {
+      --c-page: #0c1018; --c-card: #141c2b; --c-card-bd: rgba(255,255,255,.07);
+      --c-card-sh: 0 1px 10px rgba(0,0,0,.38); --c-text: #eef2fb; --c-muted: #8a9ab8;
+      --c-sep: rgba(255,255,255,.08); --c-input-bg: #0f1522;
+    }
+    html[data-theme="light"] .hotel-checkout-page {
+      --c-page: #f0f3f8; --c-card: #ffffff; --c-card-bd: rgba(15,23,42,.08);
+      --c-card-sh: 0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05); --c-text: #0f172a;
+      --c-muted: #64748b; --c-sep: rgba(15,23,42,.08); --c-input-bg: #f8fafc;
+    }
+    html:has(body.hotel-checkout-page), body.hotel-checkout-page { background: var(--c-page) !important; }
+    .hcout-wrap { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; background: var(--c-page); color: var(--c-text); }
+    .hcout-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--c-muted); text-decoration: none; margin-bottom: 18px; }
+    .hcout-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+    @media (max-width: 860px) { .hcout-grid { grid-template-columns: 1fr; } }
+    .hcout-card { background: var(--c-card); border: 1px solid var(--c-card-bd); border-radius: 16px; box-shadow: var(--c-card-sh); padding: 24px; margin-bottom: 20px; }
+    .hcout-card h2 { margin: 0 0 16px; font-size: 16px; font-weight: 700; }
+    .hcout-alert { display: flex; gap: 10px; align-items: flex-start; padding: 13px 16px; border-radius: 12px; font-size: 13.5px; margin-bottom: 20px; }
+    .hcout-alert--err { background: #fff1f2; border: 1px solid #fecdd3; color: #b42318; }
+    .hcout-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 480px) { .hcout-field-row { grid-template-columns: 1fr; } }
+    .hcout-field { margin-bottom: 14px; }
+    .hcout-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--c-muted); margin-bottom: 6px; }
+    .hcout-field input { width: 100%; box-sizing: border-box; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--c-card-bd); background: var(--c-input-bg); color: var(--c-text); font-size: 14px; }
+    .hcout-field input:focus { outline: 2px solid var(--c-ind); outline-offset: 1px; }
+    .hcout-field-err { font-size: 12px; color: #ef4444; margin-top: 5px; }
+    .hcout-guest-block { border-top: 1px solid var(--c-sep); padding-top: 14px; margin-top: 14px; }
+    .hcout-guest-block h3 { font-size: 13.5px; margin: 0 0 10px; color: var(--c-muted); }
+    .hcout-summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--c-sep); font-size: 13.5px; }
+    .hcout-summary-row:last-child { border-bottom: none; }
+    .hcout-summary-total { display: flex; justify-content: space-between; padding-top: 14px; margin-top: 6px; border-top: 1px solid var(--c-sep); font-size: 16px; font-weight: 700; }
+    .hcout-submit { width: 100%; margin-top: 18px; }
+    .hcout-submit[disabled] { opacity: .55; cursor: not-allowed; }
+    .hcout-price-changed { background: var(--c-ind-bg); border: 1px solid var(--c-ind); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 14px; }
+    .hcout-unavailable { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; max-width: 440px; }
+    .hcout-unavailable h3 { margin: 0; font-size: 18px; line-height: 1.3; }
+    .hcout-unavailable p { margin: 0; color: var(--c-muted); font-size: 14px; line-height: 1.55; }
+    .hcout-unavailable .nu-btn { min-height: 44px; margin-top: 4px; padding: 11px 18px; box-sizing: border-box; }
+  </style>
+</head>
+<body class="hotel-checkout-page">
+  {% include "partials/platform_header.html" %}
+
+  <div class="hcout-wrap">
+    <a class="hcout-back" href="{{ url_for('hotel_detail', hotel_id=hotel_id, checkin=checkin, checkout=checkout, adults=adults, rooms=rooms, place_id=place_id, place_name=place_name) }}">← Back to {{ hotel.name }}</a>
+
+    {% if booking_error %}
+      <div class="hcout-alert hcout-alert--err" role="alert">{{ booking_error }}</div>
+    {% endif %}
+
+    <div class="hcout-grid">
+      <div>
+        <div class="hcout-card">
+          <h2>{{ "Who's staying" if booking_enabled else 'Reservation unavailable' }}</h2>
+          {% if booking_enabled %}
+          <form method="post" action="{{ url_for('hotel_checkout', hotel_id=hotel_id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+            <input type="hidden" name="offer_id" value="{{ offer_id }}" />
+            <input type="hidden" name="checkin" value="{{ checkin }}" />
+            <input type="hidden" name="checkout" value="{{ checkout }}" />
+            <input type="hidden" name="adults" value="{{ adults }}" />
+            <input type="hidden" name="rooms" value="{{ rooms }}" />
+            <input type="hidden" name="place_id" value="{{ place_id }}" />
+            <input type="hidden" name="place_name" value="{{ place_name }}" />
+
+            <h3 style="font-size:13.5px;margin:0 0 10px;color:var(--c-muted);">Primary contact</h3>
+            <div class="hcout-field-row">
+              <div class="hcout-field">
+                <label for="hFirst">First name</label>
+                <input id="hFirst" type="text" name="holder_first_name" value="{{ traveler_form.holder.first_name }}" required />
+                {% if errors.holder_first_name %}<p class="hcout-field-err">{{ errors.holder_first_name }}</p>{% endif %}
+              </div>
+              <div class="hcout-field">
+                <label for="hLast">Last name</label>
+                <input id="hLast" type="text" name="holder_last_name" value="{{ traveler_form.holder.last_name }}" required />
+                {% if errors.holder_last_name %}<p class="hcout-field-err">{{ errors.holder_last_name }}</p>{% endif %}
+              </div>
+            </div>
+            <div class="hcout-field-row">
+              <div class="hcout-field">
+                <label for="hEmail">Email</label>
+                <input id="hEmail" type="email" name="holder_email" value="{{ traveler_form.holder.email }}" required />
+                {% if errors.holder_email %}<p class="hcout-field-err">{{ errors.holder_email }}</p>{% endif %}
+              </div>
+              <div class="hcout-field">
+                <label for="hPhone">Phone (with country code)</label>
+                <input id="hPhone" type="tel" name="holder_phone" placeholder="+15551234567" value="{{ traveler_form.holder.phone }}" required />
+                {% if errors.holder_phone %}<p class="hcout-field-err">{{ errors.holder_phone }}</p>{% endif %}
+              </div>
+            </div>
+
+            {% for guest in traveler_form.guests %}
+              <div class="hcout-guest-block">
+                <h3>Room {{ guest.index + 1 }} guest</h3>
+                <div class="hcout-field-row">
+                  <div class="hcout-field">
+                    <label for="g{{ guest.index }}First">First name</label>
+                    <input id="g{{ guest.index }}First" type="text" name="guest_{{ guest.index }}_first_name" value="{{ guest.first_name }}" required />
+                    {% if errors["guest_%d_first_name"|format(guest.index)] %}<p class="hcout-field-err">{{ errors["guest_%d_first_name"|format(guest.index)] }}</p>{% endif %}
+                  </div>
+                  <div class="hcout-field">
+                    <label for="g{{ guest.index }}Last">Last name</label>
+                    <input id="g{{ guest.index }}Last" type="text" name="guest_{{ guest.index }}_last_name" value="{{ guest.last_name }}" required />
+                    {% if errors["guest_%d_last_name"|format(guest.index)] %}<p class="hcout-field-err">{{ errors["guest_%d_last_name"|format(guest.index)] }}</p>{% endif %}
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+
+            <button class="nu-btn hcout-submit" type="submit" {% if not booking_enabled %}disabled{% endif %}>
+              Confirm and reserve
+            </button>
+          </form>
+          {% else %}
+            <div class="hcout-unavailable" role="status">
+              <h3>This room can’t be reserved right now</h3>
+              <p>The price could not be confirmed. Return to the room list to choose another available option.</p>
+              <a class="nu-btn" href="{{ url_for('hotel_detail', hotel_id=hotel_id, checkin=checkin, checkout=checkout, adults=adults, rooms=rooms, place_id=place_id, place_name=place_name) }}#rooms">Back to room options</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <aside>
+        <div class="hcout-card">
+          <h2>{{ hotel.name }}</h2>
+          {% if hotel.address %}<p style="font-size:13px;color:var(--c-muted);margin:0 0 14px;">{{ hotel.address }}</p>{% endif %}
+          {% if prebook %}
+            {% if prebook.price_changed %}
+              <div class="hcout-price-changed">Price updated since you started checkout — review the new total below.</div>
+            {% endif %}
+            <div class="hcout-summary-row"><span>Room</span><span>{{ prebook.room_name }}</span></div>
+            <div class="hcout-summary-row"><span>Board</span><span>{{ prebook.board_name }}</span></div>
+            <div class="hcout-summary-row"><span>Dates</span><span>{{ checkin }} → {{ checkout }}</span></div>
+            <div class="hcout-summary-row"><span>Guests</span><span>{{ adults }} guest{{ 's' if adults != 1 }} · {{ rooms }} room{{ 's' if rooms != 1 }}</span></div>
+            <div class="hcout-summary-row"><span>Cancellation</span><span>{{ 'Free cancellation' if prebook.refundable else 'Non-refundable' }}</span></div>
+            <div class="hcout-summary-total"><span>Total</span><span>{{ prebook.currency }} {{ '%.2f'|format(prebook.total_amount) }}</span></div>
+          {% else %}
+            <p style="font-size:13px;color:var(--c-muted);">Pricing unavailable right now.</p>
+          {% endif %}
+        </div>
+        {% if lite_env == 'sandbox' %}
+          <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

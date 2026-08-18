@@ -149,7 +149,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -176,7 +176,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -204,7 +204,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -239,7 +239,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -268,7 +268,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -307,7 +307,7 @@ class FlexSearchTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -541,7 +541,7 @@ class HolidaySeasonInferenceTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):
@@ -591,7 +591,7 @@ class TravelerContextTests(unittest.TestCase):
             })
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()):

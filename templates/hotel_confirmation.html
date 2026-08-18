@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>{{ booking.booking_reference }} · Hotel booking • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-nuitee-type') }}" />
+  <style>
+    .hotel-confirmation-page {
+      --c-green: #22c55e; --c-green-bg: rgba(34,197,94,.14); --c-green-bd: rgba(34,197,94,.30);
+    }
+    html:not([data-theme="light"]) .hotel-confirmation-page {
+      --c-page: #0c1018; --c-card: #141c2b; --c-card-bd: rgba(255,255,255,.07);
+      --c-card-sh: 0 1px 10px rgba(0,0,0,.38); --c-text: #eef2fb; --c-muted: #8a9ab8; --c-sep: rgba(255,255,255,.08);
+    }
+    html[data-theme="light"] .hotel-confirmation-page {
+      --c-page: #f0f3f8; --c-card: #ffffff; --c-card-bd: rgba(15,23,42,.08);
+      --c-card-sh: 0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05); --c-text: #0f172a; --c-muted: #64748b; --c-sep: rgba(15,23,42,.08);
+    }
+    .hconf-wrap { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; background: var(--c-page); color: var(--c-text); }
+    .hconf-hero { text-align: center; margin-bottom: 28px; }
+    .hconf-check { width: 56px; height: 56px; border-radius: 50%; background: var(--c-green-bg); border: 1px solid var(--c-green-bd); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--c-green); }
+    .hconf-hero h1 { font-size: 22px; margin: 0 0 8px; }
+    .hconf-hero p { color: var(--c-muted); font-size: 14px; margin: 0; }
+    .hconf-ref { display: inline-block; margin-top: 14px; padding: 8px 16px; border-radius: 999px; background: var(--c-green-bg); border: 1px solid var(--c-green-bd); font-family: ui-monospace, monospace; font-weight: 700; letter-spacing: .08em; color: var(--c-text); }
+    .hconf-card { background: var(--c-card); border: 1px solid var(--c-card-bd); border-radius: 16px; box-shadow: var(--c-card-sh); padding: 24px; margin-bottom: 20px; }
+    .hconf-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--c-sep); font-size: 14px; }
+    .hconf-row:last-child { border-bottom: none; }
+    .hconf-row span:first-child { color: var(--c-muted); }
+    .hconf-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hconf-actions .nu-btn { flex: 1; text-align: center; }
+  </style>
+</head>
+<body class="hotel-confirmation-page">
+  {% include "partials/platform_header.html" %}
+
+  <div class="hconf-wrap">
+    <div class="hconf-hero">
+      <div class="hconf-check">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h1>Your stay is booked</h1>
+      <p>A confirmation email is on its way to {{ booking.holder_email }}.</p>
+      <div class="hconf-ref">{{ booking.booking_reference }}</div>
+    </div>
+
+    <div class="hconf-card">
+      <h2 style="margin:0 0 4px;font-size:17px;">{{ booking.hotel_name }}</h2>
+      {% if booking.hotel_address %}<p style="font-size:13px;color:var(--c-muted);margin:0 0 16px;">{{ booking.hotel_address }}</p>{% endif %}
+      <div class="hconf-row"><span>Check-in</span><span>{{ booking.checkin }}</span></div>
+      <div class="hconf-row"><span>Check-out</span><span>{{ booking.checkout }}</span></div>
+      <div class="hconf-row"><span>Room</span><span>{{ booking.room_name }}{% if booking.board_name %} · {{ booking.board_name }}{% endif %}</span></div>
+      <div class="hconf-row"><span>Guest</span><span>{{ booking.holder_first_name }} {{ booking.holder_last_name }}</span></div>
+      <div class="hconf-row"><span>Status</span><span>{{ booking.status | title }}</span></div>
+      <div class="hconf-row"><span>Total paid</span><span>{{ booking.currency }} {{ booking.total_amount }}</span></div>
+    </div>
+
+    <div class="hconf-actions">
+      <a class="nu-btn" href="{{ url_for('manage_booking', booking_reference=booking.booking_reference) }}">Manage this booking</a>
+      <a class="nu-btn" href="{{ url_for('index') }}">Back to Skairova</a>
+    </div>
+  </div>
+</body>
+</html>

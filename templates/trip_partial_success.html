@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Flight Booked — Hotel Needs Attention • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <style>
+    .tpartial-page {
+      --c-green: #22c55e; --c-green-bg: rgba(34,197,94,.14); --c-green-bd: rgba(34,197,94,.30);
+      --c-amber: #f59e0b; --c-amber-bg: rgba(245,158,11,.12); --c-amber-bd: rgba(245,158,11,.32);
+    }
+    html:not([data-theme="light"]) .tpartial-page {
+      --c-page: #0c1018; --c-card: #141c2b; --c-card-bd: rgba(255,255,255,.07);
+      --c-card-sh: 0 1px 10px rgba(0,0,0,.38); --c-text: #eef2fb; --c-muted: #8a9ab8; --c-sep: rgba(255,255,255,.08);
+    }
+    html[data-theme="light"] .tpartial-page {
+      --c-page: #f0f3f8; --c-card: #ffffff; --c-card-bd: rgba(15,23,42,.08);
+      --c-card-sh: 0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05); --c-text: #0f172a; --c-muted: #64748b; --c-sep: rgba(15,23,42,.08);
+    }
+    .tpartial-wrap { max-width: 620px; margin: 0 auto; padding: 40px 20px 80px; background: var(--c-page); color: var(--c-text); }
+    .tpartial-card { background: var(--c-card); border: 1px solid var(--c-card-bd); border-radius: 16px; box-shadow: var(--c-card-sh); padding: 24px; margin-bottom: 20px; }
+    .tpartial-ok { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--c-green-bg); border: 1px solid var(--c-green-bd); margin-bottom: 16px; }
+    .tpartial-ok svg { flex-shrink: 0; color: var(--c-green); }
+    .tpartial-warn { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: var(--c-amber-bg); border: 1px solid var(--c-amber-bd); margin-bottom: 20px; }
+    .tpartial-warn svg { flex-shrink: 0; color: var(--c-amber); margin-top: 1px; }
+    .tpartial-ref { font-family: ui-monospace, monospace; font-weight: 700; letter-spacing: .06em; }
+    .tpartial-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .tpartial-btn { flex: 1; text-align: center; padding: 13px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 14px; }
+    .tpartial-btn--primary { background: var(--c-amber); color: #241a02; }
+    .tpartial-btn--ghost { background: transparent; border: 1px solid var(--c-card-bd); color: var(--c-text); }
+  </style>
+</head>
+<body class="tpartial-page">
+  {% include "partials/platform_header.html" %}
+
+  <div class="tpartial-wrap">
+    <div class="tpartial-card">
+      <div class="tpartial-ok">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        <div>
+          <strong>Your flight is booked.</strong>
+          <div>Confirmation <span class="tpartial-ref">{{ flight_booking_reference }}</span></div>
+        </div>
+      </div>
+
+      <div class="tpartial-warn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <div>
+          <strong>We couldn't complete the {{ hotel_name }} hotel booking.</strong>
+          <p style="margin:6px 0 0;font-size:13.5px;color:var(--c-muted);">{{ hotel_error or "Something went wrong on the hotel side." }} Your flight is unaffected — retry the hotel below.</p>
+        </div>
+      </div>
+
+      <div class="tpartial-actions">
+        <a class="tpartial-btn tpartial-btn--primary" href="{{ retry_url }}">Retry the hotel</a>
+        <a class="tpartial-btn tpartial-btn--ghost" href="{{ url_for('booking_confirmation', order_id=flight_order_id) }}">View flight confirmation</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

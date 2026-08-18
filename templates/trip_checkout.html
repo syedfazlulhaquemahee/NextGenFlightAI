@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Secure Checkout — Flight + Hotel • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260527-duffel-masked-fields') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout-card-payment.css', v='20260528-clip-v4') }}" />
+  {% include "partials/theme_head.html" %}
+  {% include "partials/flights_parity_head.html" %}
+  <style>
+    .trip-hotel-section { border-top: 1px solid var(--c-sep, rgba(255,255,255,.08)); margin-top: 24px; padding-top: 20px; }
+    .trip-hotel-card { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+    .trip-hotel-card img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; }
+    .trip-hotel-card-meta strong { display: block; font-size: 15px; }
+    .trip-hotel-card-meta span { font-size: 13px; color: var(--c-muted, #8a9ab8); }
+    .trip-hcout-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 480px) { .trip-hcout-field-row { grid-template-columns: 1fr; } }
+    .trip-hcout-field { margin-bottom: 14px; }
+    .trip-hcout-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--c-muted, #8a9ab8); margin-bottom: 6px; }
+    .trip-hcout-field input { width: 100%; box-sizing: border-box; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--c-bd, rgba(255,255,255,.1)); background: var(--c-input-bg, #0f1522); color: inherit; font-size: 14px; }
+    .trip-hcout-field-err { font-size: 12px; color: #ef4444; margin-top: 5px; }
+    .trip-combined-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; border-radius: 12px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25); margin-top: 16px; font-size: 14px; }
+    .trip-combined-total strong { font-size: 17px; }
+    .trip-price-changed { background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.35); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 14px; }
+  </style>
+</head>
+<body class="results-page booking-page premium-checkout-page checkout-details-page">
+  {% set model = checkout_model or {} %}
+  {% include "partials/platform_header.html" %}
+  {% include "checkout_components/header.html" %}
+
+  <main class="checkout-shell">
+    {% if booking_error %}
+      <div class="checkout-alert" role="alert">{{ booking_error }}</div>
+    {% endif %}
+
+    {% if offer_summary and model and hotel and prebook %}
+      <form method="post" action="{{ url_for('trip_checkout') }}" class="checkout-workspace" id="premiumCheckoutForm">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <input type="hidden" name="checkout_token" value="{{ checkout_token }}" />
+        <div class="checkout-main">
+          {% include "checkout_components/travelers.html" %}
+
+          <section class="checkout-section checkout-surface checkout-surface--tight trip-hotel-section">
+            <div class="checkout-section-head checkout-section-head--tight">
+              <div>
+                <p class="checkout-eyebrow">Hotel</p>
+                <h2>Who's staying</h2>
+                <p class="checkout-muted checkout-muted--sm">One trip, two bookings — your flight and your stay.</p>
+              </div>
+            </div>
+
+            <div class="trip-hotel-card">
+              {% if hotel.hero %}<img src="{{ hotel.hero }}" alt="" />{% endif %}
+              <div class="trip-hotel-card-meta">
+                <strong>{{ hotel.name }}</strong>
+                <span>{{ hotel_checkin }} → {{ hotel_checkout }} · {{ prebook.room_name }}{% if prebook.board_name %} · {{ prebook.board_name }}{% endif %}</span>
+              </div>
+            </div>
+
+            {% if prebook.price_changed %}
+              <div class="trip-price-changed">Hotel price updated since you started checkout — review the new total below.</div>
+            {% endif %}
+
+            <p class="checkout-muted checkout-muted--sm" style="margin:0 0 10px;font-weight:600;">Primary contact</p>
+            <div class="trip-hcout-field-row">
+              <div class="trip-hcout-field">
+                <label for="thFirst">First name</label>
+                <input id="thFirst" type="text" name="holder_first_name" value="{{ hotel_traveler_form.holder.first_name }}" required />
+                {% if errors.holder_first_name %}<p class="trip-hcout-field-err">{{ errors.holder_first_name }}</p>{% endif %}
+              </div>
+              <div class="trip-hcout-field">
+                <label for="thLast">Last name</label>
+                <input id="thLast" type="text" name="holder_last_name" value="{{ hotel_traveler_form.holder.last_name }}" required />
+                {% if errors.holder_last_name %}<p class="trip-hcout-field-err">{{ errors.holder_last_name }}</p>{% endif %}
+              </div>
+            </div>
+            <div class="trip-hcout-field-row">
+              <div class="trip-hcout-field">
+                <label for="thEmail">Email</label>
+                <input id="thEmail" type="email" name="holder_email" value="{{ hotel_traveler_form.holder.email }}" required />
+                {% if errors.holder_email %}<p class="trip-hcout-field-err">{{ errors.holder_email }}</p>{% endif %}
+              </div>
+              <div class="trip-hcout-field">
+                <label for="thPhone">Phone (with country code)</label>
+                <input id="thPhone" type="tel" name="holder_phone" placeholder="+15551234567" value="{{ hotel_traveler_form.holder.phone }}" required />
+                {% if errors.holder_phone %}<p class="trip-hcout-field-err">{{ errors.holder_phone }}</p>{% endif %}
+              </div>
+            </div>
+
+            {% for guest in hotel_traveler_form.guests %}
+              <p class="checkout-muted checkout-muted--sm" style="margin:14px 0 10px;font-weight:600;">Room {{ guest.index + 1 }} guest</p>
+              <div class="trip-hcout-field-row">
+                <div class="trip-hcout-field">
+                  <label for="tg{{ guest.index }}First">First name</label>
+                  <input id="tg{{ guest.index }}First" type="text" name="guest_{{ guest.index }}_first_name" value="{{ guest.first_name }}" required />
+                  {% if errors["guest_%d_first_name"|format(guest.index)] %}<p class="trip-hcout-field-err">{{ errors["guest_%d_first_name"|format(guest.index)] }}</p>{% endif %}
+                </div>
+                <div class="trip-hcout-field">
+                  <label for="tg{{ guest.index }}Last">Last name</label>
+                  <input id="tg{{ guest.index }}Last" type="text" name="guest_{{ guest.index }}_last_name" value="{{ guest.last_name }}" required />
+                  {% if errors["guest_%d_last_name"|format(guest.index)] %}<p class="trip-hcout-field-err">{{ errors["guest_%d_last_name"|format(guest.index)] }}</p>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+
+            {% if combined_total is not none %}
+              <div class="trip-combined-total">
+                <span>Combined total (flight + hotel)</span>
+                <strong>{{ combined_currency }} {{ '%.2f'|format(combined_total) }}</strong>
+              </div>
+            {% else %}
+              <div class="trip-combined-total">
+                <span>Hotel total</span>
+                <strong>{{ prebook.currency }} {{ '%.2f'|format(prebook.total_amount) }}</strong>
+              </div>
+            {% endif %}
+            <p class="checkout-muted checkout-muted--sm" style="margin-top:8px;">The card below charges your flight. Your hotel is confirmed alongside it in our sandbox booking system — no separate card needed.</p>
+          </section>
+
+          {% include "checkout_components/payment.html" %}
+        </div>
+
+        <aside class="checkout-rail">
+          {% include "checkout_components/summary_rail.html" %}
+        </aside>
+
+        <input type="hidden" name="ancillaries_payload" id="ancillariesPayload" value='{}' />
+      </form>
+
+      {% include "checkout_components/progress_modal.html" %}
+      <script id="checkoutClientState" type="application/json">{{ model.client_state|tojson }}</script>
+      <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+      {% if model.payment.mode == 'card' and model.payment.component_client_key_available %}
+        <script defer src="https://assets.duffel.com/components/{{ duffel_components_version or '3.16.1' }}/duffel-card-form.js"></script>
+        <script type="module" src="{{ url_for('static', filename='checkout-card-payment.js', v='20260527-duffel-masked-fields') }}"></script>
+      {% endif %}
+      <script src="{{ url_for('static', filename='checkout.js', v='20260513-mobile-price-reveal') }}"></script>
+      <script
+        src="{{ url_for('static', filename='checkout-travelers-widgets.js', v='20260410-dob-month-selected-only') }}"
+        data-dial-codes="{{ url_for('static', filename='dial-codes.json', v='20260410-price-expires') }}"
+      ></script>
+    {% else %}
+      <section class="checkout-empty-state">
+        <div class="checkout-surface">
+          <p class="checkout-eyebrow">Checkout unavailable</p>
+          <h1>We couldn't prepare this trip.</h1>
+          <p>Try a fresh search and choose another flight and hotel.</p>
+          <div class="checkout-inline-actions">
+            <a class="checkout-text-link" href="{{ url_for('index') }}">Start a new search</a>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </main>
+  {% include "partials/theme_scripts.html" %}
+</body>
+</html>

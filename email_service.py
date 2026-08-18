@@ -733,6 +733,100 @@ def send_itinerary_email(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 2b · Hotel booking confirmation
+# ─────────────────────────────────────────────────────────────────────────────
+
+def send_hotel_confirmation_email(
+    *,
+    to_email: str,
+    booking_summary: Mapping[str, Any],
+    manage_url: str = "",
+) -> tuple[bool, str]:
+    booking_reference = str(booking_summary.get("booking_reference") or "").strip()
+    hotel_name = str(booking_summary.get("hotel_name") or "Your hotel").strip() or "Your hotel"
+    hotel_address = str(booking_summary.get("hotel_address") or "").strip()
+    room_name = str(booking_summary.get("room_name") or "Room").strip()
+    board_name = str(booking_summary.get("board_name") or "").strip()
+    checkin = str(booking_summary.get("checkin") or "").strip()
+    checkout = str(booking_summary.get("checkout") or "").strip()
+    nights = booking_summary.get("nights")
+    guest_name = str(booking_summary.get("guest_name") or "").strip()
+    currency = str(booking_summary.get("currency") or "USD").strip() or "USD"
+    total_amount = booking_summary.get("total_amount")
+    total_display = f"{float(total_amount):.2f}" if total_amount not in (None, "") else "0.00"
+
+    ref_display = booking_reference or "—"
+    brand = str(os.getenv("NGF_EMAIL_BRAND_NAME", "Skairova")).strip() or "Skairova"
+    subject = f"Hotel booking confirmed — {ref_display} · {brand}"
+
+    text_body = (
+        f"Your hotel booking is confirmed.\n\n"
+        f"Reference: {ref_display}\n"
+        f"Hotel:     {hotel_name}\n"
+        f"Check-in:  {checkin}\n"
+        f"Check-out: {checkout}\n"
+        f"Room:      {room_name}" + (f" ({board_name})" if board_name else "") + "\n"
+        f"Total:     {currency} {total_display}\n"
+    )
+    if guest_name:
+        text_body += f"Guest:     {guest_name}\n"
+    if manage_url:
+        text_body += f"\nManage your booking: {manage_url}\n"
+
+    ref_block = _highlight_box(
+        label="Booking reference",
+        value=ref_display,
+        bg="#f0fdf4",
+        border="#bbf7d0",
+        label_color="#16a34a",
+    )
+
+    detail_rows = _detail_row("Hotel", hotel_name)
+    if hotel_address:
+        detail_rows += _detail_row("Address", hotel_address)
+    detail_rows += _detail_row("Check-in", checkin)
+    detail_rows += _detail_row("Check-out", checkout)
+    detail_rows += _detail_row("Room", room_name + (f" · {board_name}" if board_name else ""))
+    if guest_name:
+        detail_rows += _detail_row("Guest", guest_name)
+    detail_rows += _detail_row("Total paid", f"{currency} {total_display}", last=True)
+
+    details_block = (
+        f"{_section_label('Stay details')}"
+        f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\""
+        f" border=\"0\" width=\"100%\" style=\"margin-bottom:28px;"
+        f"border-top:1px solid {_C_RULE};\">{detail_rows}</table>"
+    )
+
+    manage_cta = _cta_button("Manage booking", manage_url, "#059669") if manage_url else ""
+    body_html = ref_block + details_block + manage_cta
+
+    html_body = _render_react_email("hotel_confirmation", {
+        "bookingReference": ref_display,
+        "hotelName": hotel_name,
+        "hotelAddress": hotel_address,
+        "roomName": room_name,
+        "boardName": board_name,
+        "checkin": checkin,
+        "checkout": checkout,
+        "nights": nights,
+        "guestName": guest_name,
+        "currency": currency,
+        "totalAmount": total_display,
+        "manageUrl": manage_url or "",
+        "supportEmail": _normalize_email(os.getenv("NGF_EMAIL_REPLY_TO", "")) or _normalize_email(os.getenv("NGF_EMAIL_FROM", "")),
+    }) or _wrap_email(
+        preheader=f"Your stay at {hotel_name} ({ref_display}) is confirmed.",
+        accent_color="#059669",
+        title="Your hotel is booked.",
+        subtitle=f"Your stay at {escape(hotel_name)} is confirmed. Keep this email for your records.",
+        body_html=body_html,
+    )
+
+    return send_email(to_emails=to_email, subject=subject, text_body=text_body, html_body=html_body)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 3 · Booking cancellation
 # ─────────────────────────────────────────────────────────────────────────────
 

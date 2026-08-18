@@ -245,6 +245,7 @@
     <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
   {% endif %}
 
+  <script src="{{ url_for('static', filename='geo-location.js', v='20260818-shared-geo') }}"></script>
   <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
   <script>
     StaysSearch.init({

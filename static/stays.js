@@ -493,16 +493,20 @@ window.StaysSearch = (function () {
     fillRail("railRecommended", "recommendedSection", "/api/hotels/recommended");
 
     // Nearby needs consent; stay silent if the visitor declines or it fails.
+    // Page-load context, no user gesture — SkairGeo only resolves this from
+    // a cached fix or a permission the browser already granted, and never
+    // pops a fresh prompt on its own.
     var note = document.getElementById("nearbyNote");
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(function (pos) {
+    if (!window.SkairGeo || !navigator.geolocation) return;
+    window.SkairGeo.requestLocation({ auto: true, timeout: 8000 }).then(function (coords) {
+      if (!coords) return; // declined, undecided, or unavailable — section stays hidden
       fillRail(
         "railNearby", "nearbySection",
-        "/api/hotels/nearby?lat=" + pos.coords.latitude + "&lng=" + pos.coords.longitude,
+        "/api/hotels/nearby?lat=" + coords.lat + "&lng=" + coords.lng,
         { distance: true }
       );
       if (note) { note.textContent = "Based on your current location."; note.hidden = false; }
-    }, function () { /* declined — section stays hidden */ }, { timeout: 8000, maximumAge: 600000 });
+    });
   }
 
   window.addEventListener("pagehide", function () {

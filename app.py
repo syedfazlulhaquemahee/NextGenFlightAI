@@ -43,9 +43,11 @@ from liteapi_client import (
     LITE_DEFAULT_CURRENCY,
     build_detail_view,
     build_hotel_cards,
+    build_prebook_summary,
     build_rooms_view,
     sanitize_description,
 )
+from hotel_booking import build_hotel_traveler_form, validate_hotel_checkout_form
 
 HOTEL_AMENITY_FILTERS = [label for label, _ in FILTERABLE_AMENITIES]
 from duffel_booking import (
@@ -58,6 +60,7 @@ from duffel_booking import (
     extract_ancillaries_payload,
     normalize_create_order_services,
     offer_has_expired,
+    parse_duffel_datetime,
     selected_services_from_payload,
     validate_checkout_form,
 )
@@ -1811,6 +1814,11 @@ RECENT_ORDER_CACHE = TTLCache(maxsize=256, ttl_seconds=10 * 60)
 # the linked-bookings list on the manage page sees updated status without relying on Duffel
 # list_orders propagation timing.
 RECENT_REF_CACHE = TTLCache(maxsize=256, ttl_seconds=20 * 60)
+# LiteAPI room offer_id -> the prebook (rate lock) built for it, so checkout's
+# GET (review) and POST (book) steps share one lock instead of re-prebooking
+# on every request. 15 min mirrors RECENT_ORDER_CACHE's ballpark for the
+# flight analog; re-prebooked again at POST time regardless (see M6 price drift).
+HOTEL_PREBOOK_CACHE = TTLCache(maxsize=512, ttl_seconds=15 * 60)
 AI_PARSE_PREVIEW_CACHE = TTLCache(maxsize=4096, ttl_seconds=90)
 MANAGE_BOOKING_ATTEMPT_CACHE = TTLCache(maxsize=2048, ttl_seconds=15 * 60)
 USER_ACCOUNT_CACHE = TTLCache(maxsize=2048, ttl_seconds=30 * 24 * 3600)
@@ -1907,6 +1915,33 @@ def _get_cached_ai_parse_result(ai_text: str, parse_token: str | None = None) ->
         return dict(params), token
     return None, None
 
+
+def _resolve_ai_flight_params(ai_text: str, parse_token: str = "") -> tuple[dict[str, Any] | None, str | None]:
+    """Flight-shaped params for an AI search's flight rendering step.
+
+    A cached parse under this ai_text may be flight-only ("flights" kind,
+    the common case) or a combined flight+stay parse ("both" kind, cached by
+    /search/shell when the same request also asked for a hotel) — either way
+    the flight results renderer only ever wants the flat flight dict. Falls
+    back to a fresh flight-only parse when nothing usable is cached.
+    """
+    cached, cached_token = _get_cached_ai_parse_result(ai_text, parse_token=parse_token)
+    if cached:
+        if cached.get("kind") == "both":
+            flight = cached.get("flight")
+            if isinstance(flight, Mapping) and flight:
+                return dict(flight), cached_token
+        else:
+            return cached, cached_token
+
+    params = parse_ai_flight_request(ai_text)
+    if not params:
+        return None, None
+    params = dict(params)
+    params["kind"] = "flights"
+    cached_token = _cache_ai_parse_result(ai_text, params)
+    return params, cached_token
+
 # ------------------------------------------------------------
 # Flex-scan rate limiter
 # ------------------------------------------------------------
@@ -1982,6 +2017,16 @@ def _load_local_airports():
 @lru_cache(maxsize=1)
 def _airport_code_map():
     return {a["code"]: a for a in _load_local_airports()}
+
+
+def _airport_city_for_code(iata_code: str | None) -> str:
+    """City name for an IATA code, or "" if unknown — used to anchor a hotel
+    search on a flight's destination without a second geocoding round trip."""
+    code = str(iata_code or "").strip().upper()
+    if not code:
+        return ""
+    row = _airport_code_map().get(code)
+    return str(row.get("city") or "").strip() if row else ""
 
 
 @lru_cache(maxsize=1)
@@ -2376,19 +2421,23 @@ class _GeminiModel:
         self.client = client
         self.model_name = model_name
 
-    def generate_content(self, prompt: str):
+    def generate_content(self, prompt: str, *, json_mode: bool = False):
+        config = _genai_types.GenerateContentConfig(response_mime_type="application/json") if json_mode and _genai_types else None
         return self.client.models.generate_content(
             model=self.model_name,
             contents=prompt,
+            **({"config": config} if config else {}),
         )
 
 
 try:
     from google import genai
+    from google.genai import types as _genai_types
 
     model = _GeminiModel(genai.Client(api_key=GOOGLE_API_KEY), GEMINI_MODEL_NAME) if GOOGLE_API_KEY else None
 except Exception:
     model = None
+    _genai_types = None
 
 MONTH_NAME_TO_NUM = {
     "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
@@ -3254,7 +3303,7 @@ _FLIGHT_INTENT_TERMS = (
 
 
 def detect_search_intent(user_text: str) -> str:
-    """Route a natural-language query to the flights or stays pipeline.
+    """Route a natural-language query to the flights, stays, or both pipeline.
 
     Cheap keyword pass first — it settles the overwhelming majority of queries
     without a model round trip. Only genuinely ambiguous text goes to Gemini.
@@ -3267,20 +3316,31 @@ def detect_search_intent(user_text: str) -> str:
     flight_hits = sum(1 for term in _FLIGHT_INTENT_TERMS if re.search(rf"\b{re.escape(term)}\b", txt))
 
     if stay_hits and not flight_hits:
+        # "New York to Miami ... and a hotel with free cancellation" never
+        # says "flight" or "fly" — naming two real places joined by "to" is
+        # itself a flight signal worth catching before falling back to
+        # stays-only and quietly dropping the trip.
+        origin_code, destination_code = _extract_route_pair_from_text(user_text)
+        if origin_code or destination_code:
+            return "both"
         return "stays"
     if flight_hits and not stay_hits:
         return "flights"
     if stay_hits and flight_hits:
-        # Mentions both ("flight to Paris and a hotel") — flights own the trip spine.
-        return "flights"
+        # Mentions both ("flight to Paris and a hotel") — the flight is the
+        # trip's spine, but the hotel intent is real and gets its own pass.
+        return "both"
 
     if not model:
         return "flights"
 
     prompt = (
-        'Classify this travel search as exactly one word, "flights" or "stays". '
+        'Classify this travel search as exactly one word: "flights", "stays", or "both". '
         'Choose "stays" only if the user is looking for somewhere to sleep '
-        "(hotel, resort, apartment). Otherwise choose \"flights\". "
+        '(hotel, resort, apartment) with no flight mentioned. Choose "both" if the '
+        "user wants a flight AND a place to stay in the same request (e.g. "
+        '"business class to Tokyo next month, nonstop, and a 5-star hotel with a pool"). '
+        'Otherwise choose "flights". '
         f'Reply with the single word only.\n\nQuery: """{user_text}"""'
     )
     try:
@@ -3288,6 +3348,8 @@ def detect_search_intent(user_text: str) -> str:
     except Exception as exc:
         print("INTENT DETECT ERROR:", repr(exc))
         return "flights"
+    if "both" in raw:
+        return "both"
     return "stays" if "stay" in raw else "flights"
 
 
@@ -3331,7 +3393,7 @@ User request:
 \"\"\"{user_text}\"\"\"
 """
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, json_mode=True)
         text = (getattr(response, "text", "") or "").strip()
         if text.startswith("```"):
             text = text.strip().strip("`").strip()
@@ -3342,6 +3404,15 @@ User request:
         print("AI STAY PARSE ERROR:", repr(exc))
         return None
 
+    return _normalize_stay_parse(parsed, user_text)
+
+
+def _normalize_stay_parse(parsed: dict, user_text: str) -> dict | None:
+    """Raw Gemini stay JSON -> typed/defaulted hotel search params.
+
+    Shared by parse_ai_stay_request and parse_ai_combined_request so the two
+    entry points can't drift on date-defaulting/traveler-counting rules.
+    """
     destination = str(parsed.get("destination") or "").strip()
     if not destination:
         return None
@@ -3450,7 +3521,7 @@ User request:
 \"\"\"{user_text}\"\"\"
 """
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, json_mode=True)
         raw = (getattr(response, "text", "") or "").strip()
         text = raw
         if text.startswith("```"):
@@ -3458,108 +3529,259 @@ User request:
             if text.lower().startswith("json"):
                 text = text[4:].strip()
         parsed = json.loads(text)
-        parsed["origin"] = _normalize_airport_input(parsed.get("origin")) if parsed.get("origin") else None
-        parsed["destination"] = _normalize_airport_input(parsed.get("destination")) if parsed.get("destination") else None
-        parsed["passengers"] = int(parsed.get("passengers") or 1)
-        parsed["cabin"] = parsed.get("cabin") or "ECONOMY"
-        parsed["nonstop"] = bool(parsed.get("nonstop") or False)
-        parsed["sort"] = parsed.get("sort") or "recommended"
-        fallback_trip_type = "roundtrip" if parsed.get("return_date") else "oneway"
-        parsed["trip_type"] = _coerce_trip_type(parsed.get("trip_type"), fallback=fallback_trip_type)
-        parsed.setdefault("raw_text", user_text)
-
-        raw_legs = parsed.get("legs")
-        normalized_legs: list[dict[str, str]] = []
-        if isinstance(raw_legs, list):
-            for idx, leg in enumerate(raw_legs):
-                if not isinstance(leg, Mapping):
-                    continue
-                o = _normalize_airport_input(leg.get("origin")) if leg.get("origin") else None
-                d = _normalize_airport_input(leg.get("destination")) if leg.get("destination") else None
-                dep = str(leg.get("depart_date") or "").strip()
-                if not dep:
-                    dep = (date.today() + timedelta(days=(idx * 3) + 7)).isoformat()
-                if o and d and _is_valid_iso_date(dep):
-                    normalized_legs.append({"origin": o, "destination": d, "depart_date": dep})
-        if not normalized_legs:
-            route_chain = _extract_route_chain_from_text(user_text)
-            if route_chain:
-                for idx in range(len(route_chain) - 1):
-                    normalized_legs.append(
-                        {
-                            "origin": route_chain[idx],
-                            "destination": route_chain[idx + 1],
-                            "depart_date": (date.today() + timedelta(days=(idx * 3) + 7)).isoformat(),
-                        }
-                    )
-        if len(normalized_legs) >= 2:
-            parsed["trip_type"] = "multicity"
-            parsed["legs"] = normalized_legs
-
-        inferred_origin, inferred_destination = _extract_route_pair_from_text(user_text)
-        if not parsed.get("origin") and inferred_origin:
-            parsed["origin"] = inferred_origin
-        if not parsed.get("destination") and inferred_destination:
-            parsed["destination"] = inferred_destination
-
-        if parsed.get("trip_type") == "multicity" and parsed.get("legs"):
-            parsed["origin"] = parsed["legs"][0]["origin"]
-            parsed["destination"] = parsed["legs"][-1]["destination"]
-            parsed["depart_date"] = parsed["legs"][0]["depart_date"]
-            parsed["return_date"] = None
-            parsed.pop("search_mode", None)
-            parsed.pop("flex_month", None)
-            parsed.pop("trip_length_days", None)
-            parsed["combination_mode"] = "auto"
-            return parsed
-
-        if not parsed.get("depart_date"):
-            parsed["depart_date"] = _extract_ai_relative_depart_date(user_text)
-
-        parsed = _clear_inferred_ai_dates_for_month_only_request(parsed, user_text)
-
-        trip_type = _extract_ai_trip_type(user_text, parsed)
-        if trip_type:
-            parsed["trip_type"] = trip_type
-
-        holiday_rt = _infer_holiday_season_round_trip(user_text, anchor=date.today(), parsed=parsed)
-        holiday_dates_applied = False
-        already_has_explicit_dates = (
-            _is_valid_iso_date(parsed.get("depart_date"))
-            and _is_valid_iso_date(parsed.get("return_date"))
-            and _user_text_has_explicit_day_precision(user_text)
-        )
-        if holiday_rt and not already_has_explicit_dates:
-            dep_iso, ret_iso = holiday_rt
-            parsed["depart_date"] = dep_iso
-            parsed["return_date"] = ret_iso
-            parsed["trip_type"] = "roundtrip"
-            holiday_dates_applied = True
-
-        combination_mode = _extract_ai_combination_mode(user_text)
-        if combination_mode:
-            parsed["combination_mode"] = combination_mode
-
-        traveler_context = _extract_ai_traveler_context(user_text)
-        if traveler_context.get("companion_labels") or traveler_context.get("prefers_longer_layover") or traveler_context.get("prefers_shorter_layover"):
-            parsed["traveler_context"] = traveler_context
-
-        if _looks_like_ai_flex_request(user_text, parsed) and not holiday_dates_applied:
-            parsed["search_mode"] = "flex"
-            parsed["trip_type"] = parsed.get("trip_type") or "roundtrip"
-            parsed["flex_month"] = _extract_ai_flex_month(user_text)
-            parsed["sort"] = "cheapest"
-            parsed["depart_date"] = None
-            parsed["return_date"] = None
-            if parsed["trip_type"] == "oneway":
-                parsed.pop("trip_length_days", None)
-            else:
-                parsed["trip_length_days"] = _extract_ai_trip_length_days(user_text) or 7
-
-        return parsed
+        return _normalize_flight_parse(parsed, user_text)
     except Exception as e:
         print("JSON PARSE ERROR:", e)
         return None
+
+
+def _normalize_flight_parse(parsed: dict, user_text: str) -> dict:
+    """Raw Gemini flight JSON -> typed/defaulted flight search params.
+
+    Shared by parse_ai_flight_request and parse_ai_combined_request so the
+    two entry points can't drift on date-defaulting/traveler-counting rules.
+    Callers are responsible for catching exceptions this raises.
+    """
+    parsed["origin"] = _normalize_airport_input(parsed.get("origin")) if parsed.get("origin") else None
+    parsed["destination"] = _normalize_airport_input(parsed.get("destination")) if parsed.get("destination") else None
+    parsed["passengers"] = int(parsed.get("passengers") or 1)
+    parsed["cabin"] = parsed.get("cabin") or "ECONOMY"
+    parsed["nonstop"] = bool(parsed.get("nonstop") or False)
+    parsed["sort"] = parsed.get("sort") or "recommended"
+    fallback_trip_type = "roundtrip" if parsed.get("return_date") else "oneway"
+    parsed["trip_type"] = _coerce_trip_type(parsed.get("trip_type"), fallback=fallback_trip_type)
+    parsed.setdefault("raw_text", user_text)
+
+    raw_legs = parsed.get("legs")
+    normalized_legs: list[dict[str, str]] = []
+    if isinstance(raw_legs, list):
+        for idx, leg in enumerate(raw_legs):
+            if not isinstance(leg, Mapping):
+                continue
+            o = _normalize_airport_input(leg.get("origin")) if leg.get("origin") else None
+            d = _normalize_airport_input(leg.get("destination")) if leg.get("destination") else None
+            dep = str(leg.get("depart_date") or "").strip()
+            if not dep:
+                dep = (date.today() + timedelta(days=(idx * 3) + 7)).isoformat()
+            if o and d and _is_valid_iso_date(dep):
+                normalized_legs.append({"origin": o, "destination": d, "depart_date": dep})
+    if not normalized_legs:
+        route_chain = _extract_route_chain_from_text(user_text)
+        if route_chain:
+            for idx in range(len(route_chain) - 1):
+                normalized_legs.append(
+                    {
+                        "origin": route_chain[idx],
+                        "destination": route_chain[idx + 1],
+                        "depart_date": (date.today() + timedelta(days=(idx * 3) + 7)).isoformat(),
+                    }
+                )
+    if len(normalized_legs) >= 2:
+        parsed["trip_type"] = "multicity"
+        parsed["legs"] = normalized_legs
+
+    inferred_origin, inferred_destination = _extract_route_pair_from_text(user_text)
+    if not parsed.get("origin") and inferred_origin:
+        parsed["origin"] = inferred_origin
+    if not parsed.get("destination") and inferred_destination:
+        parsed["destination"] = inferred_destination
+
+    if parsed.get("trip_type") == "multicity" and parsed.get("legs"):
+        parsed["origin"] = parsed["legs"][0]["origin"]
+        parsed["destination"] = parsed["legs"][-1]["destination"]
+        parsed["depart_date"] = parsed["legs"][0]["depart_date"]
+        parsed["return_date"] = None
+        parsed.pop("search_mode", None)
+        parsed.pop("flex_month", None)
+        parsed.pop("trip_length_days", None)
+        parsed["combination_mode"] = "auto"
+        return parsed
+
+    if not parsed.get("depart_date"):
+        parsed["depart_date"] = _extract_ai_relative_depart_date(user_text)
+
+    parsed = _clear_inferred_ai_dates_for_month_only_request(parsed, user_text)
+
+    trip_type = _extract_ai_trip_type(user_text, parsed)
+    if trip_type:
+        parsed["trip_type"] = trip_type
+
+    holiday_rt = _infer_holiday_season_round_trip(user_text, anchor=date.today(), parsed=parsed)
+    holiday_dates_applied = False
+    already_has_explicit_dates = (
+        _is_valid_iso_date(parsed.get("depart_date"))
+        and _is_valid_iso_date(parsed.get("return_date"))
+        and _user_text_has_explicit_day_precision(user_text)
+    )
+    if holiday_rt and not already_has_explicit_dates:
+        dep_iso, ret_iso = holiday_rt
+        parsed["depart_date"] = dep_iso
+        parsed["return_date"] = ret_iso
+        parsed["trip_type"] = "roundtrip"
+        holiday_dates_applied = True
+
+    combination_mode = _extract_ai_combination_mode(user_text)
+    if combination_mode:
+        parsed["combination_mode"] = combination_mode
+
+    traveler_context = _extract_ai_traveler_context(user_text)
+    if traveler_context.get("companion_labels") or traveler_context.get("prefers_longer_layover") or traveler_context.get("prefers_shorter_layover"):
+        parsed["traveler_context"] = traveler_context
+
+    if _looks_like_ai_flex_request(user_text, parsed) and not holiday_dates_applied:
+        parsed["search_mode"] = "flex"
+        parsed["trip_type"] = parsed.get("trip_type") or "roundtrip"
+        parsed["flex_month"] = _extract_ai_flex_month(user_text)
+        parsed["sort"] = "cheapest"
+        parsed["depart_date"] = None
+        parsed["return_date"] = None
+        if parsed["trip_type"] == "oneway":
+            parsed.pop("trip_length_days", None)
+        else:
+            parsed["trip_length_days"] = _extract_ai_trip_length_days(user_text) or 7
+
+    return parsed
+
+
+def parse_ai_combined_request(user_text: str) -> dict | None:
+    """Natural language -> flight params, and hotel params when the same
+    request also asks for a place to stay ("flight to Paris and a hotel").
+
+    Returns {"flight": {...}, "stay": {...} | None, "wants_hotel": bool}, or
+    None if the flight side couldn't be parsed at all (callers should fall
+    back to parse_ai_flight_request in that case). The flight is always the
+    trip's spine; the stay is best-effort and dropped rather than guessed at
+    if Gemini's stay block comes back empty or destination-less.
+    """
+    if not model or not user_text:
+        return None
+
+    today = date.today().isoformat()
+    prompt = f"""
+You are a combined flight + hotel trip-planning assistant. The user wants a
+flight AND a place to stay in one request.
+
+Convert the user's request into valid JSON with these top-level fields:
+- flight: object with fields
+  - origin (IATA code or null), destination (IATA code or null)
+  - depart_date (YYYY-MM-DD or null), return_date (YYYY-MM-DD or null)
+  - legs (array of objects: origin, destination, depart_date) for multi-city, otherwise null
+  - trip_type (oneway, roundtrip, multicity, or null)
+  - passengers (integer, default 1), cabin (ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST)
+  - nonstop (true/false), max_price (number or null)
+  - sort (cheapest, fastest, recommended, earliest_departure, earliest_arrival, fewest_stops)
+- stay: object with fields
+  - destination (city/area/landmark as plain text, or null if no hotel was requested)
+  - checkin (YYYY-MM-DD or null), checkout (YYYY-MM-DD or null)
+  - nights (integer or null — use when a duration is given but no dates)
+  - adults (integer, default 2), children_ages (array of integers)
+  - rooms (integer, default 1)
+  - min_stars (integer 1-5 or null), min_rating (number 1-10 or null)
+  - max_price_per_night (number or null, USD)
+  - free_cancellation (true/false), breakfast (true/false)
+  - amenities (array from: Free WiFi, Pool, Breakfast, Parking, Gym, Spa, Restaurant, Airport shuttle, Air conditioning, Pet friendly, Family rooms, Bar)
+  - sort (recommended, price_low, price_high, rating, stars)
+- stay_dates_explicit: true only if the user gave the hotel its own dates or
+  duration separate from the flight (e.g. "for 4 nights", "check in the 3rd");
+  false if the hotel should simply span the flight's travel dates.
+
+Rules:
+- Use null when information is missing. If the request doesn't actually ask
+  for a hotel/stay at all, set the entire "stay" object's fields to null.
+- If a city is mentioned for the flight, infer the main airport (e.g., Dhaka -> DAC)
+- Dates must be ISO format (YYYY-MM-DD). If a date has no year, assume the next future occurrence.
+- If the user mentions holiday/season timing without exact calendar dates for the
+  flight, set flight.depart_date and flight.return_date to null; the server applies
+  default windows. This includes (but is not limited to): Thanksgiving, Christmas,
+  New Year's, spring break, Easter, summer/fall/winter/spring, and similar.
+- Count every traveler implied by the request into flight.passengers and stay.adults,
+  not just the speaker: "me and my wife" is 2, "family of four" is 4.
+- Children are people under 18 — put their ages in stay.children_ages and exclude them from stay.adults.
+- "cheap"/"budget" -> stay.sort "price_low"; "best"/"nicest"/"top rated" -> stay.sort "rating"; "luxury" -> stay.min_stars 5
+- For multi-city flight requests, include flight.legs in order.
+- Today is {today}
+- Only return JSON
+
+User request:
+\"\"\"{user_text}\"\"\"
+"""
+    parsed = None
+    last_exc: Exception | None = None
+    # The combined schema is the largest of the three prompts, and even in
+    # JSON mode an LLM occasionally emits a syntax slip (stray comma, an
+    # unescaped quote). One retry turns a ~10% residual failure rate into
+    # roughly 1% rather than dropping the hotel half of the request.
+    for attempt in range(2):
+        try:
+            response = model.generate_content(prompt, json_mode=True)
+            text = (getattr(response, "text", "") or "").strip()
+            if text.startswith("```"):
+                text = text.strip().strip("`").strip()
+                if text.lower().startswith("json"):
+                    text = text[4:].strip()
+            parsed = json.loads(text)
+            break
+        except Exception as exc:
+            last_exc = exc
+    if parsed is None:
+        print("AI COMBINED PARSE ERROR:", repr(last_exc))
+        return None
+
+    flight_raw = parsed.get("flight") if isinstance(parsed.get("flight"), Mapping) else {}
+    try:
+        flight = _normalize_flight_parse(dict(flight_raw), user_text)
+    except Exception as exc:
+        # Flight is the trip's spine — if it can't be normalized, bail
+        # entirely rather than return a hotel-only result under a combined
+        # shape the rest of the pipeline doesn't expect from this function.
+        print("AI COMBINED PARSE ERROR (flight normalize):", repr(exc))
+        return None
+
+    stay_raw = parsed.get("stay") if isinstance(parsed.get("stay"), Mapping) else {}
+    stay: dict | None = None
+    if str(stay_raw.get("destination") or "").strip():
+        try:
+            stay = _normalize_stay_parse(dict(stay_raw), user_text)
+        except Exception as exc:
+            print("AI COMBINED PARSE ERROR (stay normalize):", repr(exc))
+            stay = None
+
+    if stay:
+        stay_dates_explicit = bool(parsed.get("stay_dates_explicit"))
+        depart = flight.get("depart_date")
+        if not stay_dates_explicit and depart and _is_valid_iso_date(depart):
+            checkout = flight.get("return_date")
+            if not checkout or not _is_valid_iso_date(checkout):
+                try:
+                    span = max(1, (datetime.strptime(stay["checkout"], "%Y-%m-%d").date()
+                                    - datetime.strptime(stay["checkin"], "%Y-%m-%d").date()).days)
+                except (ValueError, KeyError):
+                    span = 3
+                checkout = (datetime.strptime(depart, "%Y-%m-%d").date() + timedelta(days=span)).isoformat()
+            stay["checkin"] = depart
+            stay["checkout"] = checkout
+
+        # The flight destination is a hard-validated IATA code; the stay
+        # destination is free text and more error-prone. If they disagree,
+        # trust the flight and keep only the stay's filters (stars, price, etc).
+        flight_city = _airport_city_for_code(flight.get("destination"))
+        if flight_city and flight_city.lower() not in str(stay.get("destination") or "").lower():
+            print(
+                f"AI COMBINED PARSE: stay destination '{stay.get('destination')}' disagreed with "
+                f"flight destination city '{flight_city}' — using the flight destination for the hotel search."
+            )
+            stay["destination"] = flight_city
+
+    return {
+        "flight": flight,
+        "stay": stay,
+        "wants_hotel": bool(stay),
+        # Exposed so the flight-selection step can tell whether it's safe to
+        # re-anchor hotel dates to the *actually selected* flight's real
+        # dates (relevant for flex/holiday parses, where depart_date is only
+        # a guess at parse time) — never overwrite dates the user stated explicitly.
+        "stay_dates_explicit": bool(parsed.get("stay_dates_explicit")) if stay else False,
+    }
 
 # ------------------------------------------------------------
 # Pooled Duffel client
@@ -8179,6 +8401,46 @@ def _ensure_account_booking_email_link_table(conn: sqlite3.Connection) -> None:
     )
 
 
+def _ensure_hotel_bookings_table(conn: sqlite3.Connection) -> None:
+    """LiteAPI has no "list bookings by reference+name" endpoint the way
+    Duffel's list_orders does, so guest (non-account) manage-booking lookups
+    for hotels need this local table — the same DB, same migration style as
+    the account tables above."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS hotel_bookings (
+            booking_reference TEXT PRIMARY KEY,
+            liteapi_booking_id TEXT NOT NULL,
+            liteapi_prebook_id TEXT NOT NULL DEFAULT '',
+            hotel_id TEXT NOT NULL,
+            hotel_name TEXT NOT NULL DEFAULT '',
+            hotel_address TEXT NOT NULL DEFAULT '',
+            hotel_photo TEXT NOT NULL DEFAULT '',
+            room_name TEXT NOT NULL DEFAULT '',
+            board_name TEXT NOT NULL DEFAULT '',
+            checkin TEXT NOT NULL,
+            checkout TEXT NOT NULL,
+            holder_first_name TEXT NOT NULL DEFAULT '',
+            holder_last_name TEXT NOT NULL DEFAULT '',
+            holder_email TEXT NOT NULL DEFAULT '',
+            total_amount TEXT NOT NULL DEFAULT '',
+            currency TEXT NOT NULL DEFAULT 'USD',
+            status TEXT NOT NULL DEFAULT 'confirmed',
+            linked_flight_order_id TEXT NOT NULL DEFAULT '',
+            linked_flight_booking_reference TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_hotel_bookings_holder_email ON hotel_bookings(holder_email, updated_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_hotel_bookings_updated_at ON hotel_bookings(updated_at)"
+    )
+
+
 def _ensure_account_db() -> None:
     global _ACCOUNT_DB_READY
     if _ACCOUNT_DB_READY:
@@ -8236,6 +8498,7 @@ def _ensure_account_db() -> None:
                     f"ALTER TABLE manage_booking_accounts ADD COLUMN {column_name} {column_type}"
                 )
             _ensure_account_booking_email_link_table(conn)
+            _ensure_hotel_bookings_table(conn)
             conn.commit()
         _ACCOUNT_DB_READY = True
 
@@ -8413,6 +8676,99 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
             ),
         )
         conn.commit()
+
+
+def _generate_hotel_booking_reference() -> str:
+    """SKH-prefixed so hotel refs are recognizable at a glance next to
+    Duffel's flight refs (which are un-prefixed alphanumeric codes)."""
+    return f"SKH{secrets.token_hex(3).upper()}"
+
+
+def _save_hotel_booking(row: Mapping[str, Any]) -> None:
+    _ensure_account_db()
+    now = datetime.utcnow().isoformat()
+    with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT INTO hotel_bookings (
+                booking_reference, liteapi_booking_id, liteapi_prebook_id,
+                hotel_id, hotel_name, hotel_address, hotel_photo,
+                room_name, board_name, checkin, checkout,
+                holder_first_name, holder_last_name, holder_email,
+                total_amount, currency, status,
+                linked_flight_order_id, linked_flight_booking_reference,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(booking_reference) DO UPDATE SET
+                status = excluded.status,
+                linked_flight_order_id = excluded.linked_flight_order_id,
+                linked_flight_booking_reference = excluded.linked_flight_booking_reference,
+                updated_at = excluded.updated_at
+            """,
+            (
+                str(row.get("booking_reference") or "").strip().upper(),
+                str(row.get("liteapi_booking_id") or "").strip(),
+                str(row.get("liteapi_prebook_id") or "").strip(),
+                str(row.get("hotel_id") or "").strip(),
+                str(row.get("hotel_name") or "").strip(),
+                str(row.get("hotel_address") or "").strip(),
+                str(row.get("hotel_photo") or "").strip(),
+                str(row.get("room_name") or "").strip(),
+                str(row.get("board_name") or "").strip(),
+                str(row.get("checkin") or "").strip(),
+                str(row.get("checkout") or "").strip(),
+                _normalize_person_name(str(row.get("holder_first_name") or "")),
+                _normalize_person_name(str(row.get("holder_last_name") or "")),
+                _normalize_email(str(row.get("holder_email") or "")),
+                str(row.get("total_amount") or ""),
+                str(row.get("currency") or "USD").upper(),
+                str(row.get("status") or "confirmed"),
+                str(row.get("linked_flight_order_id") or "").strip(),
+                _normalize_booking_reference(str(row.get("linked_flight_booking_reference") or "")),
+                str(row.get("created_at") or now),
+                now,
+            ),
+        )
+        conn.commit()
+
+
+def _hotel_booking_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "booking_reference": str(row["booking_reference"] or "").strip().upper(),
+        "liteapi_booking_id": str(row["liteapi_booking_id"] or "").strip(),
+        "liteapi_prebook_id": str(row["liteapi_prebook_id"] or "").strip(),
+        "hotel_id": str(row["hotel_id"] or "").strip(),
+        "hotel_name": str(row["hotel_name"] or "").strip(),
+        "hotel_address": str(row["hotel_address"] or "").strip(),
+        "hotel_photo": str(row["hotel_photo"] or "").strip(),
+        "room_name": str(row["room_name"] or "").strip(),
+        "board_name": str(row["board_name"] or "").strip(),
+        "checkin": str(row["checkin"] or "").strip(),
+        "checkout": str(row["checkout"] or "").strip(),
+        "holder_first_name": str(row["holder_first_name"] or "").strip(),
+        "holder_last_name": str(row["holder_last_name"] or "").strip(),
+        "holder_email": str(row["holder_email"] or "").strip(),
+        "total_amount": str(row["total_amount"] or "").strip(),
+        "currency": str(row["currency"] or "USD").upper(),
+        "status": str(row["status"] or "confirmed").strip().lower(),
+        "linked_flight_order_id": str(row["linked_flight_order_id"] or "").strip(),
+        "linked_flight_booking_reference": str(row["linked_flight_booking_reference"] or "").strip().upper(),
+        "created_at": str(row["created_at"] or "").strip(),
+        "updated_at": str(row["updated_at"] or "").strip(),
+    }
+
+
+def _hotel_booking_by_reference(booking_reference: str) -> dict[str, Any] | None:
+    ref = _normalize_booking_reference(booking_reference)
+    if not ref:
+        return None
+    _ensure_account_db()
+    with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM hotel_bookings WHERE booking_reference = ?", (ref,)
+        ).fetchone()
+    return _hotel_booking_row_to_dict(row) if row else None
 
 
 def _account_lookup(email: str) -> dict[str, Any] | None:
@@ -8746,12 +9102,129 @@ def _pop_edit_search_fields() -> list[list[str]]:
     return cleaned
 
 
+# ---------------------------------------------------------------------------
+# Combined flight + hotel trip intent
+#
+# Carries "the user also wants a hotel, with these filters, for these dates"
+# from the initial AI parse through flight selection into a pre-filtered
+# hotel search, and from hotel selection into a combined checkout. Follows
+# the same discipline as every other "big object" in this codebase (recent
+# order cache, AI parse cache, etc.): the session itself is a signed
+# client-side cookie with a small size cap, so only IDs and tiny display
+# snapshots live here — never a full flight offer or hotel prebook payload.
+# ---------------------------------------------------------------------------
+TRIP_INTENT_SESSION_KEY = "ngf_trip_intent"
+TRIP_INTENT_VERSION = 1
+
+
+def _start_trip_intent(combined_parse: Mapping[str, Any]) -> None:
+    """Seed a fresh trip_intent from a combined (flight+stay) AI parse.
+
+    A no-op (clears any stale trip_intent) if the combined parse didn't
+    actually produce a usable stay — never starts a hotel leg with nothing
+    to search for.
+    """
+    stay = combined_parse.get("stay") if isinstance(combined_parse.get("stay"), Mapping) else None
+    if not stay or not str(stay.get("destination") or "").strip():
+        _clear_trip_intent()
+        return
+
+    flight = combined_parse.get("flight") if isinstance(combined_parse.get("flight"), Mapping) else {}
+    session[TRIP_INTENT_SESSION_KEY] = {
+        "v": TRIP_INTENT_VERSION,
+        "created_at": int(time.time()),
+        "raw_text": str(flight.get("raw_text") or stay.get("raw_text") or "")[:300],
+        "wants_hotel": True,
+        "stay_dates_explicit": bool(combined_parse.get("stay_dates_explicit")),
+        "hotel_filters": {
+            "min_stars": stay.get("min_stars"),
+            "min_rating": stay.get("min_rating"),
+            "max_price_per_night": stay.get("max_price_per_night"),
+            "free_cancellation": bool(stay.get("free_cancellation")),
+            "breakfast": bool(stay.get("breakfast")),
+            "amenities": list(stay.get("amenities") or [])[:6],
+            "sort": stay.get("sort") or "recommended",
+            "adults": int(stay.get("adults") or 2),
+            "rooms": int(stay.get("rooms") or 1),
+            "children_ages": list(stay.get("children_ages") or [])[:4],
+        },
+        "hotel_dates": {
+            "checkin": str(stay.get("checkin") or ""),
+            "checkout": str(stay.get("checkout") or ""),
+        },
+        "hotel_destination_text": str(stay.get("destination") or ""),
+        "destination_iata": str(flight.get("destination") or "").strip().upper(),
+        "stage": "searching",
+        "flight_offer_id": None,
+        "flight_snapshot": None,
+        "hotel_place_id": None,
+        "hotel_id": None,
+        "hotel_offer_id": None,     # LiteAPI room-rate offer_id — needed to re-prebook for a price refresh
+        "hotel_prebook_id": None,
+        "hotel_checkin": None,
+        "hotel_checkout": None,
+        "hotel_rooms": None,
+        "hotel_adults": None,
+        "hotel_snapshot": None,
+    }
+
+
+def _get_trip_intent() -> dict[str, Any] | None:
+    payload = session.get(TRIP_INTENT_SESSION_KEY)
+    if not isinstance(payload, dict) or not payload.get("wants_hotel"):
+        return None
+    return payload
+
+
+def _update_trip_intent(**fields: Any) -> dict[str, Any] | None:
+    """Shallow-merge fields into the existing trip_intent. No-op if there
+    isn't one (callers should already have checked _get_trip_intent)."""
+    current = session.get(TRIP_INTENT_SESSION_KEY)
+    if not isinstance(current, dict):
+        return None
+    current.update(fields)
+    if app.debug:
+        # Flask's session here is a signed client-side cookie (~4KB cap) —
+        # a well-intentioned future addition (e.g. caching a full offer)
+        # could silently blow past that and start truncating sessions in
+        # production. Catch it in dev rather than in someone's browser.
+        size = len(json.dumps(current, default=str))
+        assert size < 3000, f"ngf_trip_intent grew to {size} bytes — keep it to IDs/snapshots, not full payloads"
+    session[TRIP_INTENT_SESSION_KEY] = current
+    return current
+
+
+def _clear_trip_intent() -> None:
+    session.pop(TRIP_INTENT_SESSION_KEY, None)
+
+
+@app.context_processor
+def inject_trip_intent_context() -> dict[str, Any]:
+    return {"trip_intent": _get_trip_intent()}
+
+
+def _safe_next_url(value: str | None) -> str:
+    """Only allow same-origin relative paths as a post-auth redirect target.
+
+    Rejects absolute URLs and protocol-relative ("//host/...") values so a
+    crafted `next` param can't be used as an open redirect.
+    """
+    text = str(value or "").strip()
+    if not text or not text.startswith("/") or text.startswith("//"):
+        return ""
+    parsed = urllib.parse.urlsplit(text)
+    if parsed.scheme or parsed.netloc:
+        return ""
+    return text
+
+
 def _auth_redirect(
     *,
     mode: str = "login",
     booking_reference: str = "",
     reset_email: str = "",
     reset_token: str = "",
+    next_url: str = "",
 ):
     payload: dict[str, Any] = {"mode": (mode or "login").strip().lower()}
     if booking_reference:
@@ -8760,6 +9233,9 @@ def _auth_redirect(
         payload["reset_email"] = _normalize_email(reset_email)
     if reset_token:
         payload["reset_token"] = str(reset_token).strip()
+    safe_next = _safe_next_url(next_url)
+    if safe_next:
+        payload["next"] = safe_next
     return redirect(url_for("auth_page", **payload))
 
 
@@ -9043,6 +9519,16 @@ def _render_manage_booking_page(
             "status": "Booked",
             "departure": "",
         }
+        # Hotel bookings live in the local table (SKH-prefixed refs), not
+        # Duffel — resolve those first so they never hit list_orders/get_offer.
+        if normalized_ref.startswith("SKH"):
+            hotel_booking = _hotel_booking_by_reference(normalized_ref)
+            if hotel_booking:
+                summary["route"] = hotel_booking.get("hotel_name") or "Hotel stay"
+                summary["status"] = (hotel_booking.get("status") or "confirmed").title()
+                summary["departure"] = hotel_booking.get("checkin") or ""
+            linked_booking_summaries.append(summary)
+            continue
         # Prefer the ref cache (updated after cancellation/confirmation) over a fresh
         # list_orders call which may lag in reflecting booking_status changes.
         linked_order = RECENT_REF_CACHE.get(normalized_ref) or _latest_order_for_reference(normalized_ref)
@@ -10437,6 +10923,16 @@ def manage_booking():
             account_error=account_error,
             **auth_context,
             )
+        if prefilled_ref.startswith("SKH"):
+            if _hotel_booking_by_reference(prefilled_ref):
+                return redirect(url_for("hotel_booking_confirmation", booking_reference=prefilled_ref))
+            return _render_manage_booking_page(
+                booking_error="We couldn't load that booking right now.",
+                form_values=form_values,
+                account_notice=account_notice,
+                account_error=account_error,
+                **auth_context,
+            )
         order = _latest_order_for_reference(prefilled_ref)
         if order:
             _capture_booking_email_links(order=order, passengers_payload=None)
@@ -10481,6 +10977,44 @@ def manage_booking():
             ),
             400,
         )
+
+    # Hotel bookings (SKH-prefixed) live in the local table, not Duffel, and
+    # don't collect a guest DOB at checkout — verify on reference + last name
+    # instead (the reference itself is a high-entropy secret) rather than
+    # asking this shared form for a field hotel checkout never captured.
+    if booking_reference.startswith("SKH"):
+        attempts = _record_manage_booking_attempt(request.remote_addr or "", booking_reference)
+        if attempts > 8:
+            return (
+                _render_manage_booking_page(
+                    booking_error="Too many attempts for this booking reference. Please wait 15 minutes and try again.",
+                    form_values=form_values,
+                    account_notice=account_notice,
+                    account_error=account_error,
+                    **auth_context,
+                ),
+                429,
+            )
+        hotel_booking = _hotel_booking_by_reference(booking_reference)
+        if not hotel_booking or _normalize_person_name(hotel_booking.get("holder_last_name") or "").lower() != last_name.lower():
+            return (
+                _render_manage_booking_page(
+                    booking_error="We couldn't find a hotel booking with that reference and last name.",
+                    form_values=form_values,
+                    account_notice=account_notice,
+                    account_error=account_error,
+                    **auth_context,
+                ),
+                404,
+            )
+        if hotel_booking.get("holder_email"):
+            _record_booking_email_link(
+                email=hotel_booking["holder_email"],
+                booking_reference=booking_reference,
+                order_id=hotel_booking.get("liteapi_booking_id", ""),
+            )
+        return redirect(url_for("hotel_booking_confirmation", booking_reference=booking_reference))
+
     if not _valid_dob(dob):
         return (
             _render_manage_booking_page(
@@ -10577,32 +11111,33 @@ def manage_booking_account_signup():
     password = str(request.form.get("account_password") or "")
     password_confirm = str(request.form.get("account_password_confirm") or "")
     booking_reference = _normalize_booking_reference(str(request.form.get("booking_reference") or ""))
+    next_url = _safe_next_url(request.form.get("next"))
 
     if not email or "@" not in email:
         _set_manage_account_notice(error="Enter a valid email for account signup.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if not first_name:
         _set_manage_account_notice(error="Enter your first name.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if not last_name:
         _set_manage_account_notice(error="Enter your last name.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     # DOB is optional for account creation in auth/signup flows.
     if dob and not _valid_dob(dob):
         _set_manage_account_notice(error="Enter a valid date of birth in YYYY-MM-DD format, or leave it blank.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if not accepted_terms:
         _set_manage_account_notice(error="Accept the Terms and Conditions to create an account.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if password != password_confirm:
         _set_manage_account_notice(error="Password confirmation does not match.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if not _password_meets_criteria(password):
         _set_manage_account_notice(error="Use at least 8 characters including letters and numbers.")
-        return _auth_redirect(mode="signup", booking_reference=booking_reference)
+        return _auth_redirect(mode="signup", booking_reference=booking_reference, next_url=next_url)
     if _account_lookup(email):
         _set_manage_account_notice(error="An account with that email already exists. Please log in instead.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     salt_hex = os.urandom(16).hex()
     account = {
@@ -10651,7 +11186,13 @@ def manage_booking_account_signup():
     elif auto_linked_count > 1:
         notice = f"Account created. {auto_linked_count} previous bookings were linked automatically."
     _set_manage_account_notice(notice=notice)
-    return _auth_redirect(mode="login", booking_reference=booking_reference)
+    # The account is already signed in above — land them signed in, not back
+    # on the login form (that used to read as "did my account even work?").
+    if booking_reference:
+        return redirect(url_for("manage_booking", booking_reference=booking_reference))
+    if next_url:
+        return redirect(next_url)
+    return redirect(url_for("user_portal"))
 
 
 @app.route("/manage-booking/account/login", methods=["POST"])
@@ -10661,23 +11202,24 @@ def manage_booking_account_login():
     email = _normalize_email(str(request.form.get("account_email") or ""))
     password = str(request.form.get("account_password") or "")
     booking_reference = _normalize_booking_reference(str(request.form.get("booking_reference") or ""))
+    next_url = _safe_next_url(request.form.get("next"))
     ip = _b2c_client_ip()
 
     if _b2c_login_is_locked(ip, email):
         _set_manage_account_notice(error="Too many failed login attempts. Please wait 15 minutes before trying again.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     account = _account_lookup(email)
     if not account:
         _b2c_login_record_failure(ip, email)
         _set_manage_account_notice(error="Invalid email or password.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     expected_hash = str(account.get("password_hash") or "")
     salt_hex = str(account.get("salt_hex") or "")
     if not expected_hash or not salt_hex:
         _set_manage_account_notice(error="That account is missing credentials. Please create a new one.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     if not hmac.compare_digest(_password_hash(password, salt_hex), expected_hash):
         attempts = _b2c_login_record_failure(ip, email)
@@ -10686,7 +11228,7 @@ def manage_booking_account_login():
             _set_manage_account_notice(error="Too many failed attempts. Account login locked for 15 minutes.")
         else:
             _set_manage_account_notice(error="Invalid email or password.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     _b2c_login_reset(ip, email)
     account = _update_account_login_metadata(dict(account))
@@ -10710,6 +11252,10 @@ def manage_booking_account_login():
     )
     first_name = str(account.get("first_name") or "").strip() or "User"
     _set_global_notice(f"Logged in as {first_name}.")
+    if booking_reference:
+        return redirect(url_for("manage_booking", booking_reference=booking_reference))
+    if next_url:
+        return redirect(next_url)
     return redirect(url_for("index"))
 
 
@@ -10944,14 +11490,14 @@ def _verify_oidc_id_token(id_token_str: str, jwks_url: str, audience: str, issue
 
 
 def _oauth_login_or_create(
-    email: str, first_name: str, last_name: str, provider: str, booking_reference: str
+    email: str, first_name: str, last_name: str, provider: str, booking_reference: str, next_url: str = ""
 ):
     """Shared post-OAuth handler: log in existing account or create a new one, then redirect."""
     if not email:
         _set_manage_account_notice(
             error=f"{provider.title()} did not share an email address. Use email sign-in instead."
         )
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     account = _account_lookup(email)
     if account:
@@ -11009,6 +11555,8 @@ def _oauth_login_or_create(
 
     if booking_reference:
         return redirect(url_for("manage_booking", booking_reference=booking_reference))
+    if next_url:
+        return redirect(next_url)
     return redirect(url_for("user_portal"))
 
 
@@ -11026,6 +11574,7 @@ def oauth_google_start():
     session["oauth_booking_ref"] = _normalize_booking_reference(
         str(request.args.get("booking_reference") or "")
     )
+    session["oauth_next"] = _safe_next_url(request.args.get("next"))
     params = {
         "client_id": GOOGLE_OAUTH_CLIENT_ID,
         "redirect_uri": url_for("oauth_google_callback", _external=True),
@@ -11042,15 +11591,16 @@ def oauth_google_start():
 def oauth_google_callback():
     error = request.args.get("error")
     booking_reference = str(session.pop("oauth_booking_ref", "") or "")
+    next_url = _safe_next_url(session.pop("oauth_next", "") or "")
     if error:
         _set_manage_account_notice(error="Google sign-in was cancelled.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     state = request.args.get("state", "")
     expected_state = session.pop("oauth_google_state", None)
     if not state or state != expected_state:
         _set_manage_account_notice(error="Invalid sign-in state. Please try again.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     code = request.args.get("code", "")
     try:
@@ -11080,12 +11630,12 @@ def oauth_google_callback():
     except Exception as exc:
         print(f"Google OAuth error: {exc}")
         _set_manage_account_notice(error="Google sign-in failed. Please try again.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     email = _normalize_email(str(userinfo.get("email") or ""))
     first_name = str(userinfo.get("given_name") or "").strip()
     last_name = str(userinfo.get("family_name") or "").strip()
-    return _oauth_login_or_create(email, first_name, last_name, "google", booking_reference)
+    return _oauth_login_or_create(email, first_name, last_name, "google", booking_reference, next_url)
 
 
 # ---------------------------------------------------------------------------
@@ -11102,6 +11652,7 @@ def oauth_apple_start():
     session["oauth_booking_ref"] = _normalize_booking_reference(
         str(request.args.get("booking_reference") or "")
     )
+    session["oauth_next"] = _safe_next_url(request.args.get("next"))
     params = {
         "client_id": APPLE_OAUTH_CLIENT_ID,
         "redirect_uri": url_for("oauth_apple_callback", _external=True),
@@ -11117,15 +11668,16 @@ def oauth_apple_start():
 def oauth_apple_callback():
     error = request.form.get("error")
     booking_reference = str(session.pop("oauth_booking_ref", "") or "")
+    next_url = _safe_next_url(session.pop("oauth_next", "") or "")
     if error:
         _set_manage_account_notice(error="Apple sign-in was cancelled.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     state = request.form.get("state", "")
     expected_state = session.pop("oauth_apple_state", None)
     if not state or state != expected_state:
         _set_manage_account_notice(error="Invalid sign-in state. Please try again.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     id_token_str = str(request.form.get("id_token") or "")
     user_json_str = str(request.form.get("user") or "")  # only present on first auth
@@ -11141,7 +11693,7 @@ def oauth_apple_callback():
     except Exception as exc:
         print(f"Apple id_token verification error: {exc}")
         _set_manage_account_notice(error="Apple sign-in verification failed. Please try again.")
-        return _auth_redirect(mode="login", booking_reference=booking_reference)
+        return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
     first_name, last_name = "", ""
     if user_json_str:
@@ -11153,14 +11705,15 @@ def oauth_apple_callback():
         except Exception:
             pass
 
-    return _oauth_login_or_create(email, first_name, last_name, "apple", booking_reference)
+    return _oauth_login_or_create(email, first_name, last_name, "apple", booking_reference, next_url)
 
 
 @app.route("/manage-booking/account/social/<provider>", methods=["POST"])
 def manage_booking_account_social(provider: str):
     booking_reference = _normalize_booking_reference(str(request.form.get("booking_reference") or ""))
+    next_url = _safe_next_url(request.form.get("next"))
     _set_manage_account_notice(error="Unsupported social sign-in provider.")
-    return _auth_redirect(mode="login", booking_reference=booking_reference)
+    return _auth_redirect(mode="login", booking_reference=booking_reference, next_url=next_url)
 
 
 @app.route("/manage-booking/account/logout", methods=["POST"])
@@ -11178,7 +11731,17 @@ def auth_page():
     reset_email = _normalize_email(str(request.args.get("reset_email") or ""))
     reset_token = str(request.args.get("reset_token") or "").strip()
     booking_reference = _normalize_booking_reference(str(request.args.get("booking_reference") or ""))
+    next_url = _safe_next_url(request.args.get("next"))
     signed_out = str(request.args.get("signed_out") or "").strip().lower() in {"1", "true", "yes"}
+
+    # Already signed in — there's nothing to do here except send them on.
+    if not signed_out and _session_account_email():
+        if booking_reference:
+            return redirect(url_for("manage_booking", booking_reference=booking_reference))
+        if next_url:
+            return redirect(next_url)
+        return redirect(url_for("user_portal"))
+
     account_notice, account_error = _pop_manage_account_notice()
     return render_template(
         "auth.html",
@@ -11186,6 +11749,7 @@ def auth_page():
         reset_email=reset_email,
         reset_token=reset_token,
         booking_reference=booking_reference,
+        next=next_url,
         signed_out=signed_out,
         account_notice=account_notice,
         account_error=account_error,
@@ -11210,6 +11774,7 @@ def user_portal():
             "last_seen": str(account.get("last_login_at") or "").replace("T", " "),
         }
     ]
+    account_notice, account_error = _pop_manage_account_notice()
     return render_template(
         "user_portal.html",
         account=account,
@@ -11218,6 +11783,8 @@ def user_portal():
         top_routes=top_routes,
         active_sessions=active_sessions,
         page_notice="",
+        account_notice=account_notice,
+        account_error=account_error,
         csrf_token=_b2c_csrf_token(),
     )
 
@@ -11660,11 +12227,21 @@ def airports():
 
 @app.route("/")
 def index():
+    # One landing page serves every product: ?tab=hotels|ai deep-links the
+    # matching search tab (hotels falls back to flights while Stays is off).
+    requested_tab = (request.args.get("tab") or "").strip().lower()
+    if requested_tab in ("hotels", "hotel", "stays") and LITE_ENABLED:
+        initial_tab = "stays"
+    elif requested_tab in ("ai", "ask-ai", "askai"):
+        initial_tab = "ai"
+    else:
+        initial_tab = "flights"
+
     _track_analytics_event(
         event_type="site_landed",
         search_mode="browse",
         success=True,
-        metadata={"page": "home"},
+        metadata={"page": "home", "tab": initial_tab},
     )
     return render_template(
         "index.html",
@@ -11675,6 +12252,8 @@ def index():
         destination_categories=CATEGORIES,
         domestic_destinations=DOMESTIC_DESTINATIONS,
         voice_ai_enabled=VOICE_AI_ENABLED,
+        initial_tab=initial_tab,
+        hotels_enabled=LITE_ENABLED,
     )
 
 
@@ -11711,20 +12290,11 @@ def hotels():
             feature_description="Beautiful places to stay, matched to your trip rhythm, budget, and travel style.",
         )
 
-    _track_analytics_event(
-        event_type="site_landed",
-        search_mode="browse",
-        success=True,
-        metadata={"page": "hotels"},
-    )
-    return render_template(
-        "hotels.html",
-        defaults=_hotel_search_defaults(),
-        destinations=DESTINATIONS,
-        lite_env=LITE_ENV,
-        global_notice=_pop_global_notice(),
-        voice_ai_enabled=VOICE_AI_ENABLED,
-    )
+    # Hotels no longer has a separate landing page: the home page hosts the
+    # Flights / Hotels / Ask AI tabs, so land on it with Hotels selected.
+    # (Deeper hotel routes — results, detail, AI search — are unchanged, and
+    # their error redirects to url_for("hotels") arrive here too.)
+    return redirect(url_for("index", tab="hotels"))
 
 
 # Landing-page showcase rails. Pricing properties takes seconds, so these are
@@ -12159,6 +12729,34 @@ def hotel_places():
     return jsonify(places[:8])
 
 
+def _resolve_hotel_place_for_airport(iata_code: str) -> dict[str, str] | None:
+    """City-level LiteAPI place for a flight destination's IATA code.
+
+    The "airport code -> city name -> LiteAPI place" resolution the
+    sequential flight -> hotel handoff needs to anchor a hotel search on
+    whichever flight the user just picked.
+    """
+    code = _normalize_airport_input(iata_code)
+    if not code:
+        return None
+    airport = _airport_code_map().get(code) or {}
+    destination_name = str(airport.get("city") or "").strip()
+    # Some airport source rows carry a municipality qualifier, e.g.
+    # "Paris (Roissy-en-France, Val-d'Oise)" — a poor heading for a city search.
+    destination_name = destination_name.split(" (", 1)[0].strip()
+    if not destination_name:
+        return None
+    try:
+        places = LITE.search_places(destination_name)
+    except LiteAPIError as exc:
+        print("HOTEL PLACE RESOLVE ERROR:", exc)
+        return None
+    if not places:
+        return None
+    place = places[0]
+    return {"place_id": str(place.get("place_id") or ""), "name": str(place.get("name") or destination_name)}
+
+
 def _run_hotel_search(
     *,
     place_id: str,
@@ -12255,6 +12853,140 @@ def _run_hotel_search(
         lite_env=LITE_ENV,
         global_notice=_pop_global_notice(),
     )
+
+
+@app.route("/trip/select-flight/<offer_id>", methods=["GET"])
+def trip_select_flight(offer_id: str):
+    """Picking a flight when a hotel is also wanted doesn't go straight to
+    checkout — it hands off into a destination/date-prefiltered hotel search
+    first. Falls straight through to ordinary checkout when there's no
+    pending hotel intent, hotels are unavailable, or the offer can't be
+    read — this handoff is additive sugar, never a blocker on booking a
+    flight alone."""
+    trip_intent = _get_trip_intent()
+    if not trip_intent or not LITE_ENABLED:
+        return redirect(url_for("checkout_offer", offer_id=offer_id))
+
+    try:
+        offer = DUFF.get_offer(offer_id)
+    except DuffelAPIError:
+        return redirect(url_for("checkout_offer", offer_id=offer_id))
+    if offer_has_expired(offer):
+        return redirect(url_for("checkout_offer", offer_id=offer_id))
+
+    slices = offer.get("slices") or []
+    outbound_segments = slices[0].get("segments") if slices else None
+    if not outbound_segments:
+        return redirect(url_for("checkout_offer", offer_id=offer_id))
+    destination_iata = str((outbound_segments[-1].get("destination") or {}).get("iata_code") or "").strip().upper()
+
+    offer_summary = build_checkout_summary(offer, seat_maps=[], ancillaries_payload={})
+    flight_snapshot = {
+        "route": offer_summary.get("route_summary") or "",
+        "total_amount": offer_summary.get("total_amount"),
+        "currency": offer_summary.get("currency"),
+        "airline_name": offer_summary.get("airline_name"),
+    }
+
+    # Re-anchor hotel dates to this flight's real dates when the user never
+    # gave the stay its own explicit dates — the parse-time guess (flex
+    # search especially) is often just a placeholder.
+    hotel_dates = dict(trip_intent.get("hotel_dates") or {})
+    if not trip_intent.get("stay_dates_explicit") and destination_iata:
+        checkin_dt = parse_duffel_datetime(outbound_segments[-1].get("arriving_at"))
+        checkin = checkin_dt.date().isoformat() if checkin_dt else ""
+        checkout = ""
+        if len(slices) >= 2:
+            return_segments = slices[1].get("segments") or []
+            if return_segments:
+                checkout_dt = parse_duffel_datetime(return_segments[0].get("departing_at"))
+                checkout = checkout_dt.date().isoformat() if checkout_dt else ""
+        if checkin:
+            hotel_dates["checkin"] = checkin
+            if checkout and checkout > checkin:
+                hotel_dates["checkout"] = checkout
+            else:
+                # One-way flight, or a same/odd-day return — fall back to
+                # whichever nights count the original stay parse implied.
+                span = 3
+                original_dates = trip_intent.get("hotel_dates") or {}
+                prior_checkin = original_dates.get("checkin")
+                prior_checkout = original_dates.get("checkout")
+                if prior_checkin and prior_checkout:
+                    try:
+                        span = max(1, (datetime.strptime(prior_checkout, "%Y-%m-%d").date()
+                                        - datetime.strptime(prior_checkin, "%Y-%m-%d").date()).days)
+                    except ValueError:
+                        span = 3
+                hotel_dates["checkout"] = (datetime.strptime(checkin, "%Y-%m-%d").date() + timedelta(days=span)).isoformat()
+
+    updates: dict[str, Any] = {
+        "flight_offer_id": offer_id,
+        "flight_snapshot": flight_snapshot,
+        "hotel_dates": hotel_dates,
+        "stage": "flight_selected",
+    }
+    # A different destination than whatever hotel search (if any) was
+    # already underway invalidates the in-progress hotel pick.
+    if trip_intent.get("destination_iata") and trip_intent["destination_iata"] != destination_iata:
+        updates.update({
+            "hotel_place_id": None,
+            "hotel_id": None,
+            "hotel_offer_id": None,
+            "hotel_prebook_id": None,
+            "hotel_checkin": None,
+            "hotel_checkout": None,
+            "hotel_snapshot": None,
+            "stage": "flight_selected",
+        })
+    updates["destination_iata"] = destination_iata
+    _update_trip_intent(**updates)
+
+    _track_offer_funnel_event(event_type="flight_selected", offer=offer, step="trip_combo_flight")
+    return redirect(url_for("trip_hotel_search"))
+
+
+@app.route("/trip/hotel-search", methods=["GET"])
+def trip_hotel_search():
+    """Hotel results pre-filtered to the flight just picked — the second
+    step of a combined "flight + hotel" AI search."""
+    trip_intent = _get_trip_intent()
+    if not trip_intent or not LITE_ENABLED:
+        return redirect(url_for("index"))
+
+    destination_iata = str(trip_intent.get("destination_iata") or "")
+    place = _resolve_hotel_place_for_airport(destination_iata) if destination_iata else None
+    if not place:
+        _set_global_notice(
+            "We couldn't find stays for that destination — pick a hotel destination manually below."
+        )
+        return redirect(url_for("hotels"))
+
+    hotel_dates = trip_intent.get("hotel_dates") or {}
+    filters = trip_intent.get("hotel_filters") or {}
+    _update_trip_intent(hotel_place_id=place["place_id"], stage="hotel_searching")
+
+    return _run_hotel_search(
+        place_id=place["place_id"],
+        place_name=place["name"],
+        checkin=str(hotel_dates.get("checkin") or ""),
+        checkout=str(hotel_dates.get("checkout") or ""),
+        adults=int(filters.get("adults") or 2),
+        rooms=int(filters.get("rooms") or 1),
+        children_ages=filters.get("children_ages") or [],
+        ai_filters=filters,
+        ai_text=str(trip_intent.get("raw_text") or ""),
+    )
+
+
+@app.route("/trip/skip-hotel", methods=["GET"])
+def trip_skip_hotel():
+    """Opt out of the pending hotel leg — "just book the flight." Never a
+    dead end: whichever flight the user picks next goes straight to
+    ordinary checkout instead of the hotel handoff."""
+    _clear_trip_intent()
+    next_url = _safe_next_url(request.args.get("next"))
+    return redirect(next_url or url_for("index"))
 
 
 @app.route("/api/hotels/search-more", methods=["GET"])
@@ -12441,6 +13173,625 @@ def hotel_detail(hotel_id: str):
         },
         lite_env=LITE_ENV,
         global_notice=_pop_global_notice(),
+    )
+
+
+def _hotel_checkout_context(*, request_source: Mapping[str, Any]) -> dict[str, Any]:
+    """Pull the room/date/party shape a hotel checkout page needs out of
+    whatever combination of query string (GET) or form (POST) carried it."""
+    try:
+        adults = max(1, min(8, int(request_source.get("adults") or 2)))
+    except (TypeError, ValueError):
+        adults = 2
+    try:
+        rooms_count = max(1, min(4, int(request_source.get("rooms") or 1)))
+    except (TypeError, ValueError):
+        rooms_count = 1
+    return {
+        "offer_id": str(request_source.get("offer_id") or "").strip(),
+        "checkin": str(request_source.get("checkin") or "").strip(),
+        "checkout": str(request_source.get("checkout") or "").strip(),
+        "place_id": str(request_source.get("place_id") or "").strip(),
+        "place_name": str(request_source.get("place_name") or "").strip(),
+        "adults": adults,
+        "rooms": rooms_count,
+    }
+
+
+@app.route("/hotels/<hotel_id>/checkout", methods=["GET", "POST"])
+def hotel_checkout(hotel_id: str):
+    """Real hotel checkout: prebook (price lock) -> holder/guest form -> book.
+
+    Gated by the same demo safeguard as flight checkout (_demo_checkout_lock_error)
+    — browsable end-to-end, but the live public demo doesn't create real
+    LiteAPI bookings any more than it creates real Duffel orders.
+    """
+    if not LITE_ENABLED:
+        return redirect(url_for("hotels"))
+
+    ctx = _hotel_checkout_context(request_source=(request.form if request.method == "POST" else request.args))
+    nights = _hotel_nights(ctx["checkin"], ctx["checkout"])
+    if not ctx["offer_id"] or nights <= 0:
+        _set_global_notice("Pick your dates and a room before checkout.")
+        return redirect(url_for(
+            "hotel_detail", hotel_id=hotel_id, checkin=ctx["checkin"], checkout=ctx["checkout"],
+            adults=ctx["adults"], rooms=ctx["rooms"], place_id=ctx["place_id"], place_name=ctx["place_name"],
+        ))
+
+    try:
+        content = LITE.hotel_detail(hotel_id)
+    except LiteAPIError as exc:
+        print("HOTEL CHECKOUT CONTENT ERROR:", exc)
+        _set_global_notice(str(exc))
+        return redirect(url_for("hotel_detail", hotel_id=hotel_id, checkin=ctx["checkin"], checkout=ctx["checkout"]))
+    hotel_view = build_detail_view(content)
+
+    def render_checkout(*, prebook_summary, traveler_form, errors, booking_error, booking_enabled, status=200):
+        return render_template(
+            "hotel_checkout.html",
+            hotel=hotel_view,
+            prebook=prebook_summary,
+            traveler_form=traveler_form,
+            errors=errors,
+            booking_error=booking_error,
+            booking_enabled=booking_enabled,
+            offer_id=ctx["offer_id"], hotel_id=hotel_id,
+            checkin=ctx["checkin"], checkout=ctx["checkout"],
+            adults=ctx["adults"], rooms=ctx["rooms"],
+            place_id=ctx["place_id"], place_name=ctx["place_name"],
+            csrf_token=_b2c_csrf_token(),
+            lite_env=LITE_ENV,
+        ), status
+
+    mode_error = _demo_checkout_lock_error()
+    if mode_error:
+        return render_checkout(
+            prebook_summary=None,
+            traveler_form=build_hotel_traveler_form(room_count=ctx["rooms"]),
+            errors={}, booking_error=mode_error, booking_enabled=False, status=503,
+        )
+
+    prebook_cache_key = ("hotel_prebook", ctx["offer_id"])
+    prebook = HOTEL_PREBOOK_CACHE.get(prebook_cache_key)
+    if not prebook:
+        try:
+            prebook = LITE.prebook(ctx["offer_id"])
+        except LiteAPIError as exc:
+            return render_checkout(
+                prebook_summary=None,
+                traveler_form=build_hotel_traveler_form(room_count=ctx["rooms"]),
+                errors={}, booking_error=str(exc), booking_enabled=False, status=502,
+            )
+        HOTEL_PREBOOK_CACHE.set(prebook_cache_key, prebook)
+    prebook_summary = build_prebook_summary(prebook, nights=nights)
+
+    # A flight is already picked for this trip — hand off into the combined
+    # checkout instead of a standalone hotel booking. GET only: the combined
+    # form posts straight to /trip/checkout, so a bare POST here (bypassing
+    # that form entirely) still completes as an ordinary hotel-only booking.
+    if request.method == "GET":
+        trip_intent = _get_trip_intent()
+        if trip_intent and trip_intent.get("flight_offer_id"):
+            _update_trip_intent(
+                hotel_id=hotel_id,
+                hotel_offer_id=ctx["offer_id"],
+                hotel_prebook_id=str(prebook.get("prebookId") or ""),
+                hotel_checkin=ctx["checkin"],
+                hotel_checkout=ctx["checkout"],
+                hotel_rooms=ctx["rooms"],
+                hotel_adults=ctx["adults"],
+                hotel_snapshot={
+                    "hotel_name": hotel_view.get("name"),
+                    "room_name": prebook_summary.get("room_name"),
+                    "total_amount": prebook_summary.get("total_amount"),
+                    "currency": prebook_summary.get("currency"),
+                },
+                stage="hotel_selected",
+            )
+            return redirect(url_for("trip_checkout"))
+
+    if request.method == "GET":
+        _track_analytics_event(
+            event_type="hotel_booking_intent", search_mode="hotels", success=True,
+            metadata={"hotel_id": hotel_id, "nights": nights},
+        )
+        return render_checkout(
+            prebook_summary=prebook_summary,
+            traveler_form=build_hotel_traveler_form(room_count=ctx["rooms"]),
+            errors={}, booking_error="", booking_enabled=True,
+        )
+
+    # POST — actually book it.
+    if not _validate_b2c_csrf():
+        return "Invalid or missing CSRF token.", 403
+
+    holder_payload, guests_payload, errors = validate_hotel_checkout_form(room_count=ctx["rooms"], form=request.form)
+    traveler_form = build_hotel_traveler_form(room_count=ctx["rooms"], form=request.form)
+    if errors:
+        return render_checkout(
+            prebook_summary=prebook_summary, traveler_form=traveler_form,
+            errors=errors, booking_error="", booking_enabled=True,
+        )
+
+    # Re-check the price hasn't drifted since the page was first shown —
+    # never trust a stale prebook when actually charging.
+    try:
+        fresh_prebook = LITE.prebook(ctx["offer_id"])
+    except LiteAPIError as exc:
+        return render_checkout(
+            prebook_summary=prebook_summary, traveler_form=traveler_form,
+            errors={}, booking_error=str(exc), booking_enabled=False, status=502,
+        )
+    HOTEL_PREBOOK_CACHE.set(prebook_cache_key, fresh_prebook)
+    fresh_summary = build_prebook_summary(fresh_prebook, nights=nights)
+    if fresh_summary.get("price_changed"):
+        return render_checkout(
+            prebook_summary=fresh_summary, traveler_form=traveler_form,
+            errors={},
+            booking_error=(
+                f"The price for this room changed to {fresh_summary['currency']} "
+                f"{fresh_summary['total_amount']:.2f} since you started checkout. "
+                "Review the new total and submit again to confirm."
+            ),
+            booking_enabled=True,
+        )
+
+    client_reference = secrets.token_urlsafe(16)
+    try:
+        booking = LITE.book(
+            prebook_id=str(fresh_prebook.get("prebookId") or ""),
+            holder=holder_payload,
+            guests=guests_payload,
+            payment={"method": "ACC_CREDIT_CARD"},
+            client_reference=client_reference,
+        )
+    except LiteAPIError as exc:
+        return render_checkout(
+            prebook_summary=fresh_summary, traveler_form=traveler_form,
+            errors={}, booking_error=str(exc), booking_enabled=True, status=502,
+        )
+
+    booking_reference = _generate_hotel_booking_reference()
+    _save_hotel_booking({
+        "booking_reference": booking_reference,
+        "liteapi_booking_id": str(booking.get("bookingId") or ""),
+        "liteapi_prebook_id": str(fresh_prebook.get("prebookId") or ""),
+        "hotel_id": hotel_id,
+        "hotel_name": hotel_view.get("name"),
+        "hotel_address": hotel_view.get("address"),
+        "hotel_photo": hotel_view.get("hero"),
+        "room_name": fresh_summary.get("room_name"),
+        "board_name": fresh_summary.get("board_name"),
+        "checkin": ctx["checkin"],
+        "checkout": ctx["checkout"],
+        "holder_first_name": holder_payload["firstName"],
+        "holder_last_name": holder_payload["lastName"],
+        "holder_email": holder_payload["email"],
+        "total_amount": f"{fresh_summary.get('total_amount') or 0:.2f}",
+        "currency": fresh_summary.get("currency"),
+        "status": "confirmed",
+    })
+    _session_authorize_order(f"hotel:{booking_reference}")
+    _record_booking_email_link(email=holder_payload["email"], booking_reference=booking_reference, order_id=str(booking.get("bookingId") or ""))
+    _link_booking_to_account(holder_payload["email"], booking_reference)
+    _track_analytics_event(
+        event_type="hotel_booking_completed", search_mode="hotels", success=True,
+        currency=fresh_summary.get("currency"),
+        metadata={"hotel_id": hotel_id, "booking_reference": booking_reference, "nights": nights},
+    )
+    try:
+        ok, reason = email_service.send_hotel_confirmation_email(
+            to_email=holder_payload["email"],
+            booking_summary={
+                "booking_reference": booking_reference,
+                "hotel_name": hotel_view.get("name"),
+                "hotel_address": hotel_view.get("address"),
+                "hotel_photo": hotel_view.get("hero"),
+                "room_name": fresh_summary.get("room_name"),
+                "board_name": fresh_summary.get("board_name"),
+                "checkin": ctx["checkin"],
+                "checkout": ctx["checkout"],
+                "nights": nights,
+                "guest_name": f"{holder_payload['firstName']} {holder_payload['lastName']}".strip(),
+                "total_amount": fresh_summary.get("total_amount"),
+                "currency": fresh_summary.get("currency"),
+            },
+        )
+        if not ok:
+            print(f"HOTEL CONFIRMATION EMAIL FAILED for {holder_payload['email']}: {reason}")
+    except Exception as exc:
+        print("HOTEL CONFIRMATION EMAIL ERROR:", repr(exc))
+
+    return redirect(url_for("hotel_booking_confirmation", booking_reference=booking_reference))
+
+
+@app.route("/hotels/booking/confirmation/<booking_reference>", methods=["GET"])
+def hotel_booking_confirmation(booking_reference: str):
+    """Post-booking confirmation, and also the manage-booking display target
+    for hotel bookings looked up by reference (see manage_booking())."""
+    booking = _hotel_booking_by_reference(booking_reference)
+    if not booking:
+        return redirect(url_for("hotels"))
+    return render_template(
+        "hotel_confirmation.html",
+        booking=booking,
+        lite_env=LITE_ENV,
+    )
+
+
+@app.route("/trip/checkout", methods=["GET", "POST"])
+def trip_checkout():
+    """Combined flight + hotel checkout: one traveler/holder form, two
+    sequential provider calls (Duffel then LiteAPI), one confirmation.
+
+    Never renders with a hole in it — bounces back to whichever step is
+    incomplete rather than guessing. Demo-locked the same way both
+    single-product checkouts are (see _demo_checkout_lock_error).
+    """
+    trip_intent = _get_trip_intent()
+    if not trip_intent or not trip_intent.get("flight_offer_id"):
+        return redirect(url_for("index"))
+    if not LITE_ENABLED:
+        # Hotels went unavailable mid-session (e.g. config reload) — never
+        # trust a stale session flag. Degrade to an ordinary flight checkout
+        # rather than dead-ending on a combined page that can't render.
+        _update_trip_intent(hotel_id=None, hotel_offer_id=None, hotel_prebook_id=None, hotel_snapshot=None, stage="flight_selected")
+        _set_global_notice("Hotels aren't available right now — continuing with your flight only.")
+        return redirect(url_for("checkout_offer", offer_id=trip_intent["flight_offer_id"]))
+    if not trip_intent.get("hotel_id") or not trip_intent.get("hotel_offer_id"):
+        return redirect(url_for("trip_hotel_search"))
+
+    flight_offer_id = trip_intent["flight_offer_id"]
+    hotel_id = trip_intent["hotel_id"]
+    hotel_offer_id = trip_intent["hotel_offer_id"]
+    hotel_checkin = str(trip_intent.get("hotel_checkin") or "")
+    hotel_checkout_date = str(trip_intent.get("hotel_checkout") or "")
+    hotel_rooms = int(trip_intent.get("hotel_rooms") or 1)
+    hotel_filters = trip_intent.get("hotel_filters") or {}
+    nights = _hotel_nights(hotel_checkin, hotel_checkout_date)
+
+    if nights <= 0:
+        # trip_intent got into an inconsistent state — safest recovery is a fresh hotel pick.
+        _update_trip_intent(hotel_id=None, hotel_offer_id=None, hotel_prebook_id=None, hotel_snapshot=None, stage="flight_selected")
+        return redirect(url_for("trip_hotel_search"))
+
+    def render_trip_checkout(
+        *, offer_summary=None, checkout_model=None, travelers=None,
+        hotel_view=None, prebook_summary=None, hotel_traveler_form=None,
+        errors=None, booking_error="", booking_enabled=False, status=200,
+    ):
+        combined_total = None
+        if offer_summary and prebook_summary and offer_summary.get("currency") == prebook_summary.get("currency"):
+            try:
+                combined_total = float(offer_summary["total_amount"]) + float(prebook_summary["total_amount"])
+            except (TypeError, ValueError):
+                combined_total = None
+        return render_template(
+            "trip_checkout.html",
+            offer_summary=offer_summary,
+            checkout_model=checkout_model,
+            travelers=travelers or [],
+            hotel=hotel_view,
+            prebook=prebook_summary,
+            hotel_traveler_form=hotel_traveler_form or build_hotel_traveler_form(room_count=hotel_rooms),
+            errors=errors or {},
+            booking_error=booking_error,
+            booking_enabled=booking_enabled,
+            combined_total=combined_total,
+            combined_currency=(offer_summary or {}).get("currency") if combined_total is not None else None,
+            checkout_token=trip_intent.get("checkout_token") or "",
+            hotel_id=hotel_id,
+            hotel_checkin=hotel_checkin,
+            hotel_checkout=hotel_checkout_date,
+            hotel_rooms=hotel_rooms,
+            duffel_env=DUFFEL_ENV,
+            duffel_components_version=DUFFEL_COMPONENTS_VERSION,
+            lite_env=LITE_ENV,
+            csrf_token=_b2c_csrf_token(),
+        ), status
+
+    mode_error = _demo_checkout_lock_error() or _booking_mode_error()
+    if mode_error:
+        return render_trip_checkout(booking_error=mode_error, booking_enabled=False, status=503)
+
+    try:
+        offer = DUFF.get_offer(flight_offer_id, return_available_services=True)
+    except DuffelAPIError as exc:
+        return render_trip_checkout(booking_error=str(exc), booking_enabled=False, status=_booking_status_code(exc.status_code))
+
+    if offer_has_expired(offer):
+        # F3 — the hotel pick is untouched; only the flight needs re-picking.
+        _update_trip_intent(flight_offer_id=None, flight_snapshot=None, stage="hotel_selected")
+        _set_global_notice(
+            "Your flight offer expired while you were choosing a hotel. Your hotel pick is still saved — "
+            "search again to pick a fresh flight and you'll come straight back here."
+        )
+        return redirect(url_for("index"))
+
+    hotel_cache_key = ("hotel_prebook", hotel_offer_id)
+    prebook = HOTEL_PREBOOK_CACHE.get(hotel_cache_key)
+    if not prebook:
+        try:
+            prebook = LITE.prebook(hotel_offer_id)
+        except LiteAPIError as exc:
+            return render_trip_checkout(booking_error=f"Hotel: {exc}", booking_enabled=False, status=502)
+        HOTEL_PREBOOK_CACHE.set(hotel_cache_key, prebook)
+    prebook_summary = build_prebook_summary(prebook, nights=nights)
+
+    try:
+        hotel_content = LITE.hotel_detail(hotel_id)
+    except LiteAPIError as exc:
+        return render_trip_checkout(booking_error=f"Hotel: {exc}", booking_enabled=False, status=502)
+    hotel_view = build_detail_view(hotel_content)
+
+    seat_maps, payment_config = _load_checkout_sidecars(offer)
+    travelers = build_traveler_forms(offer, request.form if request.method == "POST" else None)
+    offer_summary = build_checkout_summary(offer, seat_maps=seat_maps, ancillaries_payload={})
+    checkout_model = build_checkout_page_model(
+        offer, travelers=travelers, seat_maps=seat_maps, ancillaries_payload={},
+        payment_config=payment_config, duffel_env=DUFFEL_ENV,
+    )
+
+    if request.method == "GET":
+        checkout_token = secrets.token_urlsafe(16)
+        _update_trip_intent(checkout_token=checkout_token, stage="checkout")
+        trip_intent["checkout_token"] = checkout_token
+        _track_offer_funnel_event(event_type="booking_intent", offer=offer, step="trip_combo_checkout")
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=prebook_summary, booking_enabled=True,
+        )
+
+    # POST — actually book both.
+    if not _validate_b2c_csrf():
+        return "Invalid or missing CSRF token.", 403
+
+    submitted_token = str(request.form.get("checkout_token") or "").strip()
+    stored_token = str(trip_intent.get("checkout_token") or "").strip()
+    if not submitted_token or submitted_token != stored_token:
+        # Either a resubmission of an already-processed form, or a stale
+        # session — never silently re-run two provider charges.
+        if trip_intent.get("stage") == "done" and trip_intent.get("flight_order_id") and trip_intent.get("hotel_booking_reference"):
+            return redirect(url_for(
+                "trip_confirmation",
+                flight_order_id=trip_intent["flight_order_id"],
+                hotel_booking_reference=trip_intent["hotel_booking_reference"],
+            ))
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=prebook_summary, booking_enabled=False,
+            booking_error="This checkout session expired or was already submitted. Please review your trip and try again.",
+            status=409,
+        )
+    # Consume the token immediately — a resubmission of this exact request
+    # (double-click, browser back+resubmit) now fails the check above
+    # instead of firing a second pair of provider calls.
+    _update_trip_intent(checkout_token="")
+
+    holder_payload, guests_payload, hotel_errors = validate_hotel_checkout_form(room_count=hotel_rooms, form=request.form)
+    passengers_payload, travelers, flight_errors = validate_checkout_form(offer, request.form)
+    hotel_traveler_form = build_hotel_traveler_form(room_count=hotel_rooms, form=request.form)
+    errors = {**flight_errors, **hotel_errors}
+    checkout_model = build_checkout_page_model(
+        offer, travelers=travelers, seat_maps=seat_maps, ancillaries_payload={},
+        payment_config=payment_config, duffel_env=DUFFEL_ENV,
+    )
+    if errors:
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=prebook_summary, hotel_traveler_form=hotel_traveler_form,
+            errors=errors, booking_error=errors.get("form", ""), booking_enabled=True, status=400,
+        )
+
+    # Re-check the hotel price hasn't drifted right before charging anything.
+    try:
+        fresh_prebook = LITE.prebook(hotel_offer_id)
+    except LiteAPIError as exc:
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=prebook_summary, hotel_traveler_form=hotel_traveler_form,
+            booking_error=f"Hotel: {exc}", booking_enabled=True, status=502,
+        )
+    HOTEL_PREBOOK_CACHE.set(hotel_cache_key, fresh_prebook)
+    fresh_summary = build_prebook_summary(fresh_prebook, nights=nights)
+    if fresh_summary.get("price_changed"):
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=fresh_summary, hotel_traveler_form=hotel_traveler_form,
+            booking_error=(
+                f"The hotel price changed to {fresh_summary['currency']} {fresh_summary['total_amount']:.2f} "
+                "since you started checkout. Review the new total and submit again to confirm."
+            ),
+            booking_enabled=True, status=409,
+        )
+
+    # 1) Flight first — the trip's spine. Nothing is charged on either side yet.
+    total_amount = calculate_total_amount(offer, {}, seat_maps=seat_maps)
+    total_currency = str(offer_summary.get("currency") or "USD")
+    total_amount_str = str(total_amount or offer_summary.get("total_amount") or "0.00")
+    payments_payload = None
+    if str(payment_config.get("mode") or "").lower() == "card":
+        three_d_secure_session_id = str(request.form.get("duffel_three_d_secure_session_id") or "").strip()
+        if not three_d_secure_session_id:
+            return render_trip_checkout(
+                offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+                hotel_view=hotel_view, prebook_summary=fresh_summary, hotel_traveler_form=hotel_traveler_form,
+                booking_error="Please enter your card details and complete card authentication before booking.",
+                booking_enabled=True, status=400,
+            )
+        payments_payload = [{
+            "type": "card", "currency": total_currency, "amount": total_amount_str,
+            "three_d_secure_session_id": three_d_secure_session_id,
+        }]
+
+    try:
+        order = DUFF.create_order(
+            offer_id=(offer.get("id") or flight_offer_id).strip(),
+            passengers=passengers_payload,
+            total_amount=total_amount_str,
+            total_currency=total_currency,
+            payments=payments_payload,
+        )
+    except DuffelAPIError as exc:
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=fresh_summary, hotel_traveler_form=hotel_traveler_form,
+            booking_error=str(exc), booking_enabled=True, status=_booking_status_code(exc.status_code),
+        )
+
+    order_id = str(order.get("id") or "").strip()
+    if not order_id:
+        return render_trip_checkout(
+            offer_summary=offer_summary, checkout_model=checkout_model, travelers=travelers,
+            hotel_view=hotel_view, prebook_summary=fresh_summary, hotel_traveler_form=hotel_traveler_form,
+            booking_error="Something went wrong creating your flight order. Please try again.",
+            booking_enabled=True, status=502,
+        )
+
+    # The flight is real from here on — everything else is best-effort recording.
+    RECENT_ORDER_CACHE.set(order_id, order)
+    _session_authorize_order(order_id)
+    _capture_booking_email_links(order=order, passengers_payload=passengers_payload)
+    _track_booking_completed_event(order, offer=offer)
+    _record_agent_booking(order, offer=offer)
+    flight_booking_reference = _normalize_booking_reference(str(order.get("booking_reference") or ""))
+
+    # 2) Hotel — if this fails, the flight is already booked and paid for.
+    # Never show a generic error here; the user needs to know that.
+    client_reference = secrets.token_urlsafe(16)
+    hotel_booking = None
+    hotel_error = ""
+    try:
+        hotel_booking = LITE.book(
+            prebook_id=str(fresh_prebook.get("prebookId") or ""),
+            holder=holder_payload,
+            guests=guests_payload,
+            payment={"method": "ACC_CREDIT_CARD"},
+            client_reference=client_reference,
+        )
+    except LiteAPIError as exc:
+        hotel_error = str(exc)
+
+    if not hotel_booking:
+        # Partial success: clear only the flight side of trip_intent so a
+        # retry lands on ordinary standalone hotel checkout, not back in
+        # here trying (and failing) to re-book an offer that's already an order.
+        _update_trip_intent(flight_offer_id=None, flight_order_id=order_id, stage="hotel_selected")
+        retry_url = url_for(
+            "hotel_checkout", hotel_id=hotel_id, offer_id=hotel_offer_id,
+            checkin=hotel_checkin, checkout=hotel_checkout_date,
+            adults=int(hotel_filters.get("adults") or 2), rooms=hotel_rooms,
+            place_id=trip_intent.get("hotel_place_id") or "",
+        )
+        return render_template(
+            "trip_partial_success.html",
+            flight_booking_reference=flight_booking_reference or order_id,
+            flight_order_id=order_id,
+            hotel_name=hotel_view.get("name"),
+            hotel_error=hotel_error,
+            retry_url=retry_url,
+        ), 200
+
+    hotel_booking_reference = _generate_hotel_booking_reference()
+    _save_hotel_booking({
+        "booking_reference": hotel_booking_reference,
+        "liteapi_booking_id": str(hotel_booking.get("bookingId") or ""),
+        "liteapi_prebook_id": str(fresh_prebook.get("prebookId") or ""),
+        "hotel_id": hotel_id,
+        "hotel_name": hotel_view.get("name"),
+        "hotel_address": hotel_view.get("address"),
+        "hotel_photo": hotel_view.get("hero"),
+        "room_name": fresh_summary.get("room_name"),
+        "board_name": fresh_summary.get("board_name"),
+        "checkin": hotel_checkin,
+        "checkout": hotel_checkout_date,
+        "holder_first_name": holder_payload["firstName"],
+        "holder_last_name": holder_payload["lastName"],
+        "holder_email": holder_payload["email"],
+        "total_amount": f"{fresh_summary.get('total_amount') or 0:.2f}",
+        "currency": fresh_summary.get("currency"),
+        "status": "confirmed",
+        "linked_flight_order_id": order_id,
+        "linked_flight_booking_reference": flight_booking_reference,
+    })
+    _session_authorize_order(f"hotel:{hotel_booking_reference}")
+    _record_booking_email_link(email=holder_payload["email"], booking_reference=hotel_booking_reference, order_id=str(hotel_booking.get("bookingId") or ""))
+    _link_booking_to_account(holder_payload["email"], hotel_booking_reference)
+    _track_analytics_event(
+        event_type="hotel_booking_completed", search_mode="hotels", success=True,
+        currency=fresh_summary.get("currency"),
+        metadata={"hotel_id": hotel_id, "booking_reference": hotel_booking_reference, "combined": True},
+    )
+
+    try:
+        _send_itinerary_emails_after_booking(order=order, passengers_payload=passengers_payload)
+    except Exception as exc:
+        print(f"ITINERARY EMAIL ERROR: {type(exc).__name__}: {exc}")
+    try:
+        ok, reason = email_service.send_hotel_confirmation_email(
+            to_email=holder_payload["email"],
+            booking_summary={
+                "booking_reference": hotel_booking_reference,
+                "hotel_name": hotel_view.get("name"),
+                "hotel_address": hotel_view.get("address"),
+                "room_name": fresh_summary.get("room_name"),
+                "board_name": fresh_summary.get("board_name"),
+                "checkin": hotel_checkin,
+                "checkout": hotel_checkout_date,
+                "nights": nights,
+                "guest_name": f"{holder_payload['firstName']} {holder_payload['lastName']}".strip(),
+                "total_amount": fresh_summary.get("total_amount"),
+                "currency": fresh_summary.get("currency"),
+            },
+        )
+        if not ok:
+            print(f"HOTEL CONFIRMATION EMAIL FAILED for {holder_payload['email']}: {reason}")
+    except Exception as exc:
+        print("HOTEL CONFIRMATION EMAIL ERROR:", repr(exc))
+
+    _clear_trip_intent()
+    return redirect(url_for("trip_confirmation", flight_order_id=order_id, hotel_booking_reference=hotel_booking_reference))
+
+
+@app.route("/trip/confirmation/<flight_order_id>/<hotel_booking_reference>", methods=["GET"])
+def trip_confirmation(flight_order_id: str, hotel_booking_reference: str):
+    """Combined confirmation: both bookings, one page."""
+    if not _session_is_order_authorized(flight_order_id) or not _session_is_order_authorized(f"hotel:{hotel_booking_reference}"):
+        return redirect(url_for("manage_booking"))
+
+    order = RECENT_ORDER_CACHE.get(flight_order_id)
+    if order is None:
+        try:
+            order = DUFF.get_order(flight_order_id)
+        except DuffelAPIError as exc:
+            return render_template(
+                "confirmation.html", order_summary=None, booking_error=str(exc), duffel_env=DUFFEL_ENV,
+            ), _booking_status_code(exc.status_code)
+        RECENT_ORDER_CACHE.set(flight_order_id, order)
+
+    hotel_booking = _hotel_booking_by_reference(hotel_booking_reference)
+    if not hotel_booking:
+        return redirect(url_for("booking_confirmation", order_id=flight_order_id))
+
+    order_summary = build_order_summary(order)
+    combined_total = None
+    combined_currency = None
+    try:
+        flight_total = float(order_summary.get("total_amount") or 0)
+        hotel_total = float(hotel_booking.get("total_amount") or 0)
+        if str(order_summary.get("currency") or "") == str(hotel_booking.get("currency") or ""):
+            combined_total = flight_total + hotel_total
+            combined_currency = order_summary.get("currency")
+    except (TypeError, ValueError):
+        pass
+
+    return render_template(
+        "trip_confirmation.html",
+        order_summary=order_summary,
+        hotel_booking=hotel_booking,
+        combined_total=combined_total,
+        combined_currency=combined_currency,
+        duffel_env=DUFFEL_ENV,
     )
 
 
@@ -12781,8 +14132,72 @@ def analytics_popular_routes():
     )
 
 
+def _ai_parse_preview_payload(parsed: Mapping[str, Any]) -> dict[str, Any]:
+    """Shape a cached/fresh parse result for the JSON preview response.
+
+    Flight and stay parses are flat dicts; a combined ("both") parse nests
+    them under "flight"/"stay". The composer and the voice bridge both read
+    `preview.kind` to decide how to render/confirm before submitting.
+    """
+    kind = str(parsed.get("kind") or "flights")
+    if kind == "both":
+        flight = parsed.get("flight") if isinstance(parsed.get("flight"), Mapping) else {}
+        stay = parsed.get("stay") if isinstance(parsed.get("stay"), Mapping) else None
+        preview: dict[str, Any] = {
+            "kind": "both",
+            "trip_type": flight.get("trip_type"),
+            "search_mode": flight.get("search_mode"),
+            "origin": flight.get("origin"),
+            "destination": flight.get("destination"),
+            "flex_month": flight.get("flex_month"),
+        }
+        if stay:
+            nights = None
+            if stay.get("checkin") and stay.get("checkout"):
+                nights = _hotel_nights(str(stay["checkin"]), str(stay["checkout"])) or None
+            preview["stay_summary"] = {
+                "destination": stay.get("destination"),
+                "nights": nights,
+                "min_stars": stay.get("min_stars"),
+            }
+        return preview
+    if kind == "stays":
+        return {
+            "kind": "stays",
+            "destination": parsed.get("destination"),
+            "checkin": parsed.get("checkin"),
+            "checkout": parsed.get("checkout"),
+        }
+    return {
+        "kind": "flights",
+        "trip_type": parsed.get("trip_type"),
+        "search_mode": parsed.get("search_mode"),
+        "origin": parsed.get("origin"),
+        "destination": parsed.get("destination"),
+        "flex_month": parsed.get("flex_month"),
+    }
+
+
+def _ai_parse_analytics_fields(parsed: Mapping[str, Any]) -> dict[str, str]:
+    """Best-effort origin/destination/trip_type for analytics, regardless of
+    which of the three parsers (flight/stay/combined) produced `parsed`."""
+    kind = str(parsed.get("kind") or "flights")
+    source: Mapping[str, Any] = parsed
+    if kind == "both" and isinstance(parsed.get("flight"), Mapping):
+        source = parsed["flight"]
+    return {
+        "origin": str(source.get("origin") or "").strip().upper(),
+        "destination": str(source.get("destination") or "").strip().upper(),
+        "trip_type": str(source.get("trip_type") or "").strip().lower(),
+        "search_mode": str(source.get("search_mode") or ""),
+    }
+
+
 @app.route("/search/ai-parse-preview", methods=["POST"])
 def search_ai_parse_preview():
+    """Warm-parse endpoint shared by the typed composer (debounced while
+    typing) and 100% of voice input — this is the one place that decides
+    whether a query is flight-only, hotel-only, or both."""
     payload = request.get_json(silent=True) or {}
     ai_text = str(payload.get("ai_text") or "").strip()
     if len(ai_text) < AI_PARSE_WARMUP_MIN_CHARS:
@@ -12796,50 +14211,52 @@ def search_ai_parse_preview():
 
     cached, token = _get_cached_ai_parse_result(ai_text)
     if cached:
-        preview = {
-            "trip_type": cached.get("trip_type"),
-            "search_mode": cached.get("search_mode"),
-            "origin": cached.get("origin"),
-            "destination": cached.get("destination"),
-            "flex_month": cached.get("flex_month"),
-        }
+        preview = _ai_parse_preview_payload(cached)
+        fields = _ai_parse_analytics_fields(cached)
         _track_analytics_event(
             event_type="ai_parse_preview",
             search_mode="ai",
-            origin=str(cached.get("origin") or "").strip().upper(),
-            destination=str(cached.get("destination") or "").strip().upper(),
-            trip_type=str(cached.get("trip_type") or "").strip().lower(),
+            origin=fields["origin"],
+            destination=fields["destination"],
+            trip_type=fields["trip_type"],
             success=True,
-            metadata={"cached": True, "search_mode": str(cached.get("search_mode") or "")},
+            metadata={"cached": True, "search_mode": fields["search_mode"], "kind": preview.get("kind")},
         )
         return jsonify({"ok": True, "parse_token": token, "cached": True, "preview": preview})
 
-    parsed = parse_ai_flight_request(ai_text)
+    intent = detect_search_intent(ai_text) if LITE_ENABLED else "flights"
+    if intent == "stays":
+        parsed = parse_ai_stay_request(ai_text)
+        kind = "stays"
+    elif intent == "both":
+        parsed = parse_ai_combined_request(ai_text)
+        kind = "both"
+    else:
+        parsed = parse_ai_flight_request(ai_text)
+        kind = "flights"
+
     if not parsed:
         _track_analytics_event(
             event_type="ai_parse_preview",
             search_mode="ai",
             success=False,
-            metadata={"reason": "parse_failed"},
+            metadata={"reason": "parse_failed", "kind": kind},
         )
         return jsonify({"ok": False, "message": "parse_failed"})
 
+    parsed = dict(parsed)
+    parsed["kind"] = kind
     token = _cache_ai_parse_result(ai_text, parsed)
-    preview = {
-        "trip_type": parsed.get("trip_type"),
-        "search_mode": parsed.get("search_mode"),
-        "origin": parsed.get("origin"),
-        "destination": parsed.get("destination"),
-        "flex_month": parsed.get("flex_month"),
-    }
+    preview = _ai_parse_preview_payload(parsed)
+    fields = _ai_parse_analytics_fields(parsed)
     _track_analytics_event(
         event_type="ai_parse_preview",
         search_mode="ai",
-        origin=str(parsed.get("origin") or "").strip().upper(),
-        destination=str(parsed.get("destination") or "").strip().upper(),
-        trip_type=str(parsed.get("trip_type") or "").strip().lower(),
+        origin=fields["origin"],
+        destination=fields["destination"],
+        trip_type=fields["trip_type"],
         success=True,
-        metadata={"cached": False, "search_mode": str(parsed.get("search_mode") or "")},
+        metadata={"cached": False, "search_mode": fields["search_mode"], "kind": kind},
     )
     return jsonify({"ok": True, "parse_token": token, "cached": False, "preview": preview})
 
@@ -12899,6 +14316,15 @@ def search_flex_shell():
         if not ai_text:
             error = "Please describe the trip before searching."
         else:
+            # search-loader.js routes every #aiForm submission through this
+            # endpoint first — not /search/shell, which only fires when JS
+            # fails to load. So this, not search_shell(), is the real place
+            # a stays-only query needs to bail out to the hotel pipeline.
+            # Cheap keyword-only check — safe to run synchronously (no
+            # Gemini call in the common case), unlike the full combined
+            # parse below, which stays deferred to /search/flex-stream.
+            if LITE_ENABLED and detect_search_intent(ai_text) == "stays":
+                return redirect(url_for("hotel_ai_search", q=ai_text))
             # Defer `parse_ai_flight_request` to `/search/flex-stream` so the homepage is not blocked.
             # Non-flex AI is handed off there to the same `/search` POST as the pending shell.
             params = {
@@ -12975,11 +14401,27 @@ def search_flex_stream():
         if not ai_text:
             error = "Please describe the trip before searching."
         else:
-            parsed, cached_token = _get_cached_ai_parse_result(ai_text, parse_token=parse_token)
-            if not parsed:
-                parsed = parse_ai_flight_request(ai_text)
-                if parsed:
-                    cached_token = _cache_ai_parse_result(ai_text, parsed)
+            # This is the real place a "both" (flight + hotel) query gets
+            # detected for browser submissions — search-loader.js sends
+            # every #aiForm POST here first, so search_shell()'s own combined
+            # handling below only runs for the no-JS fallback. Reuse an
+            # already-warm-parsed "both" cache entry if the debounce beat
+            # the submit; otherwise run the same detection + combined parse
+            # here (the full Gemini call was already being deferred to this
+            # endpoint for the flight-only case, so this doesn't add a new
+            # blocking round trip that wasn't already happening).
+            cached_for_intent, _ = _get_cached_ai_parse_result(ai_text, parse_token=parse_token)
+            if LITE_ENABLED and cached_for_intent and cached_for_intent.get("kind") == "both" and cached_for_intent.get("wants_hotel"):
+                _start_trip_intent(cached_for_intent)
+            elif not cached_for_intent and LITE_ENABLED and detect_search_intent(ai_text) == "both":
+                combined = parse_ai_combined_request(ai_text)
+                if combined and combined.get("wants_hotel"):
+                    combined_cached = dict(combined)
+                    combined_cached["kind"] = "both"
+                    _cache_ai_parse_result(ai_text, combined_cached)
+                    _start_trip_intent(combined)
+
+            parsed, cached_token = _resolve_ai_flight_params(ai_text, parse_token)
             if not parsed:
                 error = (
                     "I wasn't quite able to follow that search. "
@@ -13178,11 +14620,7 @@ def _iter_standard_search_ndjson() -> Iterator[str]:
             )
             yield from complete_html(html)
             return
-        params, cached_token = _get_cached_ai_parse_result(ai_text, parse_token=parse_token)
-        if not params:
-            params = parse_ai_flight_request(ai_text)
-            if params:
-                cached_token = _cache_ai_parse_result(ai_text, params)
+        params, cached_token = _resolve_ai_flight_params(ai_text, parse_token)
         if not params:
             html = render_template(
                 "results.html",
@@ -13388,11 +14826,32 @@ def search_shell():
     mode = (request.form.get("mode") or "standard").strip().lower()
 
     # One AI box serves both products: a stay-shaped query is handed to the
-    # hotel pipeline instead of being forced through flight search.
+    # hotel pipeline instead of being forced through flight search. A query
+    # that asks for both parses both halves up front and caches the combined
+    # result (keyed by the same ai_text /search reuses below) so the flight
+    # results that render next already know a hotel is part of this trip.
+    # Any search that ISN'T reaffirming a combined ask starts a clean slate —
+    # carrying a stale hotel intent into an unrelated search would show a
+    # "you're also booking a hotel" banner nobody asked for on this run.
+    started_combined = False
     if mode == "ai" and LITE_ENABLED:
         ai_text = (request.form.get("ai_text") or request.form.get("q") or "").strip()
-        if ai_text and detect_search_intent(ai_text) == "stays":
-            return redirect(url_for("hotel_ai_search", q=ai_text))
+        if ai_text:
+            intent = detect_search_intent(ai_text)
+            if intent == "stays":
+                _clear_trip_intent()
+                return redirect(url_for("hotel_ai_search", q=ai_text))
+            if intent == "both":
+                combined = parse_ai_combined_request(ai_text)
+                if combined and combined.get("wants_hotel"):
+                    combined_cached = dict(combined)
+                    combined_cached["kind"] = "both"
+                    _cache_ai_parse_result(ai_text, combined_cached)
+                    _start_trip_intent(combined)
+                    started_combined = True
+
+    if not started_combined:
+        _clear_trip_intent()
 
     if mode == "flex":
         # Keep flexible flow on the dedicated streaming shell.
@@ -13514,11 +14973,7 @@ def search():
                     error="blank_ai_prompt",
                 )
             return render_template("results.html", query={"raw_text": ai_text}, flights=[], error="Please describe the trip before searching.", minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
-        params, cached_token = _get_cached_ai_parse_result(ai_text, parse_token=parse_token)
-        if not params:
-            params = parse_ai_flight_request(ai_text)
-            if params:
-                cached_token = _cache_ai_parse_result(ai_text, params)
+        params, cached_token = _resolve_ai_flight_params(ai_text, parse_token)
         if not params:
             if real_search_submission:
                 _track_search_completed_event(

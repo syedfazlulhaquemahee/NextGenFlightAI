@@ -321,6 +321,12 @@ html[data-theme="light"] .prtl-signout-btn:hover { background: rgba(220,38,38,.0
   color: #86efac;
 }
 html[data-theme="light"] .prtl-alert--success { background: rgba(22,163,74,.08); border-color: rgba(22,163,74,.22); color: #15803d; }
+.prtl-alert--error {
+  background: rgba(239,68,68,.1);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #fca5a5;
+}
+html[data-theme="light"] .prtl-alert--error { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.22); color: #b91c1c; }
 
 /* ─── Cards ──────────────────────────────────────────────────────────────── */
 .prtl-card {

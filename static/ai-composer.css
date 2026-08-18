@@ -398,3 +398,9 @@ html[data-theme="light"] body.home-page .ai-suggest-chip:active .ai-suggest-chip
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
+
+/* With the single Ask AI tab, both product chip rows show together — pull
+   the second (hotel) row closer so the two read as one suggestion cloud. */
+body.home-page .ai-suggest-chips.ai-suggest-chips--stays {
+  margin-top: 8px !important;
+}

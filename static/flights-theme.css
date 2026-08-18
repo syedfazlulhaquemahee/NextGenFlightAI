@@ -124,78 +124,199 @@ html[data-theme="light"] body.home-page .hero-photo-mode .hero-copy{
 }
 
 /* ===================== product tabs on photo ===================== */
-/* Frosted-glass pill, matching the Stays page's .nu-mode switch, so the
-   Flights/Stays toggle reads as "floating on the photo" instead of the
-   flat surface it used on the abstract-gradient hero. */
+/* Frosted-glass segmented switcher floating on the hero photo — the one
+   Expedia-style control that picks Flights, Hotels, or Ask AI. The active
+   tab lifts onto a white pill; everything else stays glass. */
 body.home-page .home-product-tabs{
   display: inline-flex;
+  flex-wrap: nowrap;
+  align-self: center;
   gap: 4px;
-  margin: 18px auto 0;
+  margin: 0 auto 14px;
   padding: 4px;
+  max-width: 100%;
   border-radius: 999px;
   background: rgba(12, 18, 34, .46);
   border: 1px solid rgba(255, 255, 255, .22);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: none;
+  box-shadow: 0 8px 24px rgba(8, 12, 24, .18);
 }
 
 body.home-page .home-product-tab{
   color: rgba(255, 255, 255, .86);
+  white-space: nowrap;
 }
 
 body.home-page .home-product-tab:hover{ color: #fff; }
+body.home-page .home-product-tab:hover:not(.is-active){ background: rgba(255, 255, 255, .12); }
+
+body.home-page .home-product-tab:focus-visible{
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
 body.home-page .home-product-tab.is-active{
   background: #fff;
   color: #111322;
+  box-shadow: 0 2px 8px rgba(8, 12, 24, .22);
 }
 
-/* ===================== Search / Ask AI tabs ===================== */
-/* Literal port of the Stays page's .nu-mode pill — same glass pill under
-   the hero, same active-state treatment (white surface, dark text). This
-   is what picks the manual bar vs. the AI prompt; there is no scroll
-   collapse or peek state on this page, only this toggle. */
-body.home-page .nu-mode{
-  display: inline-flex;
-  gap: 4px;
-  margin: 0 0 14px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid var(--line);
+/* The sparkle keeps a soft violet so "Ask AI" reads as the AI entry point
+   at a glance — indigo once the tab is active on its white pill. */
+body.home-page .home-product-tab--ai svg{ color: #c9c2ff; }
+body.home-page .home-product-tab--ai:hover svg{ color: #ddd8ff; }
+body.home-page .home-product-tab--ai.is-active svg{ color: #5148e8; }
+
+/* Three tabs must fit a 320px viewport without wrapping or clipping. */
+@media (max-width: 430px){
+  body.home-page .home-product-tab{ gap: 6px; padding: 8px 12px; font-size: 13.5px; }
+  body.home-page .home-product-tab svg{ width: 16px; height: 16px; }
 }
 
-body.home-page .nu-mode-btn{
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 18px;
+/* Below ~380px the icons cost more width than they communicate — text-only
+   pills keep all three tabs on one row down to 320px. */
+@media (max-width: 380px){
+  body.home-page .home-product-tabs{ gap: 2px; }
+  body.home-page .home-product-tab{ gap: 0; padding: 8px 13px; font-size: 13px; }
+  body.home-page .home-product-tab svg{ display: none; }
+}
+
+/* ===================== Hotels tab: floating search pill ===================== */
+/* Faithful port of the retired Hotels landing pill (.nu-search in hotels.css,
+   light palette — the site is locked to light mode). Scoped under .home-stays
+   so none of it leaks into the AI composer, which reuses .nu-search-btn. */
+body.home-page .home-stays{
+  width: 100%;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
-  color: var(--muted);
+  box-shadow: none;
+}
+
+body.home-page .home-stays .nu-search{
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.15fr) minmax(0, 1.15fr) auto;
+  align-items: stretch;
+  gap: 0;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(17, 25, 39, .1), 0 4px 6px -4px rgba(17, 25, 39, .1);
+}
+
+body.home-page .home-stays .nu-seg{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 18px;
+  min-width: 0;
+}
+
+body.home-page .home-stays .nu-seg + .nu-seg::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: #e5e7eb;
+}
+
+body.home-page .home-stays .nu-seg label,
+body.home-page .home-stays .nu-seg > span{
+  font-size: 12px;
+  font-weight: 450;
+  color: #6c737f;
+}
+
+body.home-page .home-stays .nu-seg input,
+body.home-page .home-stays .nu-seg select{
+  width: 100%;
+  height: auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #111322;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -.1px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -.16px;
+  appearance: none;
+  min-width: 0;
+  border-radius: 0;
+}
+
+body.home-page .home-stays .nu-seg input:focus,
+body.home-page .home-stays .nu-seg select:focus{ outline: none; box-shadow: none; }
+body.home-page .home-stays .nu-seg input::placeholder{ color: #4d5761; font-weight: 400; }
+
+body.home-page .home-stays .nu-seg-dates{ display: flex; flex-direction: row; align-items: center; gap: 6px; }
+body.home-page .home-stays .nu-seg-dates input{ font-size: 14px; letter-spacing: -.16px; }
+body.home-page .home-stays .nu-seg-dates select{ font-size: 14px; letter-spacing: -.16px; cursor: pointer; }
+body.home-page .home-stays .nu-seg-dates i{ color: #4d5761; font-style: normal; flex: none; }
+
+/* The native date widget's calendar glyph eats the field width and clips the
+   value. Hide it — the whole segment opens the custom range picker. */
+body.home-page .home-stays .nu-seg input[type="date"]{ position: relative; }
+body.home-page .home-stays .nu-seg input[type="date"]::-webkit-calendar-picker-indicator{
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
-  transition: background .15s ease, color .15s ease;
 }
 
-body.home-page .nu-mode-btn svg{ width: 16px; height: 16px; flex: none; }
-body.home-page .nu-mode-btn:hover{ color: var(--text); }
-
-/* The Stays page's active tab borrows the pill's own elevated surface color
-   (white in light mode / dark card in dark mode) rather than the accent —
-   match that exactly, using this page's --card token as the equivalent of
-   hotels.css's --nu-elevated. */
-body.home-page .nu-mode-btn.is-active{
-  background: var(--card-strong, var(--card));
-  color: var(--text);
+body.home-page .home-stays .nu-search-btn{
+  align-self: center;
+  margin-right: 4px;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #ffffff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s ease;
 }
 
-body.home-page .nu-mode.is-product-hidden{ display: none !important; }
+body.home-page .home-stays .nu-search-btn:hover{ background: #4338ca; }
+body.home-page .home-stays .nu-search-btn svg{ width: 19px; height: 19px; }
+
+/* Like the old landing: no helper line under the pill — only a red toast
+   when submitting without a picked destination (stays.js adds .is-error). */
+body.home-page .home-stays .home-stays-hint{
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  background: rgba(190, 18, 60, .92);
+  padding: 8px 16px;
+  border-radius: 8px;
+  visibility: hidden;
+}
+body.home-page .home-stays .home-stays-hint.is-error{ visibility: visible; }
+
+@media (max-width: 860px){
+  body.home-page .home-stays .nu-search{ grid-template-columns: 1fr; gap: 4px; }
+  body.home-page .home-stays .nu-seg + .nu-seg::before{ display: none; }
+  body.home-page .home-stays .nu-seg{ border-top: 1px solid #e5e7eb; }
+  body.home-page .home-stays .nu-seg-where{ border-top: 0; }
+  body.home-page .home-stays .nu-seg-dates{ flex-wrap: wrap; }
+  body.home-page .home-stays .nu-seg-dates input,
+  body.home-page .home-stays .nu-seg-dates select{ flex: 1 1 auto; width: auto; min-width: 84px; }
+  body.home-page .home-stays .nu-search-btn{ grid-column: 1 / -1; width: 100%; margin: 4px 0 0; }
+}
 
 /* Search-stack container: same 1020px pill width as the Stays hero, and
    the AI card sits flush under the tabs with no leftover "or" divider gap. */
@@ -286,10 +407,6 @@ body.home-page .wrap {
   flex-direction: column;
 }
 
-/* The primary nav already contains Flights and Hotels. Hide the former inline
-   product switcher so the two dedicated pages have the identical shell. */
-body.home-page .home-product-tabs { display: none !important; }
-
 body.home-page .hero-photo-mode {
   width: 100%;
   max-width: none;
@@ -344,26 +461,6 @@ body.home-page .home-search-stack {
   position: static;
   z-index: auto;
   gap: 0 !important;
-}
-
-body.home-page .nu-mode {
-  align-self: center;
-  margin: 0 0 14px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, .22);
-  background: rgba(12, 18, 34, .46);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-body.home-page .nu-mode-btn {
-  color: rgba(255, 255, 255, .86);
-}
-
-body.home-page .nu-mode-btn:hover { color: #fff; }
-body.home-page .nu-mode-btn.is-active {
-  background: var(--flight-elevated);
-  color: var(--flight-text);
 }
 
 /* Flight controls are different from stay controls, but live inside the same
@@ -674,14 +771,30 @@ body.home-page .gf-search-cta:hover { background: #5148e8 !important; box-shadow
    Override it at the same scope so the manual form is always solid white. */
 html[data-theme="light"] body.home-page .gf-bar,
 html[data-theme="light"] body.home-page .gf-bar:focus-within {
+  /* The generic home theme uses a .92 alpha glass surface here.  Keep this
+     form deliberately opaque so the hero photo never colours the controls. */
   background: #fff !important;
+  background-color: #fff !important;
   background-image: none !important;
+  background-blend-mode: normal !important;
   opacity: 1 !important;
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-color: #e5e7eb !important;
   box-shadow: 0 10px 15px -3px rgba(17, 25, 39, .10), 0 4px 6px -4px rgba(17, 25, 39, .10) !important;
+}
+
+/* The desktop layout makes segments transparent to read as one bar.  That
+   exposed the old translucent parent on a few theme/cascade combinations.
+   Give each segment the same solid surface as the shell instead. */
+@media (min-width: 1025px) {
+  html[data-theme="light"] body.home-page .gf-bar .gf-seg,
+  html[data-theme="light"] body.home-page .gf-bar .gf-seg:hover {
+    background: #fff !important;
+    background-image: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Final, same-specificity override of theme.css's older flight-gradient CTA.

@@ -58,12 +58,25 @@ export async function parseTravelIntent(text, signal) {
 /**
  * Heuristic confidence read: do we have enough of a trip to search on, or
  * should we ask a clarifying question instead of guessing? Mirrors the
- * fields `/search` actually requires (origin+destination and/or a flex month).
+ * fields `/search` actually requires (origin+destination and/or a flex
+ * month) — and, for a "both" preview (flight + hotel in one request), also
+ * requires the hotel side to have resolved a destination before treating
+ * the whole request as ready to submit.
  *
  * @param {Record<string, any>} preview
  * @returns {{confident: boolean, question: string|null}}
  */
 export function assessConfidence(preview) {
+  const kind = (preview && preview.kind) || "flights";
+
+  if (kind === "stays") {
+    const stayDestination = preview && preview.destination;
+    if (!stayDestination) {
+      return { confident: false, question: "Which city or hotel are you looking to stay in?" };
+    }
+    return { confident: true, question: null };
+  }
+
   const origin = preview && preview.origin;
   const destination = preview && preview.destination;
   const flexMonth = preview && preview.flex_month;
@@ -74,14 +87,23 @@ export function assessConfidence(preview) {
     return { confident: false, question: "Origin and destination sound the same — where to?" };
   }
 
-  if (origin && destination) return { confident: true, question: null };
-  if (flexMonth && destination) return { confident: true, question: null };
+  const flightConfident = Boolean((origin && destination) || (flexMonth && destination));
+  if (!flightConfident) {
+    if (!origin && destination) {
+      return { confident: false, question: `Got ${destination} — which city are you flying from?` };
+    }
+    if (origin && !destination) {
+      return { confident: false, question: `Leaving ${origin} — where do you want to go?` };
+    }
+    return { confident: false, question: "Say where from and where to, like “Dhaka to London”." };
+  }
 
-  if (!origin && destination) {
-    return { confident: false, question: `Got ${destination} — which city are you flying from?` };
+  if (kind === "both") {
+    const staySummary = preview && preview.stay_summary;
+    if (!staySummary || !staySummary.destination) {
+      return { confident: false, question: `Got the flight to ${destination} — how many nights do you need the hotel for?` };
+    }
   }
-  if (origin && !destination) {
-    return { confident: false, question: `Leaving ${origin} — where do you want to go?` };
-  }
-  return { confident: false, question: "Say where from and where to, like “Dhaka to London”." };
+
+  return { confident: true, question: null };
 }

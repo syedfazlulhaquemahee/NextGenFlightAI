@@ -398,10 +398,10 @@
       img.alt = dest.alt || dest.city;
       img.loading = "lazy";
       photo.appendChild(img);
-      var badge = document.createElement("span");
-      badge.className = "home-flight-price-badge";
-      badge.textContent = "From " + formatMoney(priceInfo.price, priceInfo.currency);
-      photo.appendChild(badge);
+      var deal = document.createElement("span");
+      deal.className = "home-deal-badge";
+      deal.textContent = "Members save 10%";
+      photo.appendChild(deal);
       card.appendChild(photo);
 
       var body = document.createElement("span");
@@ -414,6 +414,29 @@
       meta.textContent = dateLabel ? dateLabel + " · Round-trip" : "Round-trip";
       body.appendChild(route);
       body.appendChild(meta);
+
+      /* Expedia-style price block: struck public fare, bold Member Price.
+         The live fare IS the member price; the compare-at is the same fare
+         before the flat 10% Rewards discount is applied. */
+      var priceRow = document.createElement("span");
+      priceRow.className = "home-flight-price-row";
+      var strike = document.createElement("s");
+      strike.className = "home-flight-strike";
+      strike.textContent = formatMoney(priceInfo.price / 0.9, priceInfo.currency);
+      var price = document.createElement("span");
+      price.className = "home-flight-price";
+      price.textContent = formatMoney(priceInfo.price, priceInfo.currency);
+      var tag = document.createElement("span");
+      tag.className = "home-member-tag";
+      tag.textContent = "Member Price";
+      priceRow.appendChild(strike);
+      priceRow.appendChild(price);
+      priceRow.appendChild(tag);
+      body.appendChild(priceRow);
+      var priceNote = document.createElement("span");
+      priceNote.className = "home-flight-price-note";
+      priceNote.textContent = "Round-trip per traveler";
+      body.appendChild(priceNote);
       card.appendChild(body);
 
       card.addEventListener("click", function () {
@@ -450,29 +473,21 @@
     });
 
     function resolveOrigin() {
-      return new Promise(function (resolve) {
-        var settled = false;
-        function finish(origin) {
-          if (settled) return;
-          settled = true;
-          resolve(origin && origin.code ? origin : POPULAR_FLIGHTS_DEFAULT_ORIGIN);
-        }
-        if (!navigator.geolocation) return finish(null);
-        var timer = setTimeout(function () { finish(null); }, 6000);
-        navigator.geolocation.getCurrentPosition(
-          function (pos) {
-            fetch("/api/nearest-airport", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            })
-              .then(function (res) { return res.ok ? res.json() : null; })
-              .then(function (data) { clearTimeout(timer); finish(data); })
-              .catch(function () { clearTimeout(timer); finish(null); });
-          },
-          function () { clearTimeout(timer); finish(null); },
-          { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
-        );
+      // Page-load context, no user gesture — SkairGeo only resolves this
+      // silently (cached fix, or permission the browser already granted).
+      // It never pops a fresh permission prompt on its own; that's reserved
+      // for the explicit "Use my location" buttons elsewhere on the page.
+      if (!window.SkairGeo) return Promise.resolve(POPULAR_FLIGHTS_DEFAULT_ORIGIN);
+      return window.SkairGeo.requestLocation({ auto: true, timeout: 5000 }).then(function (coords) {
+        if (!coords) return POPULAR_FLIGHTS_DEFAULT_ORIGIN;
+        return fetch("/api/nearest-airport", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat: coords.lat, lng: coords.lng }),
+        })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) { return data && data.code ? data : POPULAR_FLIGHTS_DEFAULT_ORIGIN; })
+          .catch(function () { return POPULAR_FLIGHTS_DEFAULT_ORIGIN; });
       });
     }
 

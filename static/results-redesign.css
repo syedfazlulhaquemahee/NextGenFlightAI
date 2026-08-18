@@ -1640,6 +1640,23 @@ html[data-theme="light"] .fc-price-cue--low {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The trip hand-off CTA has a longer promise than the standard flight CTA.
+   Let it use two deliberate lines instead of clipping inside the price rail. */
+.results-page .fc-book--trip {
+  min-height: 54px !important;
+  height: auto !important;
+  padding: 8px 12px !important;
+  white-space: normal !important;
+  text-align: center;
+  line-height: 1.18 !important;
+}
+
+.results-page .fc-book--trip > span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .results-page .btn.fc-book,
 .results-page a[data-tier-cta].fc-book {
   border: 0 !important;

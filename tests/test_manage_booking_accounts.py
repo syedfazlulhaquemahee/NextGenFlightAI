@@ -83,13 +83,16 @@ class ManageBookingAccountTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Signed in as", response.data)
-        self.assertIn(b"traveler@example.com", response.data)
+        # Signup now logs the user straight in (bug fix: it used to bounce
+        # them back to the login form even though the session was already
+        # set) — the account menu in the header is the real signed-in marker.
+        self.assertIn(b'id="portalMenuDropdown"', response.data)
         self.assertTrue(os.path.exists(flight_app.ACCOUNT_DB_PATH))
 
         flight_app.USER_ACCOUNT_CACHE.clear()
         account = flight_app._account_lookup("traveler@example.com")
         self.assertIsNotNone(account)
+        self.assertEqual(account.get("email"), "traveler@example.com")
         self.assertEqual(account.get("first_name"), "Amelia")
         self.assertEqual(account.get("last_name"), "Earhart")
         self.assertIn("ABC123", account.get("linked_booking_references", []))
@@ -124,10 +127,18 @@ class ManageBookingAccountTests(unittest.TestCase):
         mock_list_orders.return_value = [order]
         previous_testing = bool(flight_app.app.config.get("TESTING"))
         flight_app.app.config["TESTING"] = False
+        # CSRF validation is normally short-circuited by TESTING=True; with it
+        # forced off (to exercise the real DUFF.list_orders discovery path),
+        # the request needs a real token that matches the session's.
+        csrf_token = "test-csrf-token"
+        with self.client.session_transaction() as session_state:
+            session_state[flight_app._B2C_CSRF_SESSION_KEY] = csrf_token
+        payload = self._signup_payload("")
+        payload["_csrf"] = csrf_token
         try:
             response = self.client.post(
                 "/manage-booking/account/signup",
-                data=self._signup_payload(""),
+                data=payload,
                 follow_redirects=True,
             )
         finally:
@@ -162,7 +173,9 @@ class ManageBookingAccountTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Booking found", response.data)
+        # A successful lookup renders booking_detail.html; there's no literal
+        # "Booking found" string anywhere in the app — the page itself is the signal.
+        self.assertIn(b'class="booking-detail-page"', response.data)
         flight_app.USER_ACCOUNT_CACHE.clear()
         account = flight_app._account_lookup("traveler@example.com")
         self.assertIsNotNone(account)
@@ -181,7 +194,7 @@ class ManageBookingAccountTests(unittest.TestCase):
         response = self.client.post("/manage-booking/linked/ABC123", follow_redirects=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Booking found", response.data)
+        self.assertIn(b'class="booking-detail-page"', response.data)
         self.assertIn(b"ABC123", response.data)
 
     def test_login_rejects_wrong_password(self):
@@ -203,8 +216,8 @@ class ManageBookingAccountTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Incorrect password.", response.data)
-        self.assertNotIn(b"Signed in as", response.data)
+        self.assertIn(b"Invalid email or password.", response.data)
+        self.assertNotIn(b'id="portalMenuDropdown"', response.data)
 
     def test_signup_requires_password_confirmation_match(self):
         payload = self._signup_payload("")
@@ -283,7 +296,7 @@ class ManageBookingAccountTests(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.assertIn(b"Incorrect password.", old_login.data)
+        self.assertIn(b"Invalid email or password.", old_login.data)
 
         new_login = self.client.post(
             "/manage-booking/account/login",
@@ -294,7 +307,7 @@ class ManageBookingAccountTests(unittest.TestCase):
             },
             follow_redirects=True,
         )
-        self.assertIn(b"Signed in as", new_login.data)
+        self.assertIn(b'id="portalMenuDropdown"', new_login.data)
 
     def test_reset_password_rejects_missing_or_invalid_token(self):
         self.client.post(

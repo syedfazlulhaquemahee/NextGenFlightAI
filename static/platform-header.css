@@ -1,20 +1,56 @@
+/* ============================================================================
+   Site header — the persistent top bar on every page (platform_header.html).
+
+   Modeled directly on React Bits Pro's "Navigation 15" block ("quiet
+   hairline navbar with a traveling underline indicator and a slide-in
+   mobile drawer"), adapted to this site's light-only palette and our
+   existing SKAIROVA wordmark (kept as our actual brand identity — the
+   reference's own logotype is just placeholder content).
+
+   Structure: a 3-column grid inside .platform-header-inner — logo | nav
+   (true center column, independent of how wide the logo/actions groups
+   are) | actions — not logo+nav grouped on the left. Chrome is a flat
+   1px hairline border, no blur, no shadow: "quiet" is the point.
+
+   The site is locked to light mode (see theme_init.html), so color rules
+   live under the `html[data-theme="light"]` blocks even though there is
+   effectively only one theme reachable today — this keeps parity with how
+   the rest of the codebase is themed and costs nothing.
+
+   A handful of older stylesheets (theme.css, home-page.css, manage-
+   booking.css, booking-detail.css) still carry page-scoped `.topbar`
+   overrides from earlier header iterations. Those selectors are more
+   specific than a bare `.topbar.platform-header` rule on the pages that
+   define them, so the reinforced blocks near the bottom of this file
+   restate this design's chrome at higher specificity — every page must
+   render the same header, not a slightly-different one per template.
+   ========================================================================= */
+
 :root {
-  --platform-header-h: 64px;
-  --platform-header-side-pad: 40px;
+  --hdr-h: 72px;
+  --hdr-pad: 32px;
+  --hdr-ink: #0f172a;
+  --hdr-text: rgba(15, 23, 42, .52);
+  --hdr-text-hover: #0f172a;
+  --hdr-line: rgba(15, 23, 42, .09);
+  --hdr-accent: #4338ca;
+  --hdr-brand-a: #4f46e5;
+  --hdr-brand-b: #6d28d9;
+  --platform-header-h: var(--hdr-h);
+  --platform-header-side-pad: var(--hdr-pad);
   --platform-header-max: 100%;
-  --results-mobile-topbar-h: 64px;
+  --results-mobile-topbar-h: var(--hdr-h);
 }
+
+/* ───────────────────────── shell + layout ───────────────────────── */
 
 .topbar.platform-header {
   position: sticky !important;
   top: 0 !important;
   z-index: 1200 !important;
-  min-height: var(--platform-header-h) !important;
-  height: var(--platform-header-h) !important;
-  background: #030b1f !important;
-  border-bottom: 1px solid rgba(129, 140, 248, 0.2) !important;
-  backdrop-filter: blur(14px) !important;
-  box-shadow: none !important;
+  min-height: var(--hdr-h) !important;
+  height: var(--hdr-h) !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .06) !important;
 }
 
 .results-page .topbar.platform-header,
@@ -24,77 +60,140 @@
   transition: none !important;
 }
 
+/* True 3-region grid: the nav column centers independently of the logo
+   and actions widths either side of it, instead of nav trailing the logo
+   with a fixed gap. */
 .topbar.platform-header .platform-header-inner {
-  width: min(var(--platform-header-max), calc(100% - 2 * var(--platform-header-side-pad))) !important;
+  width: min(var(--platform-header-max), calc(100% - 2 * var(--hdr-pad))) !important;
   max-width: none !important;
   margin: 0 auto !important;
-  min-height: var(--platform-header-h) !important;
-  height: var(--platform-header-h) !important;
+  min-height: var(--hdr-h) !important;
+  height: var(--hdr-h) !important;
   padding: 0 !important;
   display: grid !important;
   grid-template-columns: 1fr auto 1fr !important;
   align-items: center !important;
-  gap: 0 !important;
+  gap: 20px !important;
 }
 
+/* ───────────────────────── brand ───────────────────────── */
+
+/* Plain single-color wordmark, no gradient — matching the reference's own
+   restraint. The only color on the whole bar is this tiny dot and the
+   active-nav-rest indicator; a two-tone gradient logo here would fight
+   the "quiet" point of the design. */
 .topbar.platform-header .brand-link {
-  justify-self: start !important;
+  /* Pinned to column 1 explicitly — without this, CSS Grid auto-placement
+     fills gaps by document order, so once .site-nav (column 2) is
+     display:none below 920px, .topbar-utility would auto-flow into the
+     vacated middle column instead of staying in column 3, dragging the
+     whole right-side cluster toward the center of the bar. */
+  grid-column: 1 !important;
   display: inline-flex !important;
   align-items: center !important;
+  gap: 9px !important;
+  justify-self: start !important;
+  flex: none !important;
   text-decoration: none !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.055em !important;
+  letter-spacing: 0.05em !important;
   font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif) !important;
-  font-size: 1.2rem !important;
+  font-size: 1.18rem !important;
   line-height: 1 !important;
   font-weight: 700 !important;
-  color: transparent !important;
-  background: linear-gradient(to right, #f2f5fc 0 46%, #7d8cff 46% 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
+  color: var(--hdr-ink) !important;
 }
 
+/* A small solid dot ahead of the wordmark — the reference's own minimal
+   mark. Deliberately tiny and letterless: nothing like the boxed "S" tile
+   tried earlier and dropped for looking like a generic app icon. */
+.topbar.platform-header .brand-dot {
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+  flex: none !important;
+  border-radius: 999px !important;
+  background: var(--hdr-brand-a) !important;
+}
+
+/* ───────────────────────── primary nav ───────────────────────── */
+/* One shared sliding indicator (a single absolutely-positioned bar, not a
+   pseudo-element per link) — header-menu.js measures whichever link is
+   hovered/focused and animates the indicator's transform/width to match,
+   so it visibly travels between items instead of each link fading its own
+   underline in place. It rests under the active link when nothing is
+   hovered. */
+
 .topbar.platform-header .site-nav {
-  justify-self: center !important;
+  grid-column: 2 !important;
+  position: relative !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 14px !important;
+  justify-self: center !important;
+  height: 100% !important;
+  gap: 32px !important;
   margin: 0 !important;
+  min-width: 0 !important;
+}
+
+.topbar.platform-header .site-nav-indicator {
+  position: absolute !important;
+  left: 0 !important;
+  /* Measured against the actual text glyph box: -19px left a ~10px gap
+     under the label (reads as a disconnected floating bar rather than an
+     underline); -12px sits it ~3px under the text, tight like the
+     reference. */
+  bottom: calc(50% - 12px) !important;
+  height: 1.5px !important;
+  background: var(--hdr-ink) !important;
+  pointer-events: none !important;
+  transition: transform .28s cubic-bezier(.16, .84, .44, 1), width .28s cubic-bezier(.16, .84, .44, 1), opacity .18s ease;
+  /* width/opacity/transform are NOT !important — header-menu.js drives
+     these via inline styles to slide the indicator between links, and a
+     stylesheet !important would always beat that inline update regardless
+     of specificity. Start hidden with a zero-width fallback purely so it
+     never flashes full-width before the first JS measurement runs. */
+  width: 0;
+  opacity: 0;
+  transform: translateX(0);
 }
 
 .topbar.platform-header .site-nav-link {
   position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 100% !important;
   border: 0 !important;
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: transparent !important;
-  color: rgba(227, 235, 255, 0.68) !important;
+  color: var(--hdr-text) !important;
   font-family: var(--font-ui, "Inter", sans-serif) !important;
-  font-size: 1.08rem !important;
+  font-size: 14.5px !important;
   line-height: 1 !important;
   font-weight: 500 !important;
-  padding: 10px 8px !important;
+  padding: 0 !important;
   text-decoration: none !important;
+  transition: color .18s ease !important;
 }
 
 .topbar.platform-header .site-nav-link:hover {
-  color: rgba(238, 243, 255, 0.9) !important;
-  background: transparent !important;
+  color: var(--hdr-text-hover) !important;
 }
 
 .topbar.platform-header .site-nav-link.site-nav-active {
-  color: #7d8cff !important;
+  color: var(--hdr-ink) !important;
+  font-weight: 650 !important;
 }
 
-.topbar.platform-header .site-nav-link.site-nav-active::after {
-  content: "" !important;
-  position: absolute !important;
-  left: 8px !important;
-  right: 8px !important;
-  bottom: -8px !important;
-  height: 2px !important;
-  border-radius: 2px !important;
-  background: #7d8cff !important;
+/* A legacy `.site-nav-active::after` rule (style.css) predates the shared
+   sliding #siteNavIndicator and draws its own independent indigo
+   underline — with `bottom: -2px` against what is now a 72px-tall link,
+   that lands 2px below the header's own bottom edge, at the hairline
+   border, completely disconnected from the text. Kill it outright; the
+   shared indicator is the only underline this design uses. */
+.topbar.platform-header .site-nav-active::after {
+  content: none !important;
+  display: none !important;
 }
 
 .topbar.platform-header .site-nav-explore {
@@ -105,7 +204,11 @@
   opacity: 0.55 !important;
 }
 
+/* ───────────────────────── right utility cluster ───────────────────────── */
+
 .topbar.platform-header .topbar-utility {
+  grid-column: 3 !important;
+  flex: none !important;
   justify-self: end !important;
   margin-left: 0 !important;
 }
@@ -114,7 +217,7 @@
   margin-left: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 22px !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -122,67 +225,94 @@
   box-shadow: none !important;
 }
 
-.topbar.platform-header .hdr-nav {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 10px !important;
+/* home-page.css's `body.home-page .topbar-utility .topbar-links` ties this
+   rule's class-count (3 apiece) and wins the tiebreak via its extra `body`
+   type selector — same landmine as the `.topbar` background bug elsewhere
+   in this file. Restate at higher specificity to guarantee this wins on
+   the home page too. */
+body.home-page .topbar.platform-header .topbar-links {
+  gap: 22px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
+/* "Trips" shortcut — quiet icon + label, same muted weight as an inactive
+   nav link, no permanent box. */
+.topbar.platform-header .hdr-icon-btn {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--hdr-text) !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  transition: color .18s ease !important;
+}
+
+.topbar.platform-header .hdr-icon-btn svg {
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+}
+
+.topbar.platform-header .hdr-icon-label {
+  display: inline !important;
+}
+
+/* A legacy style.css `:hover{ background: rgba(0,0,0,.05) }` rule (sized
+   for an old 36px bordered button) otherwise wins the cascade for that one
+   property on this tight, padding-free element — pin it to none. */
+.topbar.platform-header .hdr-icon-btn:hover {
+  color: var(--hdr-text-hover) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Dark mode is currently disabled (theme_toggle.html), but keep the slot's
+   layout sane in case it's re-enabled later. */
 .topbar.platform-header .theme-toggle-slot {
   display: inline-flex !important;
   align-items: center !important;
 }
 
-/* Icon buttons + theme switch: uniform 36×36 transparent squares */
-.topbar.platform-header .hdr-icon-btn,
 .topbar.platform-header .theme-switch {
   position: static !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
   padding: 0 !important;
   border: 0 !important;
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   background: transparent !important;
-  color: rgba(227, 235, 255, 0.62) !important;
+  color: var(--hdr-text) !important;
   cursor: pointer !important;
 }
 
-.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  padding: 0 !important;
-  border-radius: 10px !important;
-}
-
-.topbar.platform-header .hdr-icon-btn svg {
-  display: block !important;
-  width: 15px !important;
-  height: 15px !important;
-  flex-shrink: 0 !important;
-}
-
-.topbar.platform-header .hdr-icon-btn:hover,
 .topbar.platform-header .theme-switch:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: rgba(240, 245, 255, 0.96) !important;
+  background: rgba(15, 23, 42, .05) !important;
+  color: var(--hdr-text-hover) !important;
 }
 
-/* Strip the pill track/thumb completely — just show the icon */
-.topbar.platform-header .theme-switch-track {
-  all: unset !important;
-  display: contents !important;
-}
-
-.topbar.platform-header .theme-switch-thumb {
-  display: none !important;
-}
-
-/* Icon container: static, centered */
+.topbar.platform-header .theme-switch-track { all: unset !important; display: contents !important; }
+.topbar.platform-header .theme-switch-thumb { display: none !important; }
 .topbar.platform-header .theme-switch-icons {
   position: static !important;
   inset: auto !important;
@@ -194,8 +324,6 @@
   justify-content: center !important;
   pointer-events: none !important;
 }
-
-/* Reset individual icon to static, auto-sized */
 .topbar.platform-header .theme-switch-icon {
   position: static !important;
   width: auto !important;
@@ -204,326 +332,507 @@
   align-items: center !important;
   justify-content: center !important;
 }
-
 .topbar.platform-header .theme-switch-icon svg {
   display: block !important;
   width: 15px !important;
   height: 15px !important;
   flex-shrink: 0 !important;
 }
+.topbar.platform-header .theme-switch-icon--dark { display: none !important; }
+.topbar.platform-header .theme-switch-icon--light { display: inline-flex !important; opacity: 1 !important; }
 
-/* Dark mode: show moon, hide sun */
-.topbar.platform-header .theme-switch-icon--dark {
-  opacity: 0.9 !important;
-  display: inline-flex !important;
-}
-
-.topbar.platform-header .theme-switch-icon--light {
-  display: none !important;
-}
-
-/* Light mode: show sun, hide moon */
-html[data-theme="light"] .topbar.platform-header .theme-switch-icon--dark {
-  display: none !important;
-}
-
-html[data-theme="light"] .topbar.platform-header .theme-switch-icon--light {
-  display: inline-flex !important;
-  opacity: 1 !important;
-}
-
-.topbar.platform-header .hdr-sep {
-  display: inline-block !important;
-  width: 1px !important;
-  height: 18px !important;
-  margin: 0 6px !important;
-  background: rgba(227, 235, 255, 0.14) !important;
-  flex-shrink: 0 !important;
-  align-self: center !important;
-}
+/* ───────────────────────── signed-out: sign in / create account ───────────────────────── */
+/* Sign in is quiet text, same weight/color as an inactive nav link.
+   Create account is an outlined pill with a trailing arrow-up-right icon —
+   the reference's own CTA treatment (no solid fill; "quiet" extends to the
+   one button on the bar too). */
 
 .topbar.platform-header .hdr-signin-btn {
-  height: 36px !important;
-  padding: 0 8px !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 20px !important;
+  padding: 0 !important;
   border: 0 !important;
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: transparent !important;
-  color: rgba(227, 235, 255, 0.84) !important;
+  box-shadow: none !important;
+  color: var(--hdr-text) !important;
   font-family: var(--font-ui, "Inter", sans-serif) !important;
-  font-size: 1.08rem !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   line-height: 1 !important;
   text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: color .18s ease !important;
 }
 
-.topbar.platform-header .hdr-signup-btn {
-  height: 40px !important;
-  padding: 0 18px !important;
-  border: 0 !important;
-  border-radius: 10px !important;
-  background: #4d46db !important;
-  color: #f7f8ff !important;
-  font-family: var(--font-ui, "Inter", sans-serif) !important;
-  font-size: 1.02rem !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-  text-decoration: none !important;
+.topbar.platform-header .hdr-signin-btn:hover {
+  color: var(--hdr-text-hover) !important;
+  background: transparent !important;
+  border-color: transparent !important;
   box-shadow: none !important;
 }
 
-.topbar.platform-header .hdr-signup-btn:hover {
-  background: #5c53f0 !important;
-  color: #ffffff !important;
+.topbar.platform-header .hdr-signup-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  height: 38px !important;
+  padding: 0 18px !important;
+  border: 1px solid rgba(15, 23, 42, .16) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--hdr-ink) !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  transition: border-color .18s ease, background .18s ease !important;
 }
+
+.topbar.platform-header .hdr-signup-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex: none !important;
+  transition: transform .18s cubic-bezier(.16, .84, .44, 1) !important;
+}
+
+.topbar.platform-header .hdr-signup-btn:hover {
+  background: rgba(15, 23, 42, .035) !important;
+  border-color: rgba(15, 23, 42, .3) !important;
+}
+
+.topbar.platform-header .hdr-signup-btn:hover svg {
+  transform: translate(1px, -1px) !important;
+}
+
+/* ───────────────────────── signed-in: account pill ───────────────────────── */
+/* No permanent border box — transparent at rest like the rest of the bar,
+   a soft fill only on hover/open. */
 
 .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
   display: inline-flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  border: 1px solid rgba(125, 140, 255, 0.24) !important;
-  background: rgba(2, 10, 28, 0.9) !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  /* .portal-menu > summary (style.css) forces line-height:0 on this same
+     element for its icon-only design; that inherits into .hdr-account-name
+     and collapses its text to zero height. Reset it here. */
+  line-height: 1 !important;
+  /* A legacy style.css rule ("force a stable icon-only trigger") pins this
+     to flex: 0 0 36px, which wins over width:auto in a flex row since
+     flex-basis governs a flex item's size ahead of width. Reset it
+     explicitly or the pill never grows past the old icon-only square. */
+  flex: none !important;
+  width: auto !important;
+  height: 40px !important;
+  min-width: 0 !important;
+  padding: 2px 10px 2px 2px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
   box-shadow: none !important;
-  overflow: hidden !important;
-  gap: 0 !important;
+  overflow: visible !important;
+  cursor: pointer !important;
+  transition: background .15s ease !important;
+  list-style: none !important;
 }
 
-.topbar.platform-header .hdr-account-name,
-.topbar.platform-header .hdr-chevron {
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger::-webkit-details-marker {
   display: none !important;
 }
 
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger:hover,
+.topbar.platform-header .portal-menu[open] summary.hdr-account-btn.portal-menu-trigger {
+  background: rgba(15, 23, 42, .05) !important;
+}
+
 .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger .hdr-avatar {
-  width: 100% !important;
-  height: 100% !important;
+  width: 32px !important;
+  height: 32px !important;
+  flex: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  border-radius: 10px !important;
+  border-radius: 999px !important;
   border: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
   line-height: 1 !important;
-  font-size: 15px !important;
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   transform: none !important;
-  background: linear-gradient(135deg, #6d64f8 0%, #5a4ee2 58%, #503cd4 100%) !important;
-  color: #eef2ff !important;
+  background: linear-gradient(135deg, var(--hdr-brand-a), var(--hdr-brand-b)) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 0 rgba(67, 56, 202, 0) !important;
+  transition: box-shadow .18s cubic-bezier(.16, .84, .44, 1) !important;
 }
 
-html[data-theme="light"] .topbar.platform-header {
-  background: #f7f9ff !important;
-  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+/* A soft accent ring blooms around the avatar on hover/open — the one
+   small tactile flourish that signals "this opens something" beyond the
+   flat background tint on the pill itself. */
+.topbar.platform-header summary.hdr-account-btn.portal-menu-trigger:hover .hdr-avatar,
+.topbar.platform-header .portal-menu[open] summary.hdr-account-btn.portal-menu-trigger .hdr-avatar {
+  box-shadow: 0 0 0 3px rgba(67, 56, 202, .16) !important;
 }
 
-html[data-theme="light"] .topbar.platform-header .brand-link {
-  background: linear-gradient(to right, #0f172a 0 46%, #4f46e5 46% 100%) !important;
-  background-repeat: no-repeat !important;
+.topbar.platform-header .hdr-account-name {
+  /* Same legacy rule forces this to display:none. */
   display: inline-block !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
+  max-width: 104px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: var(--hdr-ink) !important;
+  font-family: var(--font-ui, "Inter", sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
 }
 
-html[data-theme="light"] .topbar.platform-header .site-nav-link {
-  color: rgba(15, 23, 42, 0.64) !important;
+.topbar.platform-header .hdr-chevron {
+  display: inline-block !important;
+  flex: none !important;
+  color: rgba(15, 23, 42, .4) !important;
 }
 
-html[data-theme="light"] .topbar.platform-header .site-nav-link:hover {
-  color: rgba(15, 23, 42, 0.92) !important;
+.topbar.platform-header .hdr-sep {
+  display: none !important;
 }
 
-html[data-theme="light"] .topbar.platform-header .site-nav-link.site-nav-active {
-  color: #4f46e5 !important;
+/* ───────────────────────── mobile menu trigger ───────────────────────── */
+/* Hidden above 920px — the nav is visible inline there instead. Below it,
+   this is the only way to reach Hotels/Deals from anywhere but the home
+   page's own tabs, so it has to be a real, obviously-tappable menu. */
+
+.topbar.platform-header .hdr-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--hdr-ink);
+  cursor: pointer;
 }
 
-html[data-theme="light"] .topbar.platform-header .hdr-icon-btn,
-html[data-theme="light"] .topbar.platform-header .theme-switch {
-  color: rgba(15, 23, 42, 0.58) !important;
+.topbar.platform-header .hdr-menu-btn svg {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
-html[data-theme="light"] .topbar.platform-header .hdr-icon-btn:hover,
-html[data-theme="light"] .topbar.platform-header .theme-switch:hover {
-  background: rgba(15, 23, 42, 0.07) !important;
-  color: rgba(15, 23, 42, 0.92) !important;
+/* !important needed on all three: `.hdr-menu-btn svg` above ties this
+   rule's class-count (3 apiece) and wins the tiebreak via its extra `svg`
+   type selector, which would otherwise show both icons stacked at once. */
+.topbar.platform-header .hdr-menu-icon-close { display: none !important; }
+.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-bars { display: none !important; }
+.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-close { display: block !important; }
+
+/* ============================================================================
+   Mobile drawer — a full-screen takeover with its own logo+close header
+   row, not a dropdown over a dimmed backdrop. Deliberately NOT scoped
+   under .topbar.platform-header; it's a sibling of <header> in the markup,
+   not a descendant, so a position:fixed containing-block change on the
+   header (e.g. if blur ever comes back) can't trap it inside its own
+   ~60px box.
+   ========================================================================= */
+
+.hdr-mobile-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+  font-family: var(--font-ui, "Inter", sans-serif);
 }
 
-html[data-theme="light"] .topbar.platform-header .hdr-sep {
-  background: rgba(15, 23, 42, 0.16) !important;
+.hdr-mobile-panel[hidden] { display: none; }
+
+/* Lock page scroll behind the full-screen drawer while it's open. */
+html.hdr-menu-open { overflow: hidden; }
+
+.hdr-mobile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--hdr-h);
+  padding: 0 var(--hdr-pad);
+  border-bottom: 1px solid var(--hdr-line);
 }
 
-html[data-theme="light"] .topbar.platform-header .hdr-signin-btn {
-  color: rgba(15, 23, 42, 0.88) !important;
+/* color needs !important here: a global `a, .brand-link { color: inherit
+   !important }` rule (style.css) beats any non-important color on an <a>,
+   brand-new class name or not — the same landmine hit on the mobile CTA
+   buttons below. */
+.hdr-mobile-head .brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hdr-ink) !important;
 }
 
-html[data-theme="light"] .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
-  border-color: rgba(79, 70, 229, 0.24) !important;
-  background: rgba(255, 255, 255, 0.88) !important;
+.hdr-mobile-head .brand-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--hdr-brand-a);
 }
+
+.hdr-mobile-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--hdr-ink);
+  cursor: pointer;
+}
+
+.hdr-mobile-close:hover { background: rgba(15, 23, 42, .05); }
+.hdr-mobile-close svg { width: 17px; height: 17px; }
+
+.hdr-mobile-eyebrow {
+  margin: 26px var(--hdr-pad) 4px;
+  color: rgba(15, 23, 42, .42);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.hdr-mobile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--hdr-pad);
+}
+
+/* color needs !important: same global `a{color:inherit!important}`
+   landmine as the mobile CTA buttons below. */
+.hdr-mobile-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--hdr-line);
+  background: transparent;
+  color: var(--hdr-ink) !important;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hdr-mobile-nav .hdr-mobile-link:last-child { border-bottom: 0; }
+
+.hdr-mobile-link svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: rgba(15, 23, 42, .35);
+}
+
+.hdr-mobile-link:active {
+  opacity: .6;
+}
+
+.hdr-mobile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px var(--hdr-pad) calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.hdr-mobile-actions-form {
+  display: contents;
+}
+
+.hdr-mobile-outline-btn,
+.hdr-mobile-solid-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  width: 100%;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hdr-mobile-outline-btn svg,
+.hdr-mobile-solid-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* color needs !important on both: a global `a, .brand-link { color:
+   inherit !important }` rule (style.css) otherwise wins over any
+   non-important color on an <a>, which is exactly how the solid button's
+   white label went invisible against its own dark fill. */
+.hdr-mobile-outline-btn {
+  border: 1px solid rgba(15, 23, 42, .18);
+  color: var(--hdr-ink) !important;
+  background: #fff;
+}
+
+.hdr-mobile-solid-btn {
+  border: 0;
+  color: #fff !important;
+  background: var(--hdr-ink);
+}
+
+/* Defensive: the panel can only ever be opened via the hamburger, which is
+   itself hidden above 920px — force it closed here too rather than
+   relying solely on the resize listener to catch a mid-interaction
+   desktop/mobile crossing. */
+@media (min-width: 921px) {
+  .hdr-mobile-panel {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+   Responsive
+   ========================================================================= */
 
 @media (max-width: 1180px) {
-  :root {
-    --platform-header-side-pad: 18px;
-  }
+  :root { --hdr-pad: 20px; }
 
-  .topbar.platform-header .brand-link {
-    font-size: 1.07rem !important;
-  }
+  .topbar.platform-header .brand-link { font-size: 1.1rem !important; }
+  .topbar.platform-header .site-nav { gap: 22px !important; }
+  .topbar.platform-header .site-nav-link { font-size: 14px !important; }
+  .topbar.platform-header .topbar-links { gap: 16px !important; }
+  body.home-page .topbar.platform-header .topbar-links { gap: 16px !important; }
+}
 
-  .topbar.platform-header .site-nav-link {
-    font-size: 0.95rem !important;
-    padding: 9px 6px !important;
-  }
+/* Icon + label shortcut collapses to icon-only once space gets tight,
+   matching the point the account name/chevron also drop below. */
+@media (max-width: 980px) {
+  .topbar.platform-header .hdr-icon-btn { gap: 0 !important; }
+  .topbar.platform-header .hdr-icon-label { display: none !important; }
 }
 
 @media (max-width: 920px) {
   :root {
-    --platform-header-h: 58px;
-    --platform-header-side-pad: 14px;
-    --results-mobile-topbar-h: 58px;
+    --hdr-h: 64px;
+    --hdr-pad: 14px;
   }
 
-  .topbar.platform-header .platform-header-inner {
-    grid-template-columns: 1fr auto !important;
-  }
+  .topbar.platform-header .site-nav { display: none !important; }
+  .topbar.platform-header .brand-link { font-size: 1.06rem !important; }
+  .topbar.platform-header .hdr-menu-btn { display: inline-flex !important; }
 
-  .topbar.platform-header .site-nav {
-    display: none !important;
-  }
+  /* Nav, Trips, Sign in, and Create account all move into the mobile
+     drawer — the closed bar shows only the logo, the signed-in avatar (if
+     any), and the hamburger. Scoped through .topbar-links (not just the
+     bare class) so this out-specifies each element's own base display
+     rule (e.g. .hdr-signup-btn's own `display: inline-flex !important`,
+     which ties a bare `.hdr-desktop-only` on class-count and wins the
+     tiebreak by source order otherwise). */
+  .topbar.platform-header .topbar-links .hdr-desktop-only { display: none !important; }
 
-  .topbar.platform-header .brand-link {
-    font-size: 1rem !important;
-  }
-
-  .topbar.platform-header .hdr-signin-btn,
-  .topbar.platform-header .hdr-signup-btn {
-    display: none !important;
-  }
-
-  .topbar.platform-header .hdr-sep {
-    display: none !important;
-  }
+  .topbar.platform-header .topbar-links { gap: 10px !important; }
+  body.home-page .topbar.platform-header .topbar-links { gap: 10px !important; }
 }
 
-/* =============================================================================
-   MOBILE REFINEMENTS  ·  Added for sub-920px viewports
-   ============================================================================= */
-
-/* ── 920px: re-expose a compact Sign-in so logged-out users can reach auth ── */
-@media (max-width: 920px) {
-  .topbar.platform-header .hdr-signin-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    height: 34px !important;
-    padding: 0 14px !important;
-    border: 1px solid rgba(227, 235, 255, 0.18) !important;
-    border-radius: 9px !important;
-    font-size: 0.88rem !important;
-    font-weight: 600 !important;
-    color: rgba(227, 235, 255, 0.82) !important;
-    background: transparent !important;
-    white-space: nowrap !important;
-  }
-
-  html[data-theme="light"] .topbar.platform-header .hdr-signin-btn {
-    border-color: rgba(15, 23, 42, 0.18) !important;
-    color: rgba(15, 23, 42, 0.82) !important;
-  }
-}
-
-/* ── 640px: tighten everything on large phones ── */
 @media (max-width: 640px) {
-  :root {
-    --platform-header-h: 54px;
-    --platform-header-side-pad: 12px;
-    --results-mobile-topbar-h: 54px;
-  }
+  :root { --hdr-h: 58px; }
 
-  .topbar.platform-header .hdr-icon-btn,
-  .topbar.platform-header .theme-switch {
+  /* Account pill collapses to the avatar circle only — still the full
+     tap target for the dropdown, just without the name/chevron that no
+     longer fit next to the hamburger. */
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
     width: 34px !important;
     height: 34px !important;
-    min-width: 34px !important;
-    border-radius: 9px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
   }
-
-  .topbar.platform-header .hdr-nav {
-    gap: 6px !important;
-  }
-
-  .topbar.platform-header .hdr-signin-btn {
-    height: 32px !important;
-    padding: 0 11px !important;
-    font-size: 0.82rem !important;
-  }
+  .topbar.platform-header .hdr-account-name,
+  .topbar.platform-header .hdr-chevron { display: none !important; }
 }
 
 @media (max-width: 760px) {
   .topbar.platform-header {
-    background:
-      linear-gradient(#030b1f, #030b1f) top / 100% env(safe-area-inset-top, 0px) no-repeat,
-      #030b1f !important;
     padding-top: env(safe-area-inset-top, 0px) !important;
-    min-height: calc(var(--platform-header-h) + env(safe-area-inset-top, 0px)) !important;
-    height: calc(var(--platform-header-h) + env(safe-area-inset-top, 0px)) !important;
+    min-height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px)) !important;
+    height: calc(var(--hdr-h) + env(safe-area-inset-top, 0px)) !important;
     box-sizing: content-box !important;
   }
+  .hdr-mobile-head { padding-top: env(safe-area-inset-top, 0px); }
 }
 
-/* ── 480px: standard phones ── */
 @media (max-width: 480px) {
-  :root {
-    --platform-header-h: 52px;
-    --platform-header-side-pad: 10px;
-  }
+  :root { --hdr-h: 54px; }
 
-  .topbar.platform-header .brand-link {
-    font-size: 0.94rem !important;
-  }
-
-  .topbar.platform-header .hdr-icon-btn,
-  .topbar.platform-header .theme-switch {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-  }
-
-  .topbar.platform-header .hdr-signin-btn {
-    height: 30px !important;
-    padding: 0 10px !important;
-    font-size: 0.78rem !important;
-    border-radius: 8px !important;
-  }
-
-  .topbar.platform-header .hdr-nav {
-    gap: 4px !important;
-  }
-
-  .topbar.platform-header .hdr-sep {
-    display: none !important;
-  }
+  .topbar.platform-header .brand-link { font-size: 0.98rem !important; }
+  .topbar.platform-header .theme-switch { width: 30px !important; height: 30px !important; min-width: 30px !important; }
+  .hdr-mobile-link { font-size: 19px; padding: 14px 0; }
 }
 
-/* ── 380px: very small phones (iPhone SE, Galaxy A series) ── */
 @media (max-width: 380px) {
-  :root {
-    --platform-header-side-pad: 8px;
-  }
+  :root { --hdr-pad: 10px; }
 
-  .topbar.platform-header .brand-link {
-    font-size: 0.88rem !important;
-    letter-spacing: 0.04em !important;
-  }
+  .topbar.platform-header .brand-link { font-size: 0.9rem !important; letter-spacing: 0.03em !important; }
+}
 
-  .topbar.platform-header .hdr-signin-btn {
-    padding: 0 8px !important;
-    font-size: 0.74rem !important;
-  }
+/* ============================================================================
+   Chrome — flat hairline: white background, a single 1px bottom border,
+   no blur, no shadow. Locked-light so these live under the
+   [data-theme="light"] qualifier for parity with the rest of the codebase.
+   ========================================================================= */
 
-  /* Hide manage-booking icon on very small screens to save space */
-  .topbar.platform-header .hdr-icon-btn {
-    display: none !important;
-  }
+html[data-theme="light"] .topbar.platform-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--hdr-line) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Reinforced per-page overrides ──
+   Older page-specific stylesheets (theme.css, manage-booking.css,
+   booking-detail.css) still ship a higher-specificity `.topbar` background
+   for these three body classes. Restate the exact chrome above at a
+   selector strong enough to win there too, so the header is pixel-identical
+   everywhere instead of subtly different per template. */
+html[data-theme="light"] body.home-page .topbar.platform-header,
+html[data-theme="light"] body.booking-detail-page .topbar.platform-header,
+html[data-theme="light"] body.manage-booking-page .topbar.platform-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--hdr-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--hdr-ink) !important;
 }

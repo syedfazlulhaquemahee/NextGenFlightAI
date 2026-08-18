@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-performance') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260818-cta-flow-spacing') }}" />
 </head>
 <body class="hotel-results-page">
   {% include "partials/platform_header.html" %}
@@ -56,10 +56,21 @@
   </div>
 
   {% if ai_text %}
-    <div class="nu-wrap">
+    <div class="nu-wrap nu-results-context nu-results-context--ai">
       <div class="nu-ai">
         <span class="nu-ai-badge">AI</span>
         <span>Interpreted &ldquo;{{ ai_text }}&rdquo; as {{ search.place_name }}, {{ search.checkin }} → {{ search.checkout }}, {{ search.adults }} guest{{ 's' if search.adults != 1 }}{% if ai_filters.min_stars %}, {{ ai_filters.min_stars }}+ stars{% endif %}{% if ai_filters.free_cancellation %}, free cancellation{% endif %}</span>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if trip_intent and trip_intent.wants_hotel and trip_intent.flight_snapshot %}
+    <div class="nu-wrap nu-results-context nu-results-context--selection">
+      <div class="trip-combo-banner" role="status">
+        <span>
+          <strong>Flight selected:</strong> {{ trip_intent.flight_snapshot.route }} — now pick a hotel to complete the trip.
+        </span>
+        <a href="{{ url_for('trip_skip_hotel', next=request.path) }}">Skip the hotel</a>
       </div>
     </div>
   {% endif %}
@@ -163,6 +174,7 @@
     <p class="hotels-env-flag">Sandbox mode — bookings are simulated and no card is charged.</p>
   {% endif %}
 
+  <script src="{{ url_for('static', filename='geo-location.js', v='20260818-shared-geo') }}"></script>
   <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
   <script>
     StaysSearch.init({

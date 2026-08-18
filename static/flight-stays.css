@@ -118,3 +118,50 @@ html[data-theme="dark"] .flight-stays__location { border-color: rgba(203, 213, 2
   .flight-stays h2 { font-size: 22px; }
   .flight-stays__rail { grid-auto-columns: minmax(218px, 72vw); grid-template-columns: none; }
 }
+
+/* ============================================================================
+   Member-price merchandising upgrade — taller photos, deal badge, struck
+   compare-at rate above the bold Member Price (Expedia card language).
+   ========================================================================= */
+
+.flight-stay-card { border-radius: 16px; }
+.flight-stay-card__image { position: relative; height: 150px; overflow: hidden; }
+.flight-stay-card__image img { transition: transform .35s ease; }
+.flight-stay-card:hover .flight-stay-card__image img { transform: scale(1.05); }
+.flight-stay-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(15, 23, 42, .16);
+  box-shadow: 0 14px 28px -12px rgba(16, 24, 40, .18);
+}
+
+/* The shared badge class is defined in home-sections.css for the flights
+   grid; restate it here so the shelf also works on pages that only load
+   this stylesheet. */
+.flight-stay-card__image .home-deal-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #067647;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  box-shadow: 0 2px 8px rgba(6, 118, 71, .35);
+}
+
+.flight-stay-card__name { font-size: 15px; font-weight: 700; }
+
+.flight-stay-card__strike {
+  display: block;
+  color: rgba(15, 23, 42, .38);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.flight-stay-card__price b { font-size: 17px; font-weight: 750; letter-spacing: -.01em; }
+.flight-stay-card__price span { font-size: 10.5px; }

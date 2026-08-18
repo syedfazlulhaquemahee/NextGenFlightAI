@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Trip Confirmed • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  {% include "partials/theme_head.html" %}
+  <style>
+    .trip-confirmation-page {
+      --c-green: #22c55e; --c-green-bg: rgba(34,197,94,.14); --c-green-bd: rgba(34,197,94,.30);
+    }
+    html:not([data-theme="light"]) .trip-confirmation-page {
+      --c-page: #0c1018; --c-card: #141c2b; --c-card-bd: rgba(255,255,255,.07);
+      --c-card-sh: 0 1px 10px rgba(0,0,0,.38); --c-text: #eef2fb; --c-muted: #8a9ab8; --c-sep: rgba(255,255,255,.08);
+    }
+    html[data-theme="light"] .trip-confirmation-page {
+      --c-page: #f0f3f8; --c-card: #ffffff; --c-card-bd: rgba(15,23,42,.08);
+      --c-card-sh: 0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05); --c-text: #0f172a; --c-muted: #64748b; --c-sep: rgba(15,23,42,.08);
+    }
+    .tconf-wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; background: var(--c-page); color: var(--c-text); }
+    .tconf-hero { text-align: center; margin-bottom: 28px; }
+    .tconf-check { width: 56px; height: 56px; border-radius: 50%; background: var(--c-green-bg); border: 1px solid var(--c-green-bd); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--c-green); }
+    .tconf-hero h1 { font-size: 22px; margin: 0 0 8px; }
+    .tconf-hero p { color: var(--c-muted); font-size: 14px; margin: 0; }
+    .tconf-card { background: var(--c-card); border: 1px solid var(--c-card-bd); border-radius: 16px; box-shadow: var(--c-card-sh); padding: 24px; margin-bottom: 20px; }
+    .tconf-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .tconf-card-head h2 { font-size: 15px; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--c-muted); }
+    .tconf-ref { font-family: ui-monospace, monospace; font-weight: 700; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px; background: var(--c-green-bg); border: 1px solid var(--c-green-bd); font-size: 13px; }
+    .tconf-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--c-sep); font-size: 14px; }
+    .tconf-row:last-child { border-bottom: none; }
+    .tconf-row span:first-child { color: var(--c-muted); }
+    .tconf-total { display: flex; justify-content: space-between; padding-top: 16px; margin-top: 8px; border-top: 1px solid var(--c-sep); font-size: 17px; font-weight: 700; }
+    .tconf-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .tconf-btn { flex: 1; text-align: center; padding: 12px 18px; border-radius: 12px; background: var(--c-green); color: #06210f; font-weight: 700; text-decoration: none; font-size: 14px; }
+  </style>
+</head>
+<body class="trip-confirmation-page">
+  {% include "partials/platform_header.html" %}
+
+  <div class="tconf-wrap">
+    <div class="tconf-hero">
+      <div class="tconf-check">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h1>Your trip is booked</h1>
+      <p>Flight and hotel confirmations are on their way to your inbox.</p>
+    </div>
+
+    <div class="tconf-card">
+      <div class="tconf-card-head">
+        <h2>Flight</h2>
+        <span class="tconf-ref">{{ order_summary.booking_reference or order_summary.order_id }}</span>
+      </div>
+      {% for slice in order_summary.slices %}
+        <div class="tconf-row"><span>{{ slice.label }}</span><span>{{ slice.route }}</span></div>
+        <div class="tconf-row"><span>Departs</span><span>{{ slice.depart_label }}</span></div>
+      {% endfor %}
+      <div class="tconf-row"><span>Airline</span><span>{{ order_summary.airline_name }}</span></div>
+      <div class="tconf-row"><span>Total</span><span>{{ order_summary.currency }} {{ order_summary.total_amount }}</span></div>
+    </div>
+
+    <div class="tconf-card">
+      <div class="tconf-card-head">
+        <h2>Hotel</h2>
+        <span class="tconf-ref">{{ hotel_booking.booking_reference }}</span>
+      </div>
+      <div class="tconf-row"><span>Property</span><span>{{ hotel_booking.hotel_name }}</span></div>
+      <div class="tconf-row"><span>Check-in</span><span>{{ hotel_booking.checkin }}</span></div>
+      <div class="tconf-row"><span>Check-out</span><span>{{ hotel_booking.checkout }}</span></div>
+      <div class="tconf-row"><span>Room</span><span>{{ hotel_booking.room_name }}{% if hotel_booking.board_name %} · {{ hotel_booking.board_name }}{% endif %}</span></div>
+      <div class="tconf-row"><span>Total</span><span>{{ hotel_booking.currency }} {{ hotel_booking.total_amount }}</span></div>
+    </div>
+
+    {% if combined_total is not none %}
+      <div class="tconf-card">
+        <div class="tconf-total"><span>Trip total</span><span>{{ combined_currency }} {{ '%.2f'|format(combined_total) }}</span></div>
+      </div>
+    {% endif %}
+
+    <div class="tconf-actions">
+      <a class="tconf-btn" href="{{ url_for('manage_booking', booking_reference=order_summary.booking_reference or order_summary.order_id) }}">Manage flight</a>
+      <a class="tconf-btn" href="{{ url_for('manage_booking', booking_reference=hotel_booking.booking_reference) }}">Manage hotel</a>
+    </div>
+  </div>
+</body>
+</html>

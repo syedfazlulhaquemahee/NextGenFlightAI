@@ -6,63 +6,84 @@
   {% include "partials/theme_init.html" %}
   <title>Manage Booking • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='manage-booking.css', v='20260427-bgfix3') }}" />
   {% include "partials/theme_head.html" %}
   {% include "partials/flights_parity_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='manage-booking.css', v='20260817-redesign') }}" />
 </head>
 <body class="manage-booking-page">
 
   {% include "partials/platform_header.html" %}
 
-  <!-- ── Hero band ────────────────────────────────────────────────── -->
-  <div class="mb-hero-band">
-    <div class="mb-hero-inner">
-      <span class="mb-eyebrow">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M5 8h6M8 5v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        Booking Management
-      </span>
-      <h1 class="mb-hero-title">Manage your booking</h1>
-      <p class="mb-hero-lede">Look up any booking by reference, review your itinerary, and request changes or cancellations directly through our servicing portal.</p>
-    </div>
-  </div>
+  {% macro status_chip(label) -%}
+    {%- set s = (label or '')|lower -%}
+    {%- if 'cancel' in s -%}
+      <span class="mbk-chip mbk-chip--danger">{{ label }}</span>
+    {%- elif 'confirm' in s or 'booked' in s or 'ticket' in s -%}
+      <span class="mbk-chip mbk-chip--ok">{{ label }}</span>
+    {%- else -%}
+      <span class="mbk-chip">{{ label }}</span>
+    {%- endif -%}
+  {%- endmacro %}
 
-  <main class="mb-main">
-    <div class="mb-layout">
+  {% macro route_text(route) -%}
+    {%- set rp = (route or '').split(' -> ') -%}
+    {%- if rp|length == 2 -%}
+      {{ rp[0] }}<svg class="mbk-route-arrow" viewBox="0 0 14 10" fill="none" aria-hidden="true"><path d="M1 5h11M8.5 1.5 12 5l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ rp[1] }}
+    {%- else -%}{{ route }}{%- endif -%}
+  {%- endmacro %}
 
-      <!-- ── Primary column ───────────────────────────────────────── -->
-      <div class="mb-primary">
+  <main class="mbk-shell">
 
-        <!-- Lookup card -->
-        <section class="mb-card mb-lookup-card" aria-label="Booking lookup">
-          <header class="mb-card-header">
-            <div class="mb-card-icon mb-card-icon--search">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-            </div>
-            <div class="mb-card-header-copy">
-              <h2>Verify booking</h2>
-              <p>Enter your details exactly as shown on your confirmation email.</p>
-            </div>
-          </header>
+    <!-- Quiet page header, no hero band -->
+    <header class="mbk-page-head">
+      <h1>Manage your booking</h1>
+      <p>Find a trip with your booking reference, review the itinerary, and make changes.</p>
+    </header>
+
+    <div class="mbk-layout">
+
+      <!-- ── Primary column ─────────────────────────────────────────── -->
+      <div class="mbk-primary">
+
+        <!-- Find booking -->
+        <section class="mbk-card" aria-label="Find your booking">
+          <div class="mbk-card-head">
+            <h2>Find your booking</h2>
+            <p>Enter the details exactly as they appear on your confirmation email.</p>
+          </div>
 
           {% if verification_note %}
-            <div class="mb-alert mb-alert--success" role="status">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5 6.5 12 13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {{ verification_note }}
+            <div class="mbk-alert mbk-alert--ok" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>{{ verification_note }}</span>
             </div>
           {% endif %}
           {% if booking_error %}
-            <div class="mb-alert mb-alert--danger" role="alert">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-              {{ booking_error }}
+            <div class="mbk-alert mbk-alert--err" role="alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>{{ booking_error }}</span>
+            </div>
+          {% endif %}
+          {% if account_notice %}
+            <div class="mbk-alert mbk-alert--ok" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>{{ account_notice }}</span>
+            </div>
+          {% endif %}
+          {% if account_error %}
+            <div class="mbk-alert mbk-alert--err" role="alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>{{ account_error }}</span>
             </div>
           {% endif %}
 
-          <form method="post" action="{{ url_for('manage_booking') }}" class="mb-lookup-form" novalidate>
+          <form method="post" action="{{ url_for('manage_booking') }}" class="mbk-lookup-form" novalidate>
             <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-            <div class="mb-lookup-fields">
-              <label class="mb-field">
-                <span class="mb-field-label">Booking reference</span>
+            <div class="mbk-field-row">
+              <div class="mbk-field">
+                <label class="mbk-label" for="manageBookingReference">Booking reference</label>
                 <input
+                  class="mbk-input mbk-input--ref"
                   id="manageBookingReference"
                   type="text"
                   name="booking_reference"
@@ -70,25 +91,29 @@
                   maxlength="12"
                   autocomplete="off"
                   inputmode="text"
-                  placeholder="e.g. ABC123"
+                  placeholder="ABC123"
                   required
                 />
-              </label>
-              <label class="mb-field">
-                <span class="mb-field-label">Last name</span>
+              </div>
+              <div class="mbk-field">
+                <label class="mbk-label" for="manageLastName">Last name</label>
                 <input
+                  class="mbk-input"
+                  id="manageLastName"
                   type="text"
                   name="last_name"
                   value="{{ form_values.last_name }}"
                   maxlength="80"
                   autocomplete="family-name"
-                  placeholder="As on booking"
+                  placeholder="As shown on the booking"
                   required
                 />
-              </label>
-              <label class="mb-field">
-                <span class="mb-field-label">Date of birth</span>
+              </div>
+              <div class="mbk-field">
+                <label class="mbk-label" for="manageDob">Date of birth</label>
                 <input
+                  class="mbk-input"
+                  id="manageDob"
                   type="date"
                   data-nx-calendar="past"
                   name="dob"
@@ -96,199 +121,146 @@
                   autocomplete="bday"
                   required
                 />
-              </label>
+              </div>
             </div>
-            <button class="mb-btn mb-btn--primary mb-lookup-submit" type="submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-              Access booking
-            </button>
+            <div class="mbk-form-foot">
+              <p class="mbk-form-hint">Your reference is the 6-character code on your confirmation email.</p>
+              <button class="mbk-btn mbk-btn--solid" type="submit">Find booking</button>
+            </div>
           </form>
         </section>
 
-        <!-- Order summary (shown after successful lookup) -->
         {% if order_summary %}
-        <section class="mb-card mb-summary-card" aria-label="Booking summary">
-          <header class="mb-card-header">
-            <div class="mb-card-icon mb-card-icon--ticket">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
-            </div>
-            <div class="mb-card-header-copy">
+        <!-- Trip summary -->
+        <section class="mbk-card mbk-trip" aria-label="Booking summary">
+          <div class="mbk-trip-head">
+            <div class="mbk-trip-title">
               <h2>{{ order_summary.airline_name }}</h2>
-              <p>Review details before requesting any changes or cancellation.</p>
+              <span class="mbk-ref" title="Booking reference">{{ order_summary.booking_reference or order_summary.order_id }}</span>
             </div>
-          </header>
-
-          <!-- Stat tiles -->
-          <div class="mb-stat-grid">
-            <div class="mb-stat-tile">
-              <span class="mb-stat-label">Booking reference</span>
-              <strong class="mb-stat-value mb-stat-value--mono">{{ order_summary.booking_reference or order_summary.order_id }}</strong>
-            </div>
-            <div class="mb-stat-tile">
-              <span class="mb-stat-label">Status</span>
-              <strong class="mb-stat-value">
-                <span class="mb-status-badge">{{ order_summary.status_label }}</span>
-              </strong>
-            </div>
-            <div class="mb-stat-tile">
-              <span class="mb-stat-label">Total paid</span>
-              <strong class="mb-stat-value">{{ order_summary.currency }} {{ order_summary.total_amount }}</strong>
-            </div>
-            <div class="mb-stat-tile">
-              <span class="mb-stat-label">Travelers</span>
-              <strong class="mb-stat-value">{{ order_summary.passenger_names|length }}</strong>
-            </div>
+            {{ status_chip(order_summary.status_label) }}
           </div>
 
-          <!-- Passengers -->
-          {% if order_summary.passenger_names %}
-          <div class="mb-passengers">
-            <p class="mb-section-label">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Travelers on booking
-            </p>
-            <div class="mb-tag-row">
-              {% for name in order_summary.passenger_names %}
-                <span class="mb-tag">{{ name }}</span>
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
-
-          <!-- Itinerary -->
-          <div class="mb-itinerary">
-            <p class="mb-section-label">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Itinerary
-            </p>
+          <div class="mbk-slices">
             {% for slice in order_summary.slices %}
-            <div class="mb-itinerary-row">
-              <div class="mb-itinerary-leg-label">{{ slice.label }}</div>
-              <div class="mb-itinerary-route">{{ slice.route }}</div>
-              <div class="mb-itinerary-meta">
-                <span>{{ slice.depart_label }}</span>
-                <span class="mb-dot" aria-hidden="true"></span>
-                <span>{{ slice.duration_label }}</span>
-                <span class="mb-dot" aria-hidden="true"></span>
-                <span>{{ slice.stops_label }}</span>
+            <div class="mbk-slice">
+              <span class="mbk-slice-label">{{ slice.label }}</span>
+              <div class="mbk-slice-main">
+                <p class="mbk-slice-route">{{ route_text(slice.route) }}</p>
+                <p class="mbk-slice-meta">
+                  <span>{{ slice.depart_label }}</span>
+                  <span class="mbk-meta-dot" aria-hidden="true"></span>
+                  <span>{{ slice.duration_label }}</span>
+                  <span class="mbk-meta-dot" aria-hidden="true"></span>
+                  <span>{{ slice.stops_label }}</span>
+                </p>
               </div>
             </div>
             {% endfor %}
           </div>
+
+          <dl class="mbk-trip-facts">
+            {% if order_summary.passenger_names %}
+            <div class="mbk-fact">
+              <dt>Travelers</dt>
+              <dd>{{ order_summary.passenger_names | join(', ') }}</dd>
+            </div>
+            {% endif %}
+            <div class="mbk-fact">
+              <dt>Total paid</dt>
+              <dd class="mbk-fact-strong">{{ order_summary.currency }} {{ order_summary.total_amount }}</dd>
+            </div>
+          </dl>
         </section>
 
-        <!-- Servicing card -->
-        <section class="mb-card mb-servicing-card" aria-label="Servicing actions">
-          <header class="mb-card-header">
-            <div class="mb-card-icon mb-card-icon--settings">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            </div>
-            <div class="mb-card-header-copy">
-              <h2>Change or cancel</h2>
-              <p>All servicing is subject to airline fare rules and may incur fees.</p>
-            </div>
-          </header>
+        <!-- Servicing -->
+        <section class="mbk-card" aria-label="Change or cancel this trip">
+          <div class="mbk-card-head">
+            <h2>Change or cancel</h2>
+            <p>Servicing follows the airline's fare rules and may involve a fee.</p>
+          </div>
 
           {% if change_notice %}
-            <div class="mb-alert mb-alert--success" role="status">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5 6.5 12 13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {{ change_notice }}
+            <div class="mbk-alert mbk-alert--ok" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>{{ change_notice }}</span>
             </div>
           {% endif %}
           {% if change_error %}
-            <div class="mb-alert mb-alert--danger" role="alert">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-              {{ change_error }}
+            <div class="mbk-alert mbk-alert--err" role="alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>{{ change_error }}</span>
             </div>
           {% endif %}
 
-          <div class="mb-service-panels">
-            <!-- Cancel -->
-            <div class="mb-service-panel">
-              <div class="mb-service-panel-header">
-                <div class="mb-service-icon mb-service-icon--danger">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg>
-                </div>
-                <h3>Cancellation</h3>
-              </div>
-              {% if manage_model and manage_model.can_cancel %}
-                <p class="mb-service-desc">A live cancellation quote is requested from the airline before confirmation is sent.</p>
-                <form method="post" action="{{ url_for('manage_booking_cancel', order_id=manage_model.order_id) }}">
-                  <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-                  <button class="mb-btn mb-btn--danger" type="submit">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg>
-                    Cancel booking
-                  </button>
-                </form>
-              {% else %}
-                <p class="mb-service-desc mb-service-desc--unavail">Cancellation is not currently available for this booking through the airline API.</p>
-              {% endif %}
-            </div>
-
-            <!-- Change -->
-            <div class="mb-service-panel">
-              <div class="mb-service-panel-header">
-                <div class="mb-service-icon mb-service-icon--primary">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
-                </div>
-                <h3>Change flight</h3>
-              </div>
+          <div class="mbk-service-grid">
+            <!-- Change flight -->
+            <div class="mbk-service">
+              <h3>Change flight</h3>
               {% if manage_model and manage_model.can_change and manage_model.change_candidates %}
-                <form method="post" action="{{ url_for('manage_booking_change_options', order_id=manage_model.order_id) }}" class="mb-change-form">
+                <p class="mbk-service-copy">Pick the leg you want to move and a new date — we'll fetch live options from the airline.</p>
+                <form method="post" action="{{ url_for('manage_booking_change_options', order_id=manage_model.order_id) }}" class="mbk-service-form">
                   <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-                  <label class="mb-field">
-                    <span class="mb-field-label">Leg to change</span>
-                    <select name="slice_id" required>
+                  <div class="mbk-field">
+                    <label class="mbk-label" for="mbkSlice">Leg to change</label>
+                    <select class="mbk-input" id="mbkSlice" name="slice_id" required>
                       {% for item in manage_model.change_candidates %}
                         <option value="{{ item.slice_id }}">{{ item.label }} · {{ item.route }}</option>
                       {% endfor %}
                     </select>
-                  </label>
-                  <div class="mb-change-form-row">
-                    <label class="mb-field">
-                      <span class="mb-field-label">New departure date</span>
-                      <input type="date" name="departure_date" required data-nx-calendar="future" />
-                    </label>
-                    <label class="mb-field">
-                      <span class="mb-field-label">Cabin</span>
-                      <select name="cabin_class">
+                  </div>
+                  <div class="mbk-field-row mbk-field-row--half">
+                    <div class="mbk-field">
+                      <label class="mbk-label" for="mbkDate">New departure date</label>
+                      <input class="mbk-input" id="mbkDate" type="date" name="departure_date" required data-nx-calendar="future" />
+                    </div>
+                    <div class="mbk-field">
+                      <label class="mbk-label" for="mbkCabin">Cabin</label>
+                      <select class="mbk-input" id="mbkCabin" name="cabin_class">
                         <option value="economy">Economy</option>
                         <option value="premium_economy">Premium Economy</option>
                         <option value="business">Business</option>
                         <option value="first">First</option>
                       </select>
-                    </label>
+                    </div>
                   </div>
-                  <button class="mb-btn mb-btn--primary" type="submit">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-                    Find change options
-                  </button>
+                  <button class="mbk-btn mbk-btn--outline" type="submit">Search change options</button>
                 </form>
               {% else %}
-                <p class="mb-service-desc mb-service-desc--unavail">Flight change offers are not currently available for this booking.</p>
+                <p class="mbk-service-copy mbk-service-copy--muted">Flight changes aren't currently available for this booking.</p>
+              {% endif %}
+            </div>
+
+            <!-- Cancel -->
+            <div class="mbk-service">
+              <h3>Cancel booking</h3>
+              {% if manage_model and manage_model.can_cancel %}
+                <p class="mbk-service-copy">We'll request a live cancellation quote from the airline before anything is confirmed.</p>
+                <form method="post" action="{{ url_for('manage_booking_cancel', order_id=manage_model.order_id) }}">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+                  <button class="mbk-btn mbk-btn--danger" type="submit">Cancel this booking</button>
+                </form>
+              {% else %}
+                <p class="mbk-service-copy mbk-service-copy--muted">Cancellation isn't currently available for this booking.</p>
               {% endif %}
             </div>
           </div>
 
-          <!-- Change offers -->
           {% if change_offers %}
-          <div class="mb-change-offers" aria-label="Available change offers">
-            <p class="mb-section-label">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v4l2.5 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Live change offers
-            </p>
-            <div class="mb-offers-grid">
+          <div class="mbk-offers" aria-label="Available change offers">
+            <h3 class="mbk-offers-title">Live change offers</h3>
+            <div class="mbk-offer-list">
               {% for offer in change_offers %}
-              <form method="post" action="{{ url_for('manage_booking_change_apply', order_id=manage_model.order_id) }}" class="mb-offer-card">
+              <form method="post" action="{{ url_for('manage_booking_change_apply', order_id=manage_model.order_id) }}" class="mbk-offer">
                 <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
                 <input type="hidden" name="order_change_offer_id" value="{{ offer.id }}" />
-                <p class="mb-offer-eyebrow">Offer {{ loop.index }}</p>
-                <p class="mb-offer-price">{{ offer.change_total_currency }} {{ offer.change_total_amount }}</p>
-                <p class="mb-offer-detail">Penalty: {{ offer.change_total_currency }} {{ offer.penalty_total_amount }}</p>
-                {% if offer.expires_at %}
-                  <p class="mb-offer-expires">Expires {{ offer.expires_at }}</p>
-                {% endif %}
-                <button class="mb-btn mb-btn--primary" type="submit">Apply change</button>
+                <div class="mbk-offer-copy">
+                  <p class="mbk-offer-price">{{ offer.change_total_currency }} {{ offer.change_total_amount }}</p>
+                  <p class="mbk-offer-meta">
+                    Includes {{ offer.change_total_currency }} {{ offer.penalty_total_amount }} airline penalty{% if offer.expires_at %} · expires {{ offer.expires_at }}{% endif %}
+                  </p>
+                </div>
+                <button class="mbk-btn mbk-btn--solid mbk-btn--sm" type="submit">Apply</button>
               </form>
               {% endfor %}
             </div>
@@ -297,103 +269,95 @@
         </section>
         {% endif %}
 
-      </div><!-- /mb-primary -->
+      </div><!-- /mbk-primary -->
 
-      <!-- ── Secondary column (account / upcoming trips) ──────────── -->
-      <aside class="mb-secondary">
+      <!-- ── Side rail ──────────────────────────────────────────────── -->
+      <aside class="mbk-rail">
 
         {% if account_email %}
-        <!-- Upcoming trips panel -->
-        <section class="mb-card mb-trips-card" aria-label="Upcoming trips">
-          <header class="mb-card-header">
-            <div class="mb-card-icon mb-card-icon--trips">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
-            <div class="mb-card-header-copy">
-              <h2>Upcoming trips</h2>
-            </div>
-          </header>
+        <section class="mbk-card" aria-label="Your trips">
+          <div class="mbk-card-head">
+            <h2>Your trips</h2>
+          </div>
 
           {% if order_summary %}
-            <div class="mb-upcoming-summary">
-              <p class="mb-upcoming-route">
-                {% if order_summary.slices %}
-                  {% set rparts = order_summary.slices[0].route.split(' -> ') %}
-                  {% if rparts|length == 2 %}{{ rparts[0] }}<svg class="mb-route-arrow" width="11" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5h10M7 1l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ rparts[1] }}{% else %}{{ order_summary.slices[0].route }}{% endif %}
-                {% else %}{{ order_summary.booking_reference or order_summary.order_id }}{% endif %}
+            <div class="mbk-rail-trip">
+              <p class="mbk-rail-route">
+                {% if order_summary.slices %}{{ route_text(order_summary.slices[0].route) }}{% else %}{{ order_summary.booking_reference or order_summary.order_id }}{% endif %}
               </p>
-              <p class="mb-upcoming-meta">{{ order_summary.airline_name }} · {{ order_summary.status_label }}</p>
-              <div class="mb-upcoming-stats">
-                <div class="mb-upcoming-stat">
-                  <strong>{{ order_summary.currency }} {{ order_summary.total_amount }}</strong>
-                  <small>Total paid</small>
-                </div>
-                <div class="mb-upcoming-stat">
-                  <strong>{{ order_summary.passenger_names|length }}</strong>
-                  <small>Travelers</small>
-                </div>
+              <p class="mbk-rail-meta">{{ order_summary.airline_name }}</p>
+              <div class="mbk-rail-facts">
+                {{ status_chip(order_summary.status_label) }}
+                <span class="mbk-rail-paid">{{ order_summary.currency }} {{ order_summary.total_amount }}</span>
               </div>
             </div>
           {% elif linked_bookings %}
-            <div class="mb-trip-list">
+            <ul class="mbk-trip-list">
               {% for trip in linked_booking_summaries %}
-              <article class="mb-trip-item">
-                <div class="mb-trip-copy">
-                  <p class="mb-trip-route">
-                    {% set rp = trip.route.split(' -> ') %}
-                    {% if rp|length == 2 %}{{ rp[0] }}<svg class="mb-route-arrow" width="11" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5h10M7 1l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ rp[1] }}{% else %}{{ trip.route }}{% endif %}
-                  </p>
-                  <p class="mb-trip-meta">
-                    {{ trip.booking_reference }}
+              <li class="mbk-trip-item">
+                <div class="mbk-trip-item-copy">
+                  <p class="mbk-rail-route">{{ route_text(trip.route) }}</p>
+                  <p class="mbk-rail-meta">
+                    <span class="mbk-ref mbk-ref--sm">{{ trip.booking_reference }}</span>
                     {% if trip.departure %} · {{ trip.departure }}{% endif %}
-                    · {{ trip.status }}
                   </p>
+                  {{ status_chip(trip.status) }}
                 </div>
                 <form method="post" action="{{ url_for('open_linked_booking', booking_reference=trip.booking_reference) }}">
                   <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-                  <button class="mb-btn mb-btn--ghost mb-btn--sm" type="submit">Manage</button>
+                  <button class="mbk-manage-link" type="submit">
+                    Manage
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                  </button>
                 </form>
-              </article>
+              </li>
               {% endfor %}
-            </div>
+            </ul>
           {% else %}
-            <p class="mb-empty-note">No upcoming trip loaded yet. Verify a booking to show the overview here.</p>
+            <p class="mbk-rail-empty">Bookings you look up or make while signed in will appear here.</p>
           {% endif %}
         </section>
 
         {% else %}
-        <!-- Account access panel -->
-        <section class="mb-card mb-auth-card" aria-label="Account access">
-          <header class="mb-card-header">
-            <div class="mb-card-icon mb-card-icon--account">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            </div>
-            <div class="mb-card-header-copy">
-              <h2>Save &amp; reopen faster</h2>
-              <p>Sign in or create an account to link and reopen bookings instantly.</p>
-            </div>
-          </header>
-          <div class="mb-auth-cta-stack">
-            <a class="mb-btn mb-btn--primary mb-btn--full" href="{{ url_for('auth_page', next=request.url) }}">Sign in</a>
-            <a class="mb-btn mb-btn--ghost mb-btn--full" href="{{ url_for('auth_page', mode='signup', next=request.url) }}">Create account</a>
+        <section class="mbk-card" aria-label="Account">
+          <div class="mbk-card-head">
+            <h2>Keep every trip in one place</h2>
+            <p>Sign in to reopen your bookings without typing the details each time.</p>
+          </div>
+          <div class="mbk-rail-actions">
+            <a class="mbk-btn mbk-btn--solid mbk-btn--full" href="{{ url_for('auth_page', next=request.url) }}" data-auth-open="login">Sign in</a>
+            <a class="mbk-btn mbk-btn--outline mbk-btn--full" href="{{ url_for('auth_page', mode='signup', next=request.url) }}" data-auth-open="signup">Create account</a>
           </div>
         </section>
         {% endif %}
 
-      </aside><!-- /mb-secondary -->
-    </div><!-- /mb-layout -->
+        <!-- Help -->
+        <section class="mbk-card mbk-card--flat" aria-label="Help">
+          <ul class="mbk-help-list">
+            <li>
+              <p class="mbk-help-title">Where's my reference?</p>
+              <p class="mbk-help-copy">It's the 6-character code in the subject line and body of your confirmation email.</p>
+            </li>
+            <li>
+              <p class="mbk-help-title">Fees and refunds</p>
+              <p class="mbk-help-copy">Changes and cancellations follow the airline's fare rules. You'll always see the cost before confirming.</p>
+            </li>
+          </ul>
+        </section>
+
+      </aside><!-- /mbk-rail -->
+    </div><!-- /mbk-layout -->
   </main>
 
   <script>
     (function () {
-      /* ── Booking ref uppercase ── */
-      const bookingReferenceInput = document.getElementById("manageBookingReference");
-      if (bookingReferenceInput) {
-        bookingReferenceInput.addEventListener("input", () => {
-          bookingReferenceInput.value = bookingReferenceInput.value.toUpperCase().replace(/\s+/g, "");
+      /* Booking references are stored uppercase, spaces stripped. */
+      const ref = document.getElementById("manageBookingReference");
+      if (ref) {
+        ref.addEventListener("input", () => {
+          ref.value = ref.value.toUpperCase().replace(/\s+/g, "");
         });
       }
-
     })();
   </script>
 

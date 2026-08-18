@@ -1,0 +1,242 @@
+{#  Shared auth block — one card used by both the header popup (auth_modal.html)
+    and the /auth fallback page. Clerk/shadcn-style composition: brand mark,
+    social sign-in first, "or" divider, labeled fields, single primary CTA,
+    footer switch link. Views: login / signup / reset_request / reset_verify /
+    reset_complete, switched client-side by static/auth-block.js.
+    Include once per page — label/for pairs use fixed ab- ids.  #}
+{% set ab_booking_reference = booking_reference | default('') %}
+{% set ab_reset_email = reset_email | default('') %}
+{% set ab_reset_token = reset_token | default('') %}
+{# On the /auth page, `next` comes from the query string. Everywhere else
+   (the header's sign-in popup, which appears on every page) there's no
+   explicit `next` in context, so default to the current page — signing in
+   from the popup returns you to where you were. #}
+{% set ab_next = next | default(request.path if request else '') %}
+
+{% macro ab_eye_toggle(target_id) -%}
+  <button class="ab-eye" type="button" data-ab-eye="{{ target_id }}" aria-label="Show password" aria-pressed="false">
+    <svg class="ab-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.06 12.35a1 1 0 0 1 0-.7C3.42 8.1 7.35 5 12 5s8.58 3.1 9.94 6.65a1 1 0 0 1 0 .7C20.58 15.9 16.65 19 12 19s-8.58-3.1-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg class="ab-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.7 5.1A9.6 9.6 0 0 1 12 5c4.65 0 8.58 3.1 9.94 6.65a1 1 0 0 1 0 .7 13.2 13.2 0 0 1-1.67 2.76"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2.06 11.65a1 1 0 0 0 0 .7C3.42 15.9 7.35 19 12 19c1.34 0 2.63-.26 3.8-.72"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="m2 2 20 20"/></svg>
+  </button>
+{%- endmacro %}
+
+{% macro ab_social_row() -%}
+  <div class="ab-social">
+    <a class="ab-social-btn" href="{{ url_for('oauth_google_start') }}" data-ab-social>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      <span>Google</span>
+    </a>
+    <a class="ab-social-btn" href="{{ url_for('oauth_apple_start') }}" data-ab-social>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.18.74 2.94.8 1.12-.23 2.19-.91 3.39-.84 1.43.09 2.51.68 3.22 1.74-2.95 1.79-2.25 5.72.41 6.81-.48 1.14-1.14 2.27-1.96 3.35zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+      <span>Apple</span>
+    </a>
+  </div>
+  <div class="ab-divider" role="separator"><span>or continue with email</span></div>
+{%- endmacro %}
+
+<div class="ab-root" data-auth-root
+     data-initial-view="{{ auth_mode | default('login') }}"
+     data-booking-reference="{{ ab_booking_reference }}"
+     data-next="{{ ab_next }}">
+
+  <div class="ab-head">
+    <a class="ab-wordmark" href="{{ url_for('index') }}" tabindex="-1" aria-hidden="true">SKAIROVA</a>
+    <h1 class="ab-title" data-ab-title>Welcome back</h1>
+    <p class="ab-sub" data-ab-sub>Sign in to pick up where you left off</p>
+  </div>
+
+  {% if account_notice | default('') %}
+  <div class="ab-alert ab-alert--ok" role="status" data-ab-alert>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    <span>{{ account_notice }}</span>
+  </div>
+  {% endif %}
+  {% if account_error | default('') %}
+  <div class="ab-alert ab-alert--err" role="alert" data-ab-alert>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+    <span>{{ account_error }}</span>
+  </div>
+  {% endif %}
+
+  <!-- ── Sign in ── -->
+  <section class="ab-view" data-auth-view="login" hidden>
+    {{ ab_social_row() }}
+    <form class="ab-form" method="post" action="{{ url_for('manage_booking_account_login') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="booking_reference" value="{{ ab_booking_reference }}" />
+      <input type="hidden" name="next" value="{{ ab_next }}" />
+      <div class="ab-field">
+        <label class="ab-label" for="abLoginEmail">Email address</label>
+        <input class="ab-input" id="abLoginEmail" type="email" name="account_email" maxlength="120"
+               autocomplete="email" placeholder="you@example.com" value="{{ ab_reset_email }}" required data-ab-email />
+      </div>
+      <div class="ab-field">
+        <div class="ab-label-row">
+          <label class="ab-label" for="abLoginPassword">Password</label>
+          <button type="button" class="ab-link" data-ab-goto="reset_request">Forgot password?</button>
+        </div>
+        <div class="ab-input-wrap">
+          <input class="ab-input" id="abLoginPassword" type="password" name="account_password"
+                 minlength="8" autocomplete="current-password" placeholder="••••••••" required />
+          {{ ab_eye_toggle('abLoginPassword') }}
+        </div>
+      </div>
+      <button class="ab-submit" type="submit">
+        <span class="ab-submit-spinner" aria-hidden="true"></span>
+        <span class="ab-submit-label">Sign in</span>
+      </button>
+    </form>
+  </section>
+
+  <!-- ── Create account ── -->
+  <section class="ab-view" data-auth-view="signup" hidden>
+    {{ ab_social_row() }}
+    <form class="ab-form" method="post" action="{{ url_for('manage_booking_account_signup') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="booking_reference" value="{{ ab_booking_reference }}" />
+      <input type="hidden" name="next" value="{{ ab_next }}" />
+      <div class="ab-row-2">
+        <div class="ab-field">
+          <label class="ab-label" for="abSignupFirst">First name</label>
+          <input class="ab-input" id="abSignupFirst" type="text" name="first_name" maxlength="80"
+                 autocomplete="given-name" placeholder="Alex" required />
+        </div>
+        <div class="ab-field">
+          <label class="ab-label" for="abSignupLast">Last name</label>
+          <input class="ab-input" id="abSignupLast" type="text" name="last_name" maxlength="80"
+                 autocomplete="family-name" placeholder="Morgan" required />
+        </div>
+      </div>
+      <div class="ab-field">
+        <label class="ab-label" for="abSignupEmail">Email address</label>
+        <input class="ab-input" id="abSignupEmail" type="email" name="account_email" maxlength="120"
+               autocomplete="email" placeholder="you@example.com" required data-ab-email />
+      </div>
+      <div class="ab-field">
+        <label class="ab-label" for="abSignupPassword">Password</label>
+        <div class="ab-input-wrap">
+          <input class="ab-input" id="abSignupPassword" type="password" name="account_password"
+                 minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required data-ab-strength />
+          {{ ab_eye_toggle('abSignupPassword') }}
+        </div>
+        <div class="ab-strength" aria-live="polite" hidden>
+          <span class="ab-strength-bar"></span><span class="ab-strength-bar"></span><span class="ab-strength-bar"></span><span class="ab-strength-bar"></span>
+          <em class="ab-strength-label"></em>
+        </div>
+      </div>
+      <div class="ab-field">
+        <label class="ab-label" for="abSignupConfirm">Confirm password</label>
+        <div class="ab-input-wrap">
+          <input class="ab-input" id="abSignupConfirm" type="password" name="account_password_confirm"
+                 minlength="8" autocomplete="new-password" placeholder="Repeat your password" required data-ab-match="abSignupPassword" />
+          {{ ab_eye_toggle('abSignupConfirm') }}
+        </div>
+        <p class="ab-hint" data-ab-match-hint hidden></p>
+      </div>
+      <label class="ab-terms">
+        <input type="checkbox" name="accept_terms" required />
+        <span>I agree to the <a href="{{ url_for('terms_and_conditions') }}" target="_blank" rel="noopener">terms &amp; conditions</a></span>
+      </label>
+      <button class="ab-submit" type="submit">
+        <span class="ab-submit-spinner" aria-hidden="true"></span>
+        <span class="ab-submit-label">Create account</span>
+      </button>
+    </form>
+  </section>
+
+  <!-- ── Reset: request code ── -->
+  <section class="ab-view" data-auth-view="reset_request" hidden>
+    <form class="ab-form" method="post" action="{{ url_for('manage_booking_account_reset_request') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="booking_reference" value="{{ ab_booking_reference }}" />
+      <div class="ab-field">
+        <label class="ab-label" for="abResetEmail">Email address</label>
+        <input class="ab-input" id="abResetEmail" type="email" name="account_email" maxlength="120"
+               autocomplete="email" placeholder="you@example.com" value="{{ ab_reset_email }}" required data-ab-email data-ab-reset-email />
+        <p class="ab-hint">We&rsquo;ll send a 6-digit code to this address.</p>
+      </div>
+      <button class="ab-submit" type="submit">
+        <span class="ab-submit-spinner" aria-hidden="true"></span>
+        <span class="ab-submit-label">Send code</span>
+      </button>
+      <button type="button" class="ab-link ab-link--center" data-ab-goto="reset_verify">I already have a code</button>
+    </form>
+  </section>
+
+  <!-- ── Reset: verify code ── -->
+  <section class="ab-view" data-auth-view="reset_verify" hidden>
+    <form class="ab-form" method="post" action="{{ url_for('manage_booking_account_reset_verify') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="booking_reference" value="{{ ab_booking_reference }}" />
+      <input type="hidden" name="verification_code" data-ab-otp-value />
+      <div class="ab-field">
+        <label class="ab-label" for="abVerifyEmail">Email address</label>
+        <input class="ab-input" id="abVerifyEmail" type="email" name="account_email" maxlength="120"
+               autocomplete="email" placeholder="you@example.com" value="{{ ab_reset_email }}" required data-ab-email data-ab-reset-email />
+      </div>
+      <div class="ab-field">
+        <span class="ab-label">Verification code</span>
+        <div class="ab-otp" role="group" aria-label="6-digit verification code" data-ab-otp>
+          {% for i in range(6) %}
+          <input class="ab-otp-box" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]"
+                 {% if i == 0 %}autocomplete="one-time-code"{% endif %} aria-label="Digit {{ i + 1 }}" />
+          {% endfor %}
+        </div>
+      </div>
+      <button class="ab-submit" type="submit">
+        <span class="ab-submit-spinner" aria-hidden="true"></span>
+        <span class="ab-submit-label">Verify code</span>
+      </button>
+      <button type="button" class="ab-link ab-link--center" data-ab-goto="reset_request">Resend code</button>
+    </form>
+  </section>
+
+  <!-- ── Reset: new password ── -->
+  <section class="ab-view" data-auth-view="reset_complete" hidden>
+    <form class="ab-form" method="post" action="{{ url_for('manage_booking_account_reset_password') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="booking_reference" value="{{ ab_booking_reference }}" />
+      <input type="hidden" name="reset_token" value="{{ ab_reset_token }}" />
+      <div class="ab-field">
+        <label class="ab-label" for="abCompleteEmail">Email address</label>
+        <input class="ab-input" id="abCompleteEmail" type="email" name="account_email" maxlength="120"
+               autocomplete="email" placeholder="you@example.com" value="{{ ab_reset_email }}" required data-ab-email />
+      </div>
+      <div class="ab-field">
+        <label class="ab-label" for="abNewPassword">New password</label>
+        <div class="ab-input-wrap">
+          <input class="ab-input" id="abNewPassword" type="password" name="new_password"
+                 minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required data-ab-strength />
+          {{ ab_eye_toggle('abNewPassword') }}
+        </div>
+        <div class="ab-strength" aria-live="polite" hidden>
+          <span class="ab-strength-bar"></span><span class="ab-strength-bar"></span><span class="ab-strength-bar"></span><span class="ab-strength-bar"></span>
+          <em class="ab-strength-label"></em>
+        </div>
+      </div>
+      <div class="ab-field">
+        <label class="ab-label" for="abNewConfirm">Confirm new password</label>
+        <div class="ab-input-wrap">
+          <input class="ab-input" id="abNewConfirm" type="password" name="confirm_new_password"
+                 minlength="8" autocomplete="new-password" placeholder="Repeat your new password" required data-ab-match="abNewPassword" />
+          {{ ab_eye_toggle('abNewConfirm') }}
+        </div>
+        <p class="ab-hint" data-ab-match-hint hidden></p>
+      </div>
+      <button class="ab-submit" type="submit">
+        <span class="ab-submit-spinner" aria-hidden="true"></span>
+        <span class="ab-submit-label">Set new password</span>
+      </button>
+    </form>
+  </section>
+
+  <p class="ab-foot">
+    <span data-ab-foot-text>Don&rsquo;t have an account?</span>
+    <button type="button" class="ab-link" data-ab-foot-link data-ab-goto="signup">Create one</button>
+  </p>
+</div>

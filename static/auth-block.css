@@ -1,0 +1,632 @@
+/* ============================================================================
+   Auth block — shared by the header sign-in popup (<dialog class="ab-modal">)
+   and the /auth fallback page (.ab-page shell).
+
+   Visual language follows the current generation of auth UIs (Clerk, shadcn
+   blocks): white card, 13px labels above 44px inputs, one indigo CTA,
+   social buttons first, quiet divider. Light-mode only — the site is locked
+   to light. Every class is ab- prefixed so nothing collides with page CSS.
+   ========================================================================= */
+
+.ab-root {
+  --ab-text: #111322;
+  --ab-muted: #6c737f;
+  --ab-faint: #9aa1ab;
+  --ab-border: #e4e7ec;
+  --ab-border-strong: #d0d5dd;
+  --ab-primary: #4f46e5;
+  --ab-primary-hover: #4338ca;
+  --ab-ring: rgba(79, 70, 229, .14);
+  --ab-ok: #047857;
+  --ab-ok-bg: #ecfdf5;
+  --ab-ok-border: #a7f3d0;
+  --ab-err: #b91c1c;
+  --ab-err-bg: #fef2f2;
+  --ab-err-border: #fecaca;
+
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ab-text);
+  width: 100%;
+}
+
+.ab-root *, .ab-root *::before, .ab-root *::after { box-sizing: border-box; }
+
+/* ───────────────────────── head ───────────────────────── */
+.ab-head { text-align: center; margin-bottom: 22px; }
+
+/* Same split-gradient wordmark as the site header (SKAI dark / ROVA
+   indigo), so the popup reads as the same brand rather than a generic
+   auth screen. Text, not a raster mark, so it stays crisp at any size. */
+.ab-wordmark {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  text-decoration: none;
+  pointer-events: none;
+  background: linear-gradient(to right, #0f172a 0 46%, #4f46e5 46% 100%);
+  background-repeat: no-repeat;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ab-title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--ab-text);
+}
+
+.ab-sub {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  line-height: 20px;
+  color: var(--ab-muted);
+}
+
+/* ───────────────────────── alerts ───────────────────────── */
+.ab-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.ab-alert svg { width: 15px; height: 15px; flex: none; margin-top: 1.5px; }
+.ab-alert--ok  { background: var(--ab-ok-bg);  border: 1px solid var(--ab-ok-border);  color: var(--ab-ok); }
+.ab-alert--err { background: var(--ab-err-bg); border: 1px solid var(--ab-err-border); color: var(--ab-err); }
+
+/* ───────────────────────── views ───────────────────────── */
+.ab-view[hidden] { display: none !important; }
+
+/* ───────────────────────── social ───────────────────────── */
+.ab-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ab-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  border: 1px solid var(--ab-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ab-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.ab-social-btn:hover { background: #f9fafb; border-color: var(--ab-border-strong); }
+.ab-social-btn:focus-visible { outline: none; border-color: var(--ab-primary); box-shadow: 0 0 0 4px var(--ab-ring); }
+.ab-social-btn svg { width: 18px; height: 18px; flex: none; }
+
+.ab-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--ab-faint);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ab-divider::before,
+.ab-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ab-border);
+}
+
+/* ───────────────────────── form ───────────────────────── */
+.ab-form { display: flex; flex-direction: column; gap: 14px; }
+
+.ab-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.ab-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.ab-label {
+  font-size: 13px;
+  font-weight: 550;
+  color: #344054;
+}
+
+.ab-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ab-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--ab-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ab-text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 450;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  appearance: none;
+}
+.ab-input::placeholder { color: var(--ab-faint); font-weight: 400; }
+.ab-input:hover { border-color: var(--ab-border-strong); }
+.ab-input:focus { outline: none; border-color: var(--ab-primary); box-shadow: 0 0 0 4px var(--ab-ring); }
+.ab-input.ab-invalid { border-color: #f04438; box-shadow: 0 0 0 4px rgba(240, 68, 56, .12); }
+
+.ab-input-wrap { position: relative; }
+.ab-input-wrap .ab-input { padding-right: 44px; }
+
+.ab-eye {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ab-faint);
+  cursor: pointer;
+}
+.ab-eye:hover { color: var(--ab-muted); background: #f2f4f7; }
+.ab-eye:focus-visible { outline: 2px solid var(--ab-primary); outline-offset: 1px; }
+.ab-eye svg { width: 18px; height: 18px; }
+.ab-eye .ab-eye-off { display: none; }
+.ab-eye[aria-pressed="true"] .ab-eye-open { display: none; }
+.ab-eye[aria-pressed="true"] .ab-eye-off { display: block; }
+
+.ab-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ab-muted);
+}
+.ab-hint.ab-hint--ok { color: var(--ab-ok); }
+.ab-hint.ab-hint--err { color: var(--ab-err); }
+
+/* password strength */
+.ab-strength {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+.ab-strength[hidden] { display: none !important; }
+.ab-strength-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #eaecf0;
+  transition: background .2s ease;
+}
+.ab-strength[data-score="1"] .ab-strength-bar:nth-child(-n+1) { background: #f04438; }
+.ab-strength[data-score="2"] .ab-strength-bar:nth-child(-n+2) { background: #f79009; }
+.ab-strength[data-score="3"] .ab-strength-bar:nth-child(-n+3) { background: #12b76a; }
+.ab-strength[data-score="4"] .ab-strength-bar:nth-child(-n+4) { background: #039855; }
+.ab-strength-label {
+  flex: none;
+  min-width: 44px;
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ab-muted);
+  text-align: right;
+}
+
+/* terms */
+.ab-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ab-muted);
+  cursor: pointer;
+}
+.ab-terms input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--ab-primary);
+}
+.ab-terms a { color: var(--ab-primary); font-weight: 550; text-decoration: none; }
+.ab-terms a:hover { text-decoration: underline; }
+
+/* submit */
+.ab-submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ab-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.1px;
+  cursor: pointer;
+  transition: background .15s ease, transform .06s ease;
+}
+.ab-submit:hover { background: var(--ab-primary-hover); }
+.ab-submit:active { transform: translateY(1px); }
+.ab-submit:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ab-ring); }
+
+.ab-submit-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  margin-right: 9px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ab-spin .7s linear infinite;
+}
+.ab-submit.is-loading { pointer-events: none; opacity: .85; }
+.ab-submit.is-loading .ab-submit-spinner { display: inline-block; }
+@keyframes ab-spin { to { transform: rotate(360deg); } }
+
+/* inline links */
+.ab-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ab-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ab-link:hover { color: var(--ab-primary-hover); text-decoration: underline; }
+.ab-link--center { align-self: center; margin-top: 2px; }
+
+/* OTP boxes */
+.ab-otp {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  max-width: 340px;
+}
+.ab-otp-box {
+  width: 100%;
+  height: 52px;
+  border: 1px solid var(--ab-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ab-text);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 650;
+  text-align: center;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  appearance: none;
+}
+.ab-otp-box:focus { outline: none; border-color: var(--ab-primary); box-shadow: 0 0 0 4px var(--ab-ring); }
+.ab-otp-box.is-filled { border-color: var(--ab-border-strong); background: #fafaff; }
+
+/* footer switch */
+.ab-foot {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--ab-muted);
+}
+.ab-foot .ab-link { font-size: 13.5px; }
+
+/* error shake */
+@keyframes ab-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); }
+  40%, 60% { transform: translateX(3px); }
+}
+.ab-root.ab-shake { animation: ab-shake .5s cubic-bezier(.36, .07, .19, .97) both; }
+
+/* ============================================================================
+   Modal shell — native <dialog>. Centered card on desktop, bottom sheet on
+   phones. The backdrop dims and blurs the page underneath.
+   ========================================================================= */
+.ab-modal {
+  width: min(430px, calc(100vw - 32px));
+  /* 760, not 720: the uncompressed signup view (name row + email + password
+     w/ strength meter + confirm + terms + submit) measures ~747px, so a
+     720px cap clipped/scrolled it on any tall viewport that didn't also
+     happen to trigger a height-based compression tier (e.g. 1080px-tall
+     screens — plenty of headroom, but the literal cap bit anyway). */
+  max-height: min(760px, calc(100dvh - 48px));
+  margin: auto;
+  padding: 30px 30px 26px;
+  border: 1px solid rgba(17, 19, 34, .06);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 64px -12px rgba(16, 24, 40, .28), 0 8px 22px -8px rgba(16, 24, 40, .16);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Page scroll lock while the dialog is up */
+html.ab-modal-open { overflow: hidden; }
+
+.ab-modal::backdrop {
+  background: rgba(9, 11, 20, .52);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.ab-modal[open] { animation: ab-modal-in .18s cubic-bezier(.2, .8, .3, 1); }
+@keyframes ab-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.975); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ab-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #9aa1ab;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.ab-modal-close:hover { background: #f2f4f7; color: #344054; }
+.ab-modal-close:focus-visible { outline: 2px solid #4f46e5; outline-offset: 1px; }
+.ab-modal-close svg { width: 16px; height: 16px; }
+
+/* Phones: slide up as a full-width sheet pinned to the bottom. */
+@media (max-width: 640px) {
+  .ab-modal {
+    width: 100vw;
+    max-width: none;
+    max-height: calc(100dvh - 24px);
+    margin: auto 0 0;
+    padding: 26px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .ab-modal[open] { animation: ab-sheet-in .22s cubic-bezier(.2, .8, .3, 1); }
+  @keyframes ab-sheet-in {
+    from { opacity: .6; transform: translateY(28px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .ab-social { grid-template-columns: 1fr; }
+  .ab-row-2 { grid-template-columns: 1fr; }
+  .ab-otp { gap: 6px; max-width: none; }
+  .ab-otp-box { height: 48px; font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ab-modal[open] { animation: none; }
+  .ab-root.ab-shake { animation: none; }
+}
+
+/* ============================================================================
+   /auth fallback page shell — same card, centered on a soft wash.
+   ========================================================================= */
+body.ab-page {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(52rem 26rem at 85% -8%, rgba(79, 70, 229, .07), transparent 60%),
+    radial-gradient(44rem 24rem at 6% 108%, rgba(56, 189, 248, .06), transparent 60%),
+    #f7f8fa !important;
+  background-image:
+    radial-gradient(52rem 26rem at 85% -8%, rgba(79, 70, 229, .07), transparent 60%),
+    radial-gradient(44rem 24rem at 6% 108%, rgba(56, 189, 248, .06), transparent 60%) !important;
+  background-color: #f7f8fa !important;
+}
+body.ab-page::before, body.ab-page::after { display: none !important; }
+
+.ab-page-wrap {
+  display: grid;
+  place-items: start center;
+  padding: 40px 16px 64px;
+}
+
+.ab-page-card {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 30px 30px 26px;
+  border: 1px solid rgba(17, 19, 34, .07);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 34px -10px rgba(16, 24, 40, .14), 0 3px 10px -4px rgba(16, 24, 40, .08);
+}
+
+@media (max-width: 640px) {
+  .ab-page-wrap { padding: 18px 12px 48px; }
+  .ab-page-card { padding: 24px 18px 22px; }
+}
+
+/* ============================================================================
+   Fit-in-viewport tiers — the popup must always show every control on one
+   screen, never scrolling. Sizes compress in steps as the viewport gets
+   shorter, and short-wide viewports (landscape phones, squat windows) flip
+   to a side-by-side layout. overflow-y:auto stays on the dialog purely as
+   a last-resort safety net; with these tiers it should never engage.
+   All tiers are scoped to .ab-modal — the /auth page can scroll normally.
+   ========================================================================= */
+
+/* Tier A — slightly short screens. 920px catches common laptop/browser-
+   window heights (900px) and the iPhone 14/15 class (844px) that would
+   otherwise sit just above a tighter threshold and scroll anyway. */
+@media (max-height: 920px) {
+  .ab-modal { padding: 22px 26px 20px; max-height: calc(100dvh - 24px); }
+  .ab-modal .ab-head { margin-bottom: 14px; }
+  .ab-modal .ab-wordmark { font-size: 18px; margin-bottom: 8px; }
+  .ab-modal .ab-title { font-size: 19px; line-height: 25px; }
+  .ab-modal .ab-sub { margin-top: 3px; font-size: 12.5px; line-height: 17px; }
+  .ab-modal .ab-social-btn { height: 38px; }
+  .ab-modal .ab-divider { margin: 12px 0; }
+  .ab-modal .ab-form { gap: 10px; }
+  .ab-modal .ab-field { gap: 4px; }
+  .ab-modal .ab-input { height: 40px; }
+  .ab-modal .ab-otp-box { height: 46px; }
+  .ab-modal .ab-submit { height: 42px; margin-top: 0; }
+  .ab-modal .ab-foot { margin-top: 12px; }
+  .ab-modal .ab-alert { margin-bottom: 12px; padding: 8px 10px; }
+}
+
+/* Tier B — short screens (small phones portrait, low laptop windows) */
+@media (max-height: 680px) {
+  .ab-modal { padding: 16px 20px 14px; max-height: calc(100dvh - 12px); }
+  .ab-modal .ab-head { margin-bottom: 10px; }
+  .ab-modal .ab-wordmark { font-size: 16px; margin-bottom: 6px; }
+  .ab-modal .ab-title { font-size: 17px; line-height: 22px; }
+  .ab-modal .ab-sub { display: none; }
+  .ab-modal .ab-social-btn { height: 34px; font-size: 13px; }
+  .ab-modal .ab-divider { margin: 8px 0; font-size: 10px; }
+  .ab-modal .ab-form { gap: 8px; }
+  .ab-modal .ab-label { font-size: 12px; }
+  .ab-modal .ab-input { height: 36px; font-size: 14px; }
+  .ab-modal .ab-input-wrap .ab-input { padding-right: 40px; }
+  .ab-modal .ab-eye { width: 30px; height: 30px; }
+  .ab-modal .ab-otp-box { height: 40px; font-size: 16px; }
+  .ab-modal .ab-terms { font-size: 12px; line-height: 16px; }
+  .ab-modal .ab-submit { height: 38px; font-size: 14px; }
+  .ab-modal .ab-foot { margin-top: 10px; font-size: 12.5px; }
+  .ab-modal .ab-foot .ab-link { font-size: 12.5px; }
+  .ab-modal .ab-hint { font-size: 11.5px; line-height: 15px; }
+  .ab-modal .ab-alert { margin-bottom: 10px; padding: 7px 9px; font-size: 12px; }
+}
+
+/* Tier C — short and wide (landscape phones, squat desktop windows):
+   brand/social column on the left, the form beside it, and the form's own
+   fields flow into two columns. This is what actually fits a 667×375
+   landscape phone without scroll — vertical compression alone cannot. */
+@media (max-height: 580px) and (min-width: 640px) {
+  .ab-modal {
+    width: min(720px, calc(100vw - 32px));
+    max-height: calc(100dvh - 12px);
+    padding: 18px 24px 16px;
+  }
+
+  .ab-modal .ab-root {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    column-gap: 26px;
+    align-items: start;
+  }
+
+  .ab-modal .ab-head {
+    grid-column: 1;
+    margin: 0;
+    text-align: left;
+  }
+
+  .ab-modal .ab-alert { grid-column: 1; }
+
+  .ab-modal .ab-view {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+  }
+
+  .ab-modal .ab-foot {
+    grid-column: 1;
+    margin: 10px 0 0;
+    text-align: left;
+  }
+
+  /* Form controls flow into two columns; single-purpose rows span both. */
+  .ab-modal .ab-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .ab-modal .ab-row-2,
+  .ab-modal .ab-terms,
+  .ab-modal .ab-submit,
+  .ab-modal .ab-link--center,
+  .ab-modal .ab-form > .ab-field:has(.ab-otp) { grid-column: 1 / -1; }
+
+  .ab-modal .ab-otp { max-width: none; }
+}
+
+/* Tier D — very short AND narrow (legacy 320×480-class screens): email is
+   the one full flow that fits; social buttons stay available on the /auth
+   page fallback. */
+@media (max-height: 520px) and (max-width: 639px) {
+  .ab-modal .ab-wordmark,
+  .ab-modal .ab-social,
+  .ab-modal .ab-divider { display: none; }
+  .ab-modal { padding: 12px 16px 12px; }
+  .ab-modal .ab-head { margin-bottom: 8px; }
+  .ab-modal .ab-title { font-size: 15px; line-height: 20px; }
+  .ab-modal .ab-form { gap: 6px; }
+  .ab-modal .ab-field { gap: 3px; }
+  .ab-modal .ab-label { font-size: 11.5px; }
+  .ab-modal .ab-input { height: 33px; }
+  .ab-modal .ab-strength { margin-top: 0; }
+  .ab-modal .ab-terms { gap: 6px; line-height: 14px; }
+  .ab-modal .ab-submit { height: 34px; margin-top: 0; }
+  .ab-modal .ab-foot { margin-top: 6px; font-size: 11.5px; }
+}
+
+/* Tier E — extreme: shorter than any real handset in either orientation
+   (a synthetic ~320×400 browser window). Squeezes what Tier D leaves. */
+@media (max-height: 440px) and (max-width: 639px) {
+  .ab-modal { padding: 6px 14px 6px; }
+  .ab-modal .ab-sub { display: none; }
+  .ab-modal .ab-head { margin-bottom: 4px; }
+  .ab-modal .ab-title { font-size: 14px; line-height: 18px; }
+  .ab-modal .ab-form { gap: 3px; }
+  .ab-modal .ab-row-2 { gap: 6px; }
+  .ab-modal .ab-field { gap: 1px; }
+  .ab-modal .ab-label { font-size: 10.5px; }
+  .ab-modal .ab-input { height: 27px; font-size: 12.5px; padding: 0 9px; }
+  .ab-modal .ab-input-wrap .ab-input { padding-right: 30px; }
+  .ab-modal .ab-eye { width: 24px; height: 24px; right: 3px; }
+  .ab-modal .ab-eye svg { width: 14px; height: 14px; }
+  .ab-modal .ab-terms { margin-top: 0; gap: 6px; font-size: 10.5px; line-height: 13px; }
+  .ab-modal .ab-terms input { width: 12px; height: 12px; }
+  .ab-modal .ab-submit { height: 27px; font-size: 12.5px; }
+  .ab-modal .ab-foot { margin-top: 3px; font-size: 10.5px; }
+  .ab-modal .ab-alert { margin-bottom: 4px; padding: 4px 7px; font-size: 11px; }
+}
+
+/* Tier F — beyond any real device: 280×360-class synthetic windows. Even
+   a single-line-per-field form needs one more notch to clear this. */
+@media (max-height: 380px) and (max-width: 639px) {
+  .ab-modal .ab-head { margin-bottom: 2px; }
+  .ab-modal .ab-title { font-size: 13px; line-height: 16px; }
+  .ab-modal .ab-form { gap: 2px; }
+  .ab-modal .ab-input { height: 24px; }
+  .ab-modal .ab-submit { height: 24px; }
+  .ab-modal .ab-foot { margin-top: 2px; }
+}

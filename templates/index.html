@@ -8,13 +8,13 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260729-mobile-hero-sky') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260813-recent-hover-space') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260818-rewards-conversion-strip') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-shadcn-range') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-modal-disclaimer') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260813-tablet-hero-smooth') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='flight-stays.css', v='20260813-location-fallback') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260813-expand-after-six') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260817-hotels-pill') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='flight-stays.css', v='20260817-member-prices') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260817-ai-tab-chips') }}" />
 </head>
 <body class="home-page">
   {% macro manual_search_icon(name, class_name='') -%}
@@ -89,6 +89,7 @@
     <div class="site-popup" role="status" id="globalNoticePopup">{{ global_notice }}</div>
   {% endif %}
 
+  {% set tab = initial_tab | default('flights') %}
   <main class="wrap">
     <section class="hero hero-photo-mode" id="flightsHero">
       <!-- Full-bleed hero photo, same treatment as the Stays page: photo +
@@ -96,50 +97,43 @@
            point in the image. Photo: Wikimedia Commons, CC BY-SA 4.0. -->
       <img class="hero-photo-img" src="{{ url_for('static', filename='img/flights-hero.jpg', v='20260813-dusk-wing') }}" alt="" decoding="async" />
       <div class="hero-copy-block">
-        <h1 class="hero-title">Incredible flight deals</h1>
+        <h1 class="hero-title" id="heroTitle">{% if tab == 'stays' %}Incredible hotel deals{% elif tab == 'ai' %}One search, your whole trip{% else %}Incredible flight deals{% endif %}</h1>
         <p class="hero-copy hero-copy-default" id="heroCopy">
-          Discover flights to destinations around the world
+          {% if tab == 'stays' %}Discover hotels, vacation homes and more{% elif tab == 'ai' %}Describe it in your own words — flights, hotels, or both together{% else %}Discover flights to destinations around the world{% endif %}
         </p>
       </div>
 
-    <!-- Search box lives inside the hero just like the Hotels page. The existing
-         IDs, fields, forms, and scripts stay intact; this is a presentation-only
-         restructuring of the Flights landing page. -->
-    <!-- Search box: photo-hero pill, same shell as the Stays page's .nu-searchbox.
-         Product tabs (Flights/Stays) pick which booking type; the nu-mode tabs
-         inside pick manual-form vs AI-prompt within that type. -->
+    <!-- Search box lives inside the hero just like the Hotels page used to. The
+         existing IDs, fields, forms, and scripts stay intact; this is a
+         presentation-only restructuring of the landing page. -->
+    <!-- One Expedia-style switcher for the whole search surface: Flights and
+         Hotels swap their manual panels, and Ask AI is a first-class tab whose
+         single composer serves both products — /search/shell routes each AI
+         request to the flight or hotel pipeline by intent (or the flight spine
+         plus destination hotels when a trip asks for both). -->
     <div class="home-search-stack nu-searchbox">
-    <!-- Product tabs: the AI box is shared, the manual panel below swaps -->
-    <div class="home-product-tabs" role="tablist" aria-label="What are you booking?">
-      <button type="button" class="home-product-tab is-active" role="tab" id="tabFlights"
-              aria-selected="true" aria-controls="unified" data-product="flights">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.8 16 14l-4 1.5V21l-2 1-1-4-4-1 1-2h5.5L14 11 8.2 9.2a2 2 0 0 1 1-3.4l1.6-.3 8.6 3.1a2.5 2.5 0 0 1 1.5 3.2l-2 5.6a2 2 0 0 1-1.1 1.2Z"/></svg>
+    <div class="home-product-tabs" role="tablist" aria-label="What are you searching for?">
+      <button type="button" class="home-product-tab{{ ' is-active' if tab == 'flights' else '' }}" role="tab" id="tabFlights"
+              aria-selected="{{ 'true' if tab == 'flights' else 'false' }}" aria-controls="unified" data-product="flights">
+        {# Lucide "plane" (lucide.dev, ISC license) — same stroke family as the Hotels tab icon. #}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
         <span>Flights</span>
       </button>
-      <button type="button" class="home-product-tab" role="tab" id="tabStays"
-              aria-selected="false" aria-controls="staysPanel" data-product="stays">
+      {% if hotels_enabled %}
+      <button type="button" class="home-product-tab{{ ' is-active' if tab == 'stays' else '' }}" role="tab" id="tabStays"
+              aria-selected="{{ 'true' if tab == 'stays' else 'false' }}" aria-controls="staysPanel" data-product="stays">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V7a1 1 0 0 1 1-1h6v14"/><path d="M10 10h9a2 2 0 0 1 2 2v8"/><path d="M2 20h20"/><path d="M6 10h1M6 13h1M14 14h3"/></svg>
-        <span>Stays</span>
+        <span>Hotels</span>
       </button>
-    </div>
-
-    <!-- Search / Ask AI tabs — same nu-mode pill as the Stays page. Manual is
-         the default view; AI is one click away. Only visible for the Flights
-         product (Stays has its own simple form, no AI mode). -->
-    <div class="nu-mode" id="flightSearchModeTabs" role="tablist" aria-label="Flight search mode">
-      <button type="button" class="nu-mode-btn is-active" role="tab" id="flightModeManual"
-              aria-selected="true" aria-controls="unified" data-mode="manual">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <span>Search</span>
-      </button>
-      <button type="button" class="nu-mode-btn" role="tab" id="flightModeAi"
-              aria-selected="false" aria-controls="aiCard" data-mode="ai">
+      {% endif %}
+      <button type="button" class="home-product-tab home-product-tab--ai{{ ' is-active' if tab == 'ai' else '' }}" role="tab" id="tabAi"
+              aria-selected="{{ 'true' if tab == 'ai' else 'false' }}" aria-controls="aiCard" data-product="ai">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/><path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8z" opacity=".7"/></svg>
         <span>Ask AI</span>
       </button>
     </div>
 
-    <div class="ai-wrap ai-narrow" id="aiWrap" hidden>
+    <div class="ai-wrap ai-narrow" id="aiWrap"{{ '' if tab == 'ai' else ' hidden' }}>
       <section class="ai-card expanded" id="aiCard">
         <form class="ai-form" method="POST" action="/search/shell" id="aiForm">
           <input type="hidden" name="mode" value="ai" />
@@ -164,7 +158,7 @@
                   wrap="soft"
                   maxlength="500"
                   style="white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; overflow-x: hidden;"
-                  placeholder="Try: NYC to London next month, nonstop, under $900"
+                  placeholder="Try: NYC to London next month, or a 5 star hotel in Dubai — or both"
                   aria-describedby="aiSearchKeyboardHint"
                 ></textarea>
                 <span class="nu-hotel-ai-actions" role="group" aria-label="Input actions">
@@ -189,7 +183,9 @@
           </div>
           <span id="aiSearchKeyboardHint" class="sr-only">Press Enter to search. Shift+Enter adds a new line.</span>
 
-          <div class="ai-suggest-chips" role="group" aria-label="Quick search types">
+          <!-- Both chip rows stay visible: the one AI box searches flights,
+               hotels, and combined trips, so examples for each sit together. -->
+          <div class="ai-suggest-chips" role="group" aria-label="Quick flight searches">
             <button type="button" class="chip ai-suggest-chip" data-chip="Round trip from [ORIGIN] to [DESTINATION] [DATES], economy" aria-label="Round trip">
               <span class="ai-suggest-chip-icon svg-mask-icon svg-mask-icon--roundtrip" aria-hidden="true"></span>
               <span class="ai-suggest-chip-title">Round trip</span>
@@ -202,24 +198,31 @@
               <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span class="ai-suggest-chip-title">Flexible week</span>
             </button>
-            <button type="button" class="chip ai-suggest-chip" data-chip="Flights from [ORIGIN] to [DESTINATION] under $[BUDGET], economy" aria-label="Under budget">
+            <button type="button" class="chip ai-suggest-chip" data-chip="Flights from [ORIGIN] to [DESTINATION] under $[BUDGET], economy" aria-label="Flights under budget">
               <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              <span class="ai-suggest-chip-title">Under budget</span>
+              <span class="ai-suggest-chip-title">Flights under budget</span>
             </button>
             <button type="button" class="chip ai-suggest-chip" data-chip="Nonstop flights from [ORIGIN] to [DESTINATION] on [DATE], economy" aria-label="Nonstop">
               <span class="ai-suggest-chip-icon svg-mask-icon svg-mask-icon--direct" aria-hidden="true"></span>
               <span class="ai-suggest-chip-title">Nonstop</span>
             </button>
+            {% if hotels_enabled %}
+            <button type="button" class="chip ai-suggest-chip" data-chip="Round trip from [ORIGIN] to [DESTINATION] [DATES] plus a hotel in [DESTINATION] for those nights" aria-label="Flight plus hotel">
+              <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V9a1 1 0 0 1 1-1h5v12"/><path d="M9 12h9a2 2 0 0 1 2 2v6"/><path d="M2 20h20"/></svg>
+              <span class="ai-suggest-chip-title">Flight + hotel</span>
+            </button>
+            {% endif %}
           </div>
 
-          <div class="ai-suggest-chips ai-suggest-chips--stays is-product-hidden" role="group" aria-label="Quick stay searches">
+          {% if hotels_enabled %}
+          <div class="ai-suggest-chips ai-suggest-chips--stays" role="group" aria-label="Quick hotel searches">
             <button type="button" class="chip ai-suggest-chip" data-chip="Hotel in [DESTINATION] from [DATE] for 3 nights, 2 guests" aria-label="City stay">
               <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V7a1 1 0 0 1 1-1h6v14"/><path d="M10 10h9a2 2 0 0 1 2 2v8"/><path d="M2 20h20"/></svg>
               <span class="ai-suggest-chip-title">City stay</span>
             </button>
-            <button type="button" class="chip ai-suggest-chip" data-chip="Cheap hotel in [DESTINATION] for 3 nights under $[BUDGET] a night" aria-label="Budget stay">
+            <button type="button" class="chip ai-suggest-chip" data-chip="Cheap hotel in [DESTINATION] for 3 nights under $[BUDGET] a night" aria-label="Hotels under budget">
               <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              <span class="ai-suggest-chip-title">Under budget</span>
+              <span class="ai-suggest-chip-title">Hotels under budget</span>
             </button>
             <button type="button" class="chip ai-suggest-chip" data-chip="5 star hotel in [DESTINATION] with a pool and spa, [DATES]" aria-label="Luxury stay">
               <svg class="ai-suggest-chip-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 2.9 6.3 6.6.8-4.9 4.6 1.3 6.6L12 17l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>
@@ -234,14 +237,15 @@
               <span class="ai-suggest-chip-title">Family</span>
             </button>
           </div>
+          {% endif %}
 
         </form>
       </section>
     </div>
 
-    <!-- Manual Search v2 — always expanded; the nu-mode tabs above choose
-         between this and the AI form, so there is no collapse/peek state. -->
-    <section class="manual-search-v2 standard-mode" id="unified" aria-label="Flight search">
+    <!-- Manual Search v2 — always expanded; the product tabs above choose
+         which panel shows, so there is no collapse/peek state. -->
+    <section class="manual-search-v2 standard-mode{{ '' if tab == 'flights' else ' is-product-hidden' }}" id="unified" role="tabpanel" aria-labelledby="tabFlights" aria-label="Flight search"{{ '' if tab == 'flights' else ' hidden' }}>
       <div class="ms2-full" id="manualFull">
         <form class="ms2-form" method="POST" action="/search/shell" id="unifiedForm" autocomplete="off">
           <input type="hidden" name="mode" id="unifiedMode" value="standard" />
@@ -405,46 +409,136 @@
       </div>
     </section>
 
-    <!-- Stays panel: shown when the Stays tab is active -->
-    <section class="home-stays" id="staysPanel" role="tabpanel" aria-labelledby="tabStays" hidden>
-      <div class="search-mode-label search-mode-label--manual">
-        <span class="search-mode-kicker">Manual search</span>
-        <span class="search-mode-copy">Pick a destination, dates, and travelers</span>
-      </div>
-
-      <form class="home-stays-form" method="POST" action="{{ url_for('hotel_search') }}" autocomplete="off" id="staysForm">
-        <div class="home-stays-field home-stays-field--where">
-          <label for="staysWhere">Where to</label>
-          <input id="staysWhere" type="text" name="place_name" placeholder="City, area, or landmark" required
+    <!-- Stays panel: shown when the Hotels tab is active. Same floating pill
+         as the retired Hotels landing hero (.nu-search in hotels.css), kept
+         with this page's element IDs so stays.js wiring is unchanged. -->
+    <section class="home-stays" id="staysPanel" role="tabpanel" aria-labelledby="tabStays"{{ '' if tab == 'stays' else ' hidden' }}>
+      <form class="nu-search" method="POST" action="{{ url_for('hotel_search') }}" autocomplete="off" id="staysForm">
+        <div class="nu-seg nu-seg-where">
+          <label for="staysWhere">Where</label>
+          <input id="staysWhere" type="text" name="place_name" placeholder="Enter a destination" required
                  role="combobox" aria-expanded="false" aria-controls="staysList" aria-autocomplete="list" />
           <input type="hidden" name="place_id" id="staysPlaceId" />
           <ul class="nu-suggest" id="staysList" role="listbox" hidden></ul>
         </div>
-        <div class="home-stays-field">
-          <label for="staysCheckin">Check in</label>
-          <input id="staysCheckin" type="date" name="checkin" required data-nx-calendar-range-start="home-stay" />
+        <div class="nu-seg">
+          <span>Dates</span>
+          <div class="nu-seg-dates">
+            <input type="date" name="checkin" id="staysCheckin" required aria-label="Check in" data-nx-calendar-range-start="home-stay" />
+            <i>–</i>
+            <input type="date" name="checkout" id="staysCheckout" required aria-label="Check out" data-nx-calendar-range-end="home-stay" />
+          </div>
         </div>
-        <div class="home-stays-field">
-          <label for="staysCheckout">Check out</label>
-          <input id="staysCheckout" type="date" name="checkout" required data-nx-calendar-range-end="home-stay" />
+        <div class="nu-seg">
+          <span>Guests</span>
+          <div class="nu-seg-dates">
+            <select name="rooms" id="staysRooms" aria-label="Rooms">
+              {% for n in range(1, 5) %}<option value="{{ n }}">{{ n }} room{{ 's' if n > 1 }}</option>{% endfor %}
+            </select>
+            <select name="adults" id="staysAdults" aria-label="Guests">
+              {% for n in range(1, 9) %}<option value="{{ n }}" {% if n == 2 %}selected{% endif %}>{{ n }} guest{{ 's' if n > 1 }}</option>{% endfor %}
+            </select>
+          </div>
         </div>
-        <div class="home-stays-field home-stays-field--sm">
-          <label for="staysAdults">Guests</label>
-          <select id="staysAdults" name="adults">
-            {% for n in range(1, 9) %}<option value="{{ n }}" {% if n == 2 %}selected{% endif %}>{{ n }} guest{{ 's' if n > 1 }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="home-stays-field home-stays-field--sm">
-          <label for="staysRooms">Rooms</label>
-          <select id="staysRooms" name="rooms">
-            {% for n in range(1, 5) %}<option value="{{ n }}">{{ n }} room{{ 's' if n > 1 }}</option>{% endfor %}
-          </select>
-        </div>
-        <button class="home-stays-cta" type="submit">Search stays</button>
+        <button class="nu-search-btn" type="submit" aria-label="Search stays">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </button>
       </form>
       <p class="home-stays-hint" id="staysHint">Pick a destination from the suggestions to search.</p>
     </section>
     </div>
+    </section>
+
+    <!-- Rewards marketing band — the "member prices" pitch every large OTA
+         runs under its hero (Expedia/Hotels.com One Key style). Signed-out
+         visitors get the sign-up ad; members get a quiet confirmation that
+         the discounted prices below are theirs. -->
+    <section class="home-promo" aria-label="Skairova Rewards">
+      {% if portal_signed_in %}
+      <div class="home-promo-banner home-promo-banner--member">
+        <div class="home-promo-copy">
+          <span class="home-promo-kicker">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+            Skairova Rewards
+          </span>
+          <h2 class="home-promo-title">Member Prices are on — you're saving up to 10%</h2>
+          <p class="home-promo-sub">Look for the green Member Price tag on hotels and fares below.</p>
+        </div>
+      </div>
+      {% else %}
+      <div class="home-promo-banner">
+        <div class="home-promo-copy">
+          <span class="home-promo-kicker">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+            Skairova Rewards
+          </span>
+          <h2 class="home-promo-title">Save 10% on your next hotel stay</h2>
+          <p class="home-promo-sub">Join free in seconds for Member Prices, fare alerts, and a smoother checkout.</p>
+
+          <ul class="home-promo-features">
+            <li class="home-promo-feature">
+              <span class="home-promo-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/>
+                  <circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="home-promo-feature-text">
+                <strong>Member Prices</strong>
+                <span>Extra savings on every stay</span>
+              </span>
+            </li>
+            <li class="home-promo-feature">
+              <span class="home-promo-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                </svg>
+              </span>
+              <span class="home-promo-feature-text">
+                <strong>Fare Alerts</strong>
+                <span>Price drops? We'll tell you</span>
+              </span>
+            </li>
+            <li class="home-promo-feature">
+              <span class="home-promo-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>
+                </svg>
+              </span>
+              <span class="home-promo-feature-text">
+                <strong>Faster Checkout</strong>
+                <span>Book in fewer steps</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="home-promo-side">
+          <div class="home-promo-actions">
+            <a class="home-promo-btn home-promo-btn--solid" href="{{ url_for('auth_page', mode='signup') }}" data-auth-open="signup">
+              Unlock my savings
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a class="home-promo-btn home-promo-btn--ghost" href="{{ url_for('auth_page', mode='login') }}" data-auth-open="login">Sign in</a>
+          </div>
+
+          <div class="home-promo-price-card">
+            <span class="home-promo-price-card-head">
+              <span class="home-promo-price-card-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>
+              </span>
+              Member Price
+            </span>
+            <span class="home-promo-price-card-amount">$126 <s>$140</s></span>
+            <span class="home-promo-price-card-save">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              You save 10%
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </section>
 
     <section class="home-recent-searches" id="recentSearchesSection" aria-label="Recent searches" hidden>
@@ -897,7 +991,6 @@
       const departDisplay = document.getElementById("departPickerDisplay");
       const flexMonthPicker = document.getElementById("flexMonthPicker");
       const flexTripLengthField = document.getElementById("flexTripLengthField");
-      const aiCard = document.getElementById("aiCard");
       function syncTripTypeOptionsForMode() {
         if (!multiCityOption) return;
         const isFlexMode = modeField.value === "flex" || dateModeSel?.value === "flex";
@@ -1170,19 +1263,6 @@
         }
       }
 
-      function returnToAi() {
-        document.body.classList.remove("manual-focus-active");
-        document.body.classList.remove("manual-pill-visible");
-        closeManualSearch({ keepFocusState: false });
-
-        if (typeof window.focusAiSearch === "function") {
-          window.focusAiSearch({ scroll: true });
-          return;
-        }
-
-        if (aiCard) scrollToSection(aiCard);
-      }
-
       btns.forEach((button) => {
         button.addEventListener("click", () => {
           setMode(button.dataset.mode);
@@ -1213,13 +1293,6 @@
         if (!root.classList.contains("is-collapsed") && manualFull?.contains(event.target)) {
           document.body.classList.add("manual-focus-active");
           syncManualVisibility();
-        }
-      });
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && document.body.classList.contains("manual-focus-active")) {
-          event.preventDefault();
-          returnToAi();
         }
       });
 
@@ -1526,25 +1599,27 @@
          staying frozen on whichever list matched at initial page load (that
          froze desktop's longer strings into a narrowed window and they
          overflowed the placeholder box uncorrected). */
-      const FLIGHT_EXAMPLES_MOBILE = [
+      /* One composer serves flights, hotels, and combined trips, so the
+         rotating cues sample all three request shapes. */
+      const AI_EXAMPLES_MOBILE = [
         "Try: JFK to LAX next weekend",
-        "One way SFO to SEA on 2026-07-15",
-        "Cheapest 5 day trip BOS to MIA in August",
+        "Hotel in Paris, Oct 10 to 14, 2 guests",
         "Nonstop LAX to JFK in December",
-        "ORD to DEN in September, economy",
-        "LAX to NRT on 2026-09-20, one way"
+        "5 star hotel in Dubai with a pool",
+        "SEA to Rome in May plus a hotel",
+        "Cheapest 5 day trip BOS to MIA in August"
       ];
-      const FLIGHT_EXAMPLES_DESKTOP = [
+      const AI_EXAMPLES_DESKTOP = [
         "Round trip JFK to London, 2026-08-05 to 2026-08-12, economy",
-        "Cheapest 7 day trip from SEA to San Diego in July, economy",
+        "5 star hotel in Dubai with a pool, Dec 12 to 15, 2 guests",
         "One way from DEN to PHX on 2026-06-01, economy",
-        "Find flights from ORD to MCO in October, 2 passengers",
-        "Nonstop SFO to JFK on 2026-11-22, economy",
-        "NYC to Miami under $300 in August, economy"
+        "Hotel in Rome with free cancellation and breakfast, 3 nights",
+        "NYC to Paris in October plus a hotel near the Louvre",
+        "Cheapest 7 day trip from SEA to San Diego in July, economy"
       ];
-      const currentFlightExamples = () =>
-        phoneLayout.matches ? FLIGHT_EXAMPLES_MOBILE : FLIGHT_EXAMPLES_DESKTOP;
-      let placeholderExamples = currentFlightExamples();
+      const currentAiExamples = () =>
+        phoneLayout.matches ? AI_EXAMPLES_MOBILE : AI_EXAMPLES_DESKTOP;
+      let placeholderExamples = currentAiExamples();
       let placeholderIdx = 0;
       let placeholderTimer = null;
       let userInteracted = false;
@@ -1580,9 +1655,8 @@
         placeholderTimer = setInterval(rotatePlaceholder, 3500);
       }
 
-      // Lets the Flights/Stays tabs swap the rotating examples. The native
-      // placeholder stays empty — this overlay is what the user actually sees.
-      window.SKAIR_AI_EXAMPLES_FLIGHTS = placeholderExamples.slice();
+      // The native placeholder stays empty — this overlay is what the user
+      // actually sees.
       window.SKAIR_SET_AI_EXAMPLES = function (examples) {
         if (!Array.isArray(examples) || !examples.length) return;
         placeholderExamples = examples;
@@ -1591,15 +1665,10 @@
       };
 
       // Crossing the mobile/desktop breakpoint after load (window resize,
-      // DevTools device toggle, orientation change) — refresh the flights
-      // example list and, unless the Stays tab is currently showing its own
-      // examples, apply it immediately.
+      // DevTools device toggle, orientation change) — swap to the example
+      // list sized for the new viewport.
       phoneLayout.addEventListener("change", () => {
-        const updated = currentFlightExamples();
-        window.SKAIR_AI_EXAMPLES_FLIGHTS = updated.slice();
-        const staysPanel = document.getElementById("staysPanel");
-        const isStaysActive = staysPanel && !staysPanel.hidden;
-        if (!isStaysActive) window.SKAIR_SET_AI_EXAMPLES(updated);
+        window.SKAIR_SET_AI_EXAMPLES(currentAiExamples());
       });
 
       function stopPlaceholderRotation() {
@@ -1646,19 +1715,23 @@
 
       startPlaceholderRotation();
 
-/* ── Sample search suggestions (match parse_ai_flight_request: clear routes + ISO or month) ── */
+/* ── Sample search suggestions: flight shapes match parse_ai_flight_request
+     (clear routes + ISO or month); hotel and combined shapes are routed to
+     the right pipeline by /search/shell's intent detection. ── */
       const sampleBtn = document.getElementById("sampleSearchBtn");
       if (sampleBtn) {
         const sampleSuggestions = [
           "Round trip JFK to LHR departing 2026-08-05 returning 2026-08-12, economy",
+          "5 star hotel in Dubai with a pool, 2026-12-12 to 2026-12-15, 2 guests",
           "One way LAX to NRT on 2026-09-20, economy",
+          "Hotel in Rome with breakfast and free cancellation, 3 nights in October",
           "Cheapest 5 day trip from SEA to SAN in July, economy",
+          "Round trip SEA to Rome 2026-05-04 to 2026-05-11 plus a hotel for those nights",
           "Find flights from ORD to DEN in October, economy",
+          "Family room in Orlando for 2 adults and 2 kids, 5 nights in June",
           "Nonstop from SFO to JFK on 2026-11-22, economy",
           "NYC to MIA under $300 in August, economy",
-          "One way BOS to DUB on 2026-07-08, economy",
-          "Cheapest week in June, JFK to Barcelona, economy",
-          "Round trip DFW to MCO on 2026-03-10 returning 2026-03-17, 2 passengers, economy"
+          "Cheapest week in June, JFK to Barcelona, economy"
         ];
         let sampleIdx = Math.floor(Math.random() * sampleSuggestions.length);
 
@@ -1840,8 +1913,9 @@
   <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
   <script src="{{ url_for('static', filename='calendar.js', v='20260722-cally') }}"></script>
   <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260813-shadcn-range') }}"></script>
-  <script src="{{ url_for('static', filename='home-sections.js', v='20260813-package-builder') }}"></script>
-  <script src="{{ url_for('static', filename='flight-stays.js', v='20260813-request-control') }}"></script>
+  <script src="{{ url_for('static', filename='geo-location.js', v='20260818-shared-geo') }}"></script>
+  <script src="{{ url_for('static', filename='home-sections.js', v='20260817-member-prices') }}"></script>
+  <script src="{{ url_for('static', filename='flight-stays.js', v='20260817-member-prices') }}"></script>
   {% if edit_search_fields %}
     <script id="editSearchFieldsPayload" type="application/json">{{ edit_search_fields|tojson }}</script>
     <script>
@@ -2270,75 +2344,109 @@
 
   <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
 
-  <!-- Product tabs + stays search. The AI box is shared by both products:
-       /search/shell routes a stay-shaped query to the hotel pipeline. -->
+  <!-- Product tabs: Flights / Hotels / Ask AI. One switcher owns the whole
+       search surface. The AI composer serves both products: /search/shell
+       routes each request to the flight or hotel pipeline by intent. -->
   <script>
     (function () {
-      var tabs = document.querySelectorAll(".home-product-tab");
-      var staysPanel = document.getElementById("staysPanel");
+      var tabs = Array.prototype.slice.call(document.querySelectorAll(".home-product-tab"));
       var flightsPanel = document.getElementById("unified");
-      var divider = document.querySelector(".home-mode-divider");
-      var flightChips = document.querySelector(".ai-suggest-chips:not(.ai-suggest-chips--stays)");
-      var stayChips = document.querySelector(".ai-suggest-chips--stays");
-      var heroAccent = document.getElementById("heroAccent");
-      var heroCopy = document.getElementById("heroCopy");
-      var FLIGHT_COPY = heroCopy ? heroCopy.textContent.trim() : "";
+      var staysPanel = document.getElementById("staysPanel");
       var aiWrap = document.getElementById("aiWrap");
-      var searchModeTabs = document.getElementById("flightSearchModeTabs");
-      if (!tabs.length || !staysPanel || !flightsPanel) return;
+      var aiText = document.getElementById("aiText");
+      var heroTitle = document.getElementById("heroTitle");
+      var heroCopy = document.getElementById("heroCopy");
+      if (!tabs.length || !flightsPanel || !aiWrap) return;
 
-      var STAY_EXAMPLES = [
-        "5 star hotel in Dubai next month with a pool",
-        "Cheap stay in Bangkok for 3 nights, free cancellation",
-        "Well reviewed hotel in Paris 2026-10-15 to 2026-10-18, 2 guests",
-        "Family room in Istanbul with breakfast included",
-        "Luxury resort in Bali for a week under $300 a night"
-      ];
+      // Must mirror the Jinja-rendered initial hero strings above.
+      var HERO_COPY = {
+        flights: { title: "Incredible flight deals", copy: "Discover flights to destinations around the world" },
+        stays: { title: "Incredible hotel deals", copy: "Discover hotels, vacation homes and more" },
+        ai: { title: "One search, your whole trip", copy: "Describe it in your own words — flights, hotels, or both together" }
+      };
 
-      function select(product) {
+      function hasTab(product) {
+        return tabs.some(function (t) { return t.dataset.product === product; });
+      }
+
+      function normalise(product) {
+        if (product === "hotels" || product === "hotel") product = "stays";
+        if (product !== "stays" && product !== "ai") product = "flights";
+        return hasTab(product) ? product : "flights";
+      }
+
+      // Header nav highlights follow the active tab so "Flights" / "Hotels"
+      // in the top bar and the hero tabs never disagree.
+      function syncNav(product) {
+        document.querySelectorAll(".site-nav-link").forEach(function (link) {
+          var path = link.pathname || "";
+          if (path.indexOf("/hotels") === 0) link.classList.toggle("site-nav-active", product === "stays");
+          else if (path === "/" || path === "") link.classList.toggle("site-nav-active", product !== "stays");
+        });
+      }
+
+      // Keep the URL shareable/refreshable: /?tab=hotels or /?tab=ai.
+      function syncUrl(product) {
+        try {
+          var url = new URL(window.location.href);
+          if (product === "flights") url.searchParams.delete("tab");
+          else url.searchParams.set("tab", product === "stays" ? "hotels" : "ai");
+          history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+        } catch (e) {}
+      }
+
+      function select(product, opts) {
+        product = normalise(product);
+        var focus = !!(opts && opts.focus);
+
         tabs.forEach(function (t) {
           var on = t.dataset.product === product;
           t.classList.toggle("is-active", on);
           t.setAttribute("aria-selected", on ? "true" : "false");
         });
-        var stays = product === "stays";
-        if (heroAccent) heroAccent.textContent = stays ? "find the stay." : "find the flight.";
-        if (heroCopy) {
-          heroCopy.textContent = stays
-            ? "Describe the place you want, or fill in the fields. Live rates from over two million properties."
-            : FLIGHT_COPY;
+
+        var showFlights = product === "flights";
+        var showStays = product === "stays";
+        var showAi = product === "ai";
+
+        flightsPanel.hidden = !showFlights;
+        // The flight panel is display:flex in CSS, so [hidden] alone loses.
+        flightsPanel.classList.toggle("is-product-hidden", !showFlights);
+        if (staysPanel) staysPanel.hidden = !showStays;
+        aiWrap.hidden = !showAi;
+
+        var hero = HERO_COPY[product];
+        if (heroTitle && hero) heroTitle.textContent = hero.title;
+        if (heroCopy && hero) heroCopy.textContent = hero.copy;
+
+        document.body.setAttribute("data-search-product", product);
+        syncNav(product);
+        syncUrl(product);
+
+        if (focus && showAi && aiText && window.matchMedia("(min-width: 761px)").matches) {
+          aiText.focus();
         }
-        staysPanel.hidden = !stays;
-        // Ask AI mode may be active when the product tab switches — always
-        // land back on the manual flight form so returning to Flights never
-        // shows a dangling AI box the Stays panel already replaced visually.
-        if (stays && aiWrap && !aiWrap.hidden && window.SKAIR_SET_FLIGHT_MODE) {
-          window.SKAIR_SET_FLIGHT_MODE("manual");
-        }
-        flightsPanel.hidden = stays;
-        // These panels are display:flex/grid in CSS, so [hidden] alone loses.
-        flightsPanel.classList.toggle("is-product-hidden", stays);
-        if (searchModeTabs) searchModeTabs.classList.toggle("is-product-hidden", stays);
-        if (divider) divider.classList.toggle("is-product-hidden", stays);
-        if (flightChips) flightChips.classList.toggle("is-product-hidden", stays);
-        if (stayChips) stayChips.classList.toggle("is-product-hidden", !stays);
-        if (window.SKAIR_SET_AI_EXAMPLES) {
-          window.SKAIR_SET_AI_EXAMPLES(stays ? STAY_EXAMPLES : window.SKAIR_AI_EXAMPLES_FLIGHTS);
-        }
-        try { sessionStorage.setItem("skairProduct", product); } catch (e) {}
       }
 
       tabs.forEach(function (t) {
-        t.addEventListener("click", function () { select(t.dataset.product); });
+        t.addEventListener("click", function () { select(t.dataset.product, { focus: true }); });
       });
 
-      // Flights and Hotels now have matching dedicated landing pages. Keep this
-      // page on its Flight UI even if an older session stored the retired inline
-      // Stays-tab preference; the Hotels navigation link remains the way to
-      // switch products.
+      // Initial product: the URL's ?tab= decides, same as the server-
+      // rendered nav/hero state, defaulting to Flights when absent. A
+      // sessionStorage fallback used to remember the last-viewed tab
+      // across a bare "/" visit, but that meant clicking "Flights" in the
+      // header — which links to plain "/" — could silently snap back to
+      // whatever tab was last open, making the click look broken. The URL
+      // is now the single source of truth, matching the server.
+      var requested = null;
+      try { requested = new URLSearchParams(window.location.search).get("tab"); } catch (e) {}
+      select(requested || "flights", { focus: false });
+
+      window.SKAIR_SELECT_PRODUCT = function (product) { select(product, { focus: false }); };
 
       /* Stays autocomplete + date coupling live in static/stays.js so the
-         home tab, the landing hero, and the results topbar share one path. */
+         home tab and the results topbar share one path. */
       if (window.StaysSearch) {
         StaysSearch.init({
           input: "staysWhere", placeId: "staysPlaceId", list: "staysList",
@@ -2347,45 +2455,6 @@
           itemClass: "nu-suggest-item", nameClass: "nu-suggest-name", addrClass: "nu-suggest-addr"
         });
       }
-    })();
-  </script>
-
-  <!-- Flight search mode: Search / Ask AI tabs, same nu-mode pill as the
-       Stays page. Manual is the default; clicking a tab just shows one form
-       and hides the other — no scroll-collapse, no peek state. -->
-  <script>
-    (function () {
-      var tabs = document.querySelectorAll("#flightSearchModeTabs .nu-mode-btn");
-      var manualSection = document.getElementById("unified");
-      var aiWrap = document.getElementById("aiWrap");
-      var aiText = document.getElementById("aiText");
-      var originInput = document.querySelector('#unifiedForm input[name="origin"]');
-      if (!tabs.length || !manualSection || !aiWrap) return;
-
-      function apply(mode, focus) {
-        var ai = mode === "ai";
-        manualSection.hidden = ai;
-        aiWrap.hidden = !ai;
-        tabs.forEach(function (tab) {
-          var on = (tab.dataset.mode === "ai") === ai;
-          tab.classList.toggle("is-active", on);
-          tab.setAttribute("aria-selected", on ? "true" : "false");
-        });
-        if (focus) {
-          var target = ai ? aiText : originInput;
-          if (target) target.focus();
-        }
-      }
-
-      tabs.forEach(function (tab) {
-        tab.addEventListener("click", function () { apply(tab.dataset.mode, true); });
-      });
-
-      // Lets the product-tab script above force back to manual mode when
-      // switching away to Stays, so no stray AI box is left open.
-      window.SKAIR_SET_FLIGHT_MODE = function (mode) { apply(mode, false); };
-
-      apply("manual", false);
     })();
   </script>
 

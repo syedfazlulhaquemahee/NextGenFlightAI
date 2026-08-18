@@ -517,16 +517,20 @@ class LiteAPIClient:
         holder: Mapping[str, Any],
         guests: Sequence[Mapping[str, Any]],
         payment: Mapping[str, Any],
+        client_reference: str = "",
     ) -> dict[str, Any]:
-        payload = self._request(
-            "POST", LITE_BOOK_BASE, "/rates/book",
-            json_body={
-                "prebookId": prebook_id,
-                "holder": dict(holder),
-                "guests": [dict(g) for g in guests],
-                "payment": dict(payment),
-            },
-        )
+        body: dict[str, Any] = {
+            "prebookId": prebook_id,
+            "holder": dict(holder),
+            "guests": [dict(g) for g in guests],
+            "payment": dict(payment),
+        }
+        if client_reference:
+            # LiteAPI's own idempotency key — a resubmitted booking with the
+            # same clientReference is deduped provider-side rather than
+            # creating a second booking.
+            body["clientReference"] = client_reference
+        payload = self._request("POST", LITE_BOOK_BASE, "/rates/book", json_body=body)
         return payload.get("data") or {}
 
     def get_booking(self, booking_id: str) -> dict[str, Any]:
@@ -844,6 +848,10 @@ def build_prebook_summary(prebook: Mapping[str, Any], *, nights: int) -> dict[st
     """Checkout-facing summary, including any price drift since search."""
     price = _money(prebook.get("price")) or 0.0
     drift = _money(prebook.get("priceDifferencePercent"))
+    room_types = prebook.get("roomTypes") or []
+    first_room = room_types[0] if room_types else {}
+    first_rate = (first_room.get("rates") or [{}])[0] if isinstance(first_room, Mapping) else {}
+    refundable_tag = str((first_rate.get("cancellationPolicies") or {}).get("refundableTag") or "").strip().upper()
     return {
         "prebook_id": str(prebook.get("prebookId") or "").strip(),
         "offer_id": str(prebook.get("offerId") or "").strip(),
@@ -861,4 +869,8 @@ def build_prebook_summary(prebook: Mapping[str, Any], *, nights: int) -> dict[st
         "board_changed": bool(prebook.get("boardChanged")),
         "payment_types": list(prebook.get("paymentTypes") or []),
         "terms": str(prebook.get("termsAndConditions") or "").strip(),
+        "room_name": str(first_rate.get("name") or first_room.get("name") or "Room").strip(),
+        "board_name": str(first_rate.get("boardName") or "Room only").strip(),
+        "refundable": refundable_tag in REFUNDABLE_TAGS,
+        "max_occupancy": first_rate.get("maxOccupancy"),
     }

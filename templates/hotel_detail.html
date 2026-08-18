@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260813-nuitee-type') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260818-reserve-label-fix') }}" />
 </head>
 <body class="hotel-detail-page">
   {% include "partials/platform_header.html" %}
@@ -99,7 +99,7 @@
                   <div class="nu-room-buy">
                     <strong>US${{ '{:,.0f}'.format(room.total_amount) }}</strong>
                     <span>{{ search.rooms }} room{{ 's' if search.rooms != 1 }} x {{ search.nights }} night{{ 's' if search.nights != 1 }} incl. taxes</span>
-                    <button class="nu-btn" type="button" disabled title="Checkout is not wired up yet">Reserve</button>
+                    <a class="nu-btn nu-room-reserve" href="{{ url_for('hotel_checkout', hotel_id=hotel.id, offer_id=room.offer_id, checkin=search.checkin, checkout=search.checkout, adults=search.adults, rooms=search.rooms, place_id=search.place_id, place_name=search.place_name) }}"><span>Reserve</span></a>
                   </div>
                 </li>
               {% endfor %}
@@ -135,7 +135,7 @@
             <div><dt>Check out</dt><dd>{{ search.checkout }}{% if hotel.checkout_time %} · {{ hotel.checkout_time }}{% endif %}</dd></div>
             <div><dt>Guests</dt><dd>{{ search.adults }} guest{{ 's' if search.adults != 1 }} · {{ search.rooms }} room{{ 's' if search.rooms != 1 }}</dd></div>
           </dl>
-          <a class="nu-btn" href="#rooms">See room options</a>
+          <a class="nu-btn nu-panel-rooms-cta" href="#rooms">See room options</a>
         </div>
 
         {% if hotel.pois %}

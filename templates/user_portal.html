@@ -122,6 +122,19 @@
         </form>
       </div>
 
+      {% if account_notice %}
+      <div class="prtl-alert prtl-alert--success" role="status">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ account_notice }}
+      </div>
+      {% endif %}
+      {% if account_error %}
+      <div class="prtl-alert prtl-alert--error" role="alert">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        {{ account_error }}
+      </div>
+      {% endif %}
+
       <!-- ── PROFILE TAB ── -->
       <section class="prtl-tab is-active" data-tab="profile" aria-label="Profile">
         <div class="prtl-tab-head">

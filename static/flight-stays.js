@@ -47,6 +47,7 @@
     } else {
       image.classList.add("is-empty");
     }
+    image.appendChild(node("span", "home-deal-badge", "Member Price"));
     card.appendChild(image);
 
     var body = node("span", "flight-stay-card__body");
@@ -64,8 +65,16 @@
     var offer = hotel.offer || {};
     var price = node("span", "flight-stay-card__price");
     var isNightly = priceDisplay === "nightly";
-    price.appendChild(node("b", null, money(isNightly ? offer.nightly_amount : offer.total_amount, offer.currency)));
-    price.appendChild(node("span", null, isNightly ? "current nightly rate" : "total · " + nights + " night" + (nights === 1 ? "" : "s")));
+    var amount = Number(isNightly ? offer.nightly_amount : offer.total_amount) || 0;
+    /* Expedia-style price block: struck public rate above the bold Member
+       Price — the live rate IS the member price, the compare-at is that
+       rate before the flat 10% Rewards discount. */
+    if (amount > 0) {
+      var strike = node("s", "flight-stay-card__strike", money(amount / 0.9, offer.currency));
+      price.appendChild(strike);
+    }
+    price.appendChild(node("b", null, money(amount, offer.currency)));
+    price.appendChild(node("span", null, isNightly ? "per night" : "total · " + nights + " night" + (nights === 1 ? "" : "s")));
     foot.appendChild(price);
     body.appendChild(foot);
     card.appendChild(body);
@@ -110,8 +119,11 @@
   if (!form || !destinationInput || !checkinInput || !checkoutInput) return;
 
   function isFlightsActive() {
-    var tab = document.getElementById("tabFlights");
-    return !tab || tab.getAttribute("aria-selected") !== "false";
+    // The hotel shelf now shows on every home tab (Flights, Hotels, Ask AI)
+    // — the below-fold content is identical regardless of which search panel
+    // is open. The destination-driven variant still keys off the flight
+    // form's inputs; with no destination it falls back to nearby hotels.
+    return true;
   }
 
   function hasValidDates(checkin, checkout) {
@@ -292,43 +304,94 @@
 
   function showLocationStays() {
     if (!isFlightsActive()) return;
+    if (!locationCoordinates && window.SkairGeo) {
+      // Another widget (or an earlier visit) may already have a fix cached
+      // — reuse it silently instead of falling back to the button-prompt
+      // state, so returning visitors never see "Use my location" again.
+      locationCoordinates = window.SkairGeo.getCachedLocation();
+    }
     if (locationCoordinates) {
       loadLocationStays();
       return;
     }
     if (locationRequested) return;
-    if (!navigator.geolocation) {
+    showLocationPermissionState();
+  }
+
+  // Geolocation permission must be requested by the browser from a direct
+  // visitor action. Keep this separate from the automatic shelf refresh so
+  // the "Use my location" button is what opens the browser permission prompt
+  // (SkairGeo itself refuses to prompt from a non-gesture call).
+  function requestLocationStays() {
+    if (!isFlightsActive()) return;
+    if (!locationCoordinates && window.SkairGeo) {
+      locationCoordinates = window.SkairGeo.getCachedLocation();
+    }
+    if (locationCoordinates) {
+      loadLocationStays();
+      return;
+    }
+    if (locationRequested || !navigator.geolocation) {
       showLocationPermissionState();
       return;
     }
 
     locationRequested = true;
     showLoading("local-pending");
+    if (locationButton) {
+      locationButton.hidden = false;
+      locationButton.disabled = true;
+      locationButton.textContent = "Requesting location…";
+    }
     if (title) title.textContent = "Hotels near you";
     if (summary) summary.textContent = "Finding current nightly rates near your location…";
     if (allLink) allLink.href = "/hotels";
     setGroupNotes("Recommended near you", "More stays near you");
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        locationCoordinates = { lat: position.coords.latitude, lng: position.coords.longitude };
+
+    var request = window.SkairGeo
+      ? window.SkairGeo.requestLocation({ timeout: 10000 })
+      : new Promise(function (resolve) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) { resolve({ lat: position.coords.latitude, lng: position.coords.longitude }); },
+            function () { resolve(null); },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+          );
+        });
+    request.then(function (coords) {
+      locationRequested = false;
+      if (coords) {
+        locationCoordinates = coords;
         if (activeMode === "local-pending") loadLocationStays();
-      },
-      function () {
-        if (activeMode === "local-pending") showLocationPermissionState();
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
-    );
+      } else if (activeMode === "local-pending") {
+        var errorCode = window.SkairGeo ? window.SkairGeo.getLastErrorCode() : 1;
+        showLocationPermissionState({ code: errorCode || 1 });
+      }
+    });
   }
 
-  function showLocationPermissionState() {
+  function showLocationPermissionState(error) {
     shelf.hidden = false;
     activeMode = "location-unavailable";
     recommendedGroup.hidden = true;
     nearbyGroup.hidden = true;
     if (title) title.textContent = "Hotels near you";
-    if (summary) summary.textContent = "Share your location to see current nightly rates nearby.";
+    if (summary) {
+      if (!navigator.geolocation) {
+        summary.textContent = "Location is not supported by this browser.";
+      } else if (error && error.code === 1) {
+        summary.textContent = "Location access is blocked. Allow it in your browser settings, then try again.";
+      } else if (error && error.code === 3) {
+        summary.textContent = "We could not determine your location. Please try again.";
+      } else {
+        summary.textContent = "Use your location to see current nightly rates nearby.";
+      }
+    }
     if (allLink) allLink.href = "/hotels";
-    if (locationButton) locationButton.hidden = false;
+    if (locationButton) {
+      locationButton.hidden = false;
+      locationButton.disabled = !navigator.geolocation;
+      locationButton.textContent = "Use my location";
+    }
   }
 
   function loadDestinationStays(destination, checkin, checkout, adults, key) {
@@ -480,8 +543,7 @@
   }
   if (locationButton) {
     locationButton.addEventListener("click", function () {
-      locationRequested = false;
-      showLocationStays();
+      requestLocationStays();
     });
   }
   document.querySelectorAll(".home-product-tab").forEach(function (tab) {

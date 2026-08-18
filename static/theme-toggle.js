@@ -1,5 +1,8 @@
 (function () {
   var KEY = "ngf-theme";
+  // Keep the legacy theme implementation in place, but lock the active site
+  // to light mode until dark mode is intentionally re-enabled.
+  var THEME_TOGGLE_ENABLED = false;
   var meta;
 
   function getMeta() {
@@ -22,7 +25,7 @@
 
   function applyFromStorage() {
     try {
-      if (localStorage.getItem(KEY) === "light") {
+      if (!THEME_TOGGLE_ENABLED || localStorage.getItem(KEY) === "light") {
         document.documentElement.setAttribute("data-theme", "light");
       } else {
         document.documentElement.removeAttribute("data-theme");
@@ -46,7 +49,11 @@
   document.addEventListener("DOMContentLoaded", function () {
     applyFromStorage();
     var btn = document.getElementById("themeToggle");
-    if (btn) {
+    if (btn && !THEME_TOGGLE_ENABLED) {
+      btn.hidden = true;
+      btn.disabled = true;
+    }
+    if (btn && THEME_TOGGLE_ENABLED) {
       btn.addEventListener("click", function () {
         var isLight = document.documentElement.getAttribute("data-theme") === "light";
         try {

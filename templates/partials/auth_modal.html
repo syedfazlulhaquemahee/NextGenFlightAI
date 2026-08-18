@@ -1,0 +1,13 @@
+{#  Sign in / Create account popup — a native <dialog> available on every page
+    with the platform header, opened by [data-auth-open] triggers (the header
+    buttons). Desktop: centered card. Mobile: bottom sheet. The /auth page
+    stays as the no-JS fallback and the landing spot for reset links and
+    server-side validation errors.  #}
+<link rel="stylesheet" href="{{ url_for('static', filename='auth-block.css', v='20260817-fit-tiers4') }}" />
+<dialog class="ab-modal" id="authModal" aria-label="Sign in or create an account">
+  <button type="button" class="ab-modal-close" data-ab-close aria-label="Close dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+  {% include "partials/auth_block.html" %}
+</dialog>
+<script src="{{ url_for('static', filename='auth-block.js', v='20260817-wordmark') }}" defer></script>

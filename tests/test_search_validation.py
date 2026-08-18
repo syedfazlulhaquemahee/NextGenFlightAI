@@ -288,7 +288,7 @@ class SearchValidationTests(unittest.TestCase):
             )
 
         class FakeModel:
-            def generate_content(self, _prompt):
+            def generate_content(self, _prompt, **_kwargs):
                 return FakeResponse()
 
         with patch.object(flight_app, "model", FakeModel()), \
