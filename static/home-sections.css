@@ -1053,6 +1053,10 @@ body.home-page .home-promo-banner--member::after{
     top: auto;
     right: auto;
     width: 100%;
+    /* The desktop side rail is vertically centered with translateY(). Once
+       it becomes a normal mobile block, reset that transform so it cannot
+       pull the CTAs up over the benefit icons. */
+    transform: none;
   }
   body.home-page .home-promo-actions{ flex-direction: row; }
   body.home-page .home-promo-btn{ flex: 1; padding-inline: 14px; font-size: 14px; }
@@ -1060,7 +1064,43 @@ body.home-page .home-promo-banner--member::after{
 }
 
 @media (max-width: 440px){
-  body.home-page .home-promo-actions{ flex-direction: column; }
+  /* One decisive action, then a quiet recovery path. Two full-width pills
+     make this compact layout look like a duplicate CTA stack. */
+  body.home-page .home-promo-actions{
+    flex-direction: column;
+    gap: 8px;
+  }
+  body.home-page .home-promo-btn--solid{
+    min-height: 46px;
+    font-size: 15px;
+    border-radius: 14px;
+  }
+  body.home-page .home-promo-btn--ghost{
+    flex: 0 0 auto;
+    align-self: center;
+    width: auto;
+    height: 26px;
+    min-height: 26px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: rgba(255, 255, 255, .9) !important;
+    font-size: 13px;
+    font-weight: 650;
+    text-decoration: underline !important;
+    text-decoration-color: rgba(255, 255, 255, .52) !important;
+    text-underline-offset: 3px;
+    backdrop-filter: none;
+  }
+  body.home-page .home-promo-btn--ghost:hover,
+  body.home-page .home-promo-btn--ghost:focus-visible{
+    border: 0;
+    background: transparent;
+    color: #ffffff !important;
+    transform: none;
+  }
   body.home-page .home-promo-feature{ padding-inline: 8px; }
   body.home-page .home-promo-feature-text span{ display: none; }
 }

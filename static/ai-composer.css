@@ -215,6 +215,17 @@ body.hotels-page .ai-reference-surface:has(textarea.nu-hotel-ai-input:not(:place
   body.hotels-page .ai-reference-surface .ai-reference-submit { width: 42px !important; height: 42px !important; min-width: 42px !important; }
 }
 
+/* iOS Safari zooms a focused text control whose computed font is below 16px.
+   Keep this explicit at the component boundary so later page typography rules
+   cannot shrink either version of the AI composer. */
+@media (max-width: 820px) {
+  body.home-page .ai-reference-surface .ai-input,
+  html[data-theme="light"] body.home-page .ai-reference-surface .ai-input,
+  body.hotels-page .ai-reference-surface .nu-hotel-ai-input {
+    font-size: 16px !important;
+  }
+}
+
 /* Expanded composer, shared by both products: once a real request begins
    (more than five characters), the text area gets its own row above a
    dedicated bottom action row instead of squeezing everything into one

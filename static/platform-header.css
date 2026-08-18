@@ -814,10 +814,10 @@ html.hdr-menu-open { overflow: hidden; }
 
 html[data-theme="light"] .topbar.platform-header {
   background: #ffffff !important;
-  border-bottom: 1px solid var(--hdr-line) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, .12) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .03), 0 8px 18px -16px rgba(15, 23, 42, .36) !important;
 }
 
 /* ── Reinforced per-page overrides ──
@@ -830,8 +830,8 @@ html[data-theme="light"] body.home-page .topbar.platform-header,
 html[data-theme="light"] body.booking-detail-page .topbar.platform-header,
 html[data-theme="light"] body.manage-booking-page .topbar.platform-header {
   background: #ffffff !important;
-  border-bottom: 1px solid var(--hdr-line) !important;
-  box-shadow: none !important;
+  border-bottom: 1px solid rgba(15, 23, 42, .12) !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .03), 0 8px 18px -16px rgba(15, 23, 42, .36) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   color: var(--hdr-ink) !important;
