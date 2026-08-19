@@ -29,6 +29,13 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dotenv import load_dotenv
 
+try:
+    import psycopg
+    from psycopg.rows import dict_row as psycopg_dict_row
+except ImportError:  # Keeps local SQLite-only development usable before install.
+    psycopg = None
+    psycopg_dict_row = None
+
 import analytics_store
 import email_service
 from destinations_data import CATEGORIES, DESTINATIONS, DOMESTIC_DESTINATIONS, destinations_for_category, get_destination, get_destination_by_code, get_domestic_destination_by_code
@@ -112,8 +119,10 @@ AIRPORTS_CSV_PATH = os.getenv("NGF_AIRPORTS_CSV_PATH", os.path.join(BASE_DIR, "D
 # only a short-term fallback: a persistent account database should override
 # NGF_ACCOUNTS_DB_PATH in production.
 _SERVERLESS_SCRATCH_DIR = "/tmp/nextgenflightai" if os.getenv("VERCEL") else os.path.join(BASE_DIR, "Data")
-ACCOUNT_DB_PATH = os.getenv("NGF_ACCOUNTS_DB_PATH", "").strip() or os.path.join(_SERVERLESS_SCRATCH_DIR, "accounts.db")
+DEFAULT_ACCOUNT_DB_PATH = os.path.join(_SERVERLESS_SCRATCH_DIR, "accounts.db")
+ACCOUNT_DB_PATH = os.getenv("NGF_ACCOUNTS_DB_PATH", "").strip() or DEFAULT_ACCOUNT_DB_PATH
 ANALYTICS_DB_PATH = os.getenv("NGF_ANALYTICS_DB_PATH", "").strip() or os.path.join(_SERVERLESS_SCRATCH_DIR, "analytics.db")
+NGF_DATABASE_URL = os.getenv("NGF_DATABASE_URL", "").strip()
 ANALYTICS_IP_SALT = os.getenv("NGF_ANALYTICS_IP_SALT", "nextgen-analytics-salt").strip() or "nextgen-analytics-salt"
 ANALYTICS_ENABLED = os.getenv("NGF_ANALYTICS_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 
@@ -8514,12 +8523,97 @@ def _ensure_hotel_bookings_table(conn: sqlite3.Connection) -> None:
     )
 
 
+def _use_postgres_account_store() -> bool:
+    """Use Supabase/Postgres in deployed environments when configured.
+
+    Tests deliberately keep using their temporary SQLite database, which lets
+    the existing account-flow test suite run without a hosted dependency.
+    """
+    return bool(
+        NGF_DATABASE_URL
+        and psycopg is not None
+        # Test suites intentionally replace ACCOUNT_DB_PATH with an isolated
+        # temporary SQLite file, even while exercising non-TESTING code paths.
+        and os.path.abspath(ACCOUNT_DB_PATH) == os.path.abspath(DEFAULT_ACCOUNT_DB_PATH)
+        and not bool(app.config.get("TESTING"))
+    )
+
+
+def _postgres_account_connection():
+    if not _use_postgres_account_store() or psycopg is None or psycopg_dict_row is None:
+        raise RuntimeError("Postgres account store is not configured.")
+    # Supabase pooler connections require TLS. Passing sslmode separately
+    # keeps copied pooler URIs valid even when they omit that query parameter.
+    return psycopg.connect(
+        NGF_DATABASE_URL,
+        connect_timeout=10,
+        sslmode="require",
+        row_factory=psycopg_dict_row,
+    )
+
+
+def _ensure_postgres_account_db() -> None:
+    with _postgres_account_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS manage_booking_accounts (
+                    email TEXT PRIMARY KEY,
+                    salt_hex TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    first_name TEXT NOT NULL DEFAULT '',
+                    last_name TEXT NOT NULL DEFAULT '',
+                    dob TEXT NOT NULL DEFAULT '',
+                    terms_accepted_at TEXT NOT NULL DEFAULT '',
+                    saved_searches TEXT NOT NULL DEFAULT '[]',
+                    linked_booking_references TEXT NOT NULL DEFAULT '[]',
+                    session_nonce TEXT NOT NULL DEFAULT '',
+                    last_login_at TEXT NOT NULL DEFAULT '',
+                    last_login_ip TEXT NOT NULL DEFAULT '',
+                    price_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                    route_tracking_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                    phone_number TEXT NOT NULL DEFAULT '',
+                    nationality TEXT NOT NULL DEFAULT '',
+                    passport_number TEXT NOT NULL DEFAULT '',
+                    gender TEXT NOT NULL DEFAULT '',
+                    oauth_provider TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_manage_booking_accounts_updated_at "
+                "ON manage_booking_accounts(updated_at)"
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS manage_booking_email_links (
+                    email TEXT NOT NULL,
+                    booking_reference TEXT NOT NULL,
+                    order_id TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (email, booking_reference)
+                )
+                """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_manage_booking_email_links_email "
+                "ON manage_booking_email_links(email, updated_at DESC)"
+            )
+
+
 def _ensure_account_db() -> None:
     global _ACCOUNT_DB_READY
     if _ACCOUNT_DB_READY:
         return
     with _ACCOUNT_DB_LOCK:
         if _ACCOUNT_DB_READY:
+            return
+        if _use_postgres_account_store():
+            _ensure_postgres_account_db()
+            _ACCOUNT_DB_READY = True
             return
         os.makedirs(os.path.dirname(ACCOUNT_DB_PATH), exist_ok=True)
         with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
@@ -8581,10 +8675,7 @@ def _db_fetch_account(email: str) -> dict[str, Any] | None:
     key = _normalize_email(email)
     if not key:
         return None
-    with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            """
+    query = """
             SELECT
                 email,
                 salt_hex,
@@ -8607,10 +8698,20 @@ def _db_fetch_account(email: str) -> dict[str, Any] | None:
                 COALESCE(gender, '')          AS gender,
                 COALESCE(oauth_provider, '')  AS oauth_provider
             FROM manage_booking_accounts
-            WHERE email = ?
-            """,
-            (key,),
-        ).fetchone()
+            WHERE email = {placeholder}
+            """
+    if _use_postgres_account_store():
+        with _postgres_account_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query.format(placeholder="%s"), (key,))
+                row = cur.fetchone()
+    else:
+        with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                query.format(placeholder="?"),
+                (key,),
+            ).fetchone()
     if row is None:
         return None
     try:
@@ -8662,8 +8763,8 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
     session_nonce = str(account.get("session_nonce") or "").strip()
     last_login_at = str(account.get("last_login_at") or "").strip()
     last_login_ip = str(account.get("last_login_ip") or "").strip()
-    price_alerts_enabled = 1 if bool(account.get("price_alerts_enabled", True)) else 0
-    route_tracking_enabled = 1 if bool(account.get("route_tracking_enabled", True)) else 0
+    price_alerts_enabled = bool(account.get("price_alerts_enabled", True))
+    route_tracking_enabled = bool(account.get("route_tracking_enabled", True))
     phone_number = str(account.get("phone_number") or "").strip()
     nationality = str(account.get("nationality") or "").strip()
     passport_number = str(account.get("passport_number") or "").strip()
@@ -8676,9 +8777,7 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
     linked_refs = [str(item).strip().upper() for item in (account.get("linked_booking_references") or []) if str(item).strip()]
     linked_json = json.dumps(sorted(set(linked_refs)))
     updated_at = datetime.utcnow().isoformat()
-    with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
-        conn.execute(
-            """
+    query = """
             INSERT INTO manage_booking_accounts (
                 email,
                 salt_hex,
@@ -8702,7 +8801,7 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 oauth_provider,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ({placeholders})
             ON CONFLICT(email) DO UPDATE SET
                 salt_hex = excluded.salt_hex,
                 password_hash = excluded.password_hash,
@@ -8723,8 +8822,8 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 gender = excluded.gender,
                 oauth_provider = CASE WHEN excluded.oauth_provider != '' THEN excluded.oauth_provider ELSE oauth_provider END,
                 updated_at = excluded.updated_at
-            """,
-            (
+            """
+    values = (
                 email,
                 salt_hex,
                 password_hash,
@@ -8746,9 +8845,15 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 gender,
                 oauth_provider,
                 updated_at,
-            ),
-        )
-        conn.commit()
+            )
+    if _use_postgres_account_store():
+        with _postgres_account_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query.format(placeholders=", ".join(["%s"] * len(values))), values)
+    else:
+        with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+            conn.execute(query.format(placeholders=", ".join(["?"] * len(values))), values)
+            conn.commit()
 
 
 def _generate_hotel_booking_reference() -> str:
@@ -9362,10 +9467,7 @@ def _record_booking_email_link(*, email: str, booking_reference: str, order_id: 
     _ensure_account_db()
     now_iso = datetime.utcnow().isoformat(timespec="seconds")
     with _ACCOUNT_DB_LOCK:
-        with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
-            _ensure_account_booking_email_link_table(conn)
-            conn.execute(
-                """
+        query = """
                 INSERT INTO manage_booking_email_links (
                     email,
                     booking_reference,
@@ -9373,17 +9475,24 @@ def _record_booking_email_link(*, email: str, booking_reference: str, order_id: 
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES ({placeholders})
                 ON CONFLICT(email, booking_reference) DO UPDATE SET
                     order_id = CASE
                         WHEN excluded.order_id <> '' THEN excluded.order_id
                         ELSE manage_booking_email_links.order_id
                     END,
                     updated_at = excluded.updated_at
-                """,
-                (key, ref, order, now_iso, now_iso),
-            )
-            conn.commit()
+                """
+        values = (key, ref, order, now_iso, now_iso)
+        if _use_postgres_account_store():
+            with _postgres_account_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query.format(placeholders=", ".join(["%s"] * len(values))), values)
+        else:
+            with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+                _ensure_account_booking_email_link_table(conn)
+                conn.execute(query.format(placeholders=", ".join(["?"] * len(values))), values)
+                conn.commit()
 
 
 def _booking_links_for_email(email: str) -> list[str]:
@@ -9392,19 +9501,23 @@ def _booking_links_for_email(email: str) -> list[str]:
         return []
     _ensure_account_db()
     with _ACCOUNT_DB_LOCK:
-        with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
-            conn.row_factory = sqlite3.Row
-            _ensure_account_booking_email_link_table(conn)
-            rows = conn.execute(
-                """
+        query = """
                 SELECT booking_reference
                 FROM manage_booking_email_links
-                WHERE email = ?
+                WHERE email = {placeholder}
                 ORDER BY updated_at DESC
                 LIMIT 1000
-                """,
-                (key,),
-            ).fetchall()
+                """
+        if _use_postgres_account_store():
+            with _postgres_account_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query.format(placeholder="%s"), (key,))
+                    rows = cur.fetchall()
+        else:
+            with sqlite3.connect(ACCOUNT_DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                _ensure_account_booking_email_link_table(conn)
+                rows = conn.execute(query.format(placeholder="?"), (key,)).fetchall()
     refs: list[str] = []
     seen: set[str] = set()
     for row in rows:
