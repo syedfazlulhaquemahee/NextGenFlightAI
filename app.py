@@ -104,8 +104,16 @@ VOICE_WEB_ALLOWED_ORIGINS = {
 
 BASE_DIR = os.path.dirname(__file__)
 AIRPORTS_CSV_PATH = os.getenv("NGF_AIRPORTS_CSV_PATH", os.path.join(BASE_DIR, "Data", "airports.csv")).strip() or os.path.join(BASE_DIR, "Data", "airports.csv")
-ACCOUNT_DB_PATH = os.getenv("NGF_ACCOUNTS_DB_PATH", os.path.join(BASE_DIR, "Data", "accounts.db")).strip() or os.path.join(BASE_DIR, "Data", "accounts.db")
-ANALYTICS_DB_PATH = os.getenv("NGF_ANALYTICS_DB_PATH", os.path.join(BASE_DIR, "Data", "analytics.db")).strip() or os.path.join(BASE_DIR, "Data", "analytics.db")
+# Vercel Functions mount the deployed project read-only.  Keep local Flask
+# development on the repository's Data directory, but use the one writable
+# serverless scratch directory unless a durable database path is explicitly
+# configured.  This prevents account signup/reset from crashing with
+# "unable to open database file" on a demo deployment.  /tmp is deliberately
+# only a short-term fallback: a persistent account database should override
+# NGF_ACCOUNTS_DB_PATH in production.
+_SERVERLESS_SCRATCH_DIR = "/tmp/nextgenflightai" if os.getenv("VERCEL") else os.path.join(BASE_DIR, "Data")
+ACCOUNT_DB_PATH = os.getenv("NGF_ACCOUNTS_DB_PATH", "").strip() or os.path.join(_SERVERLESS_SCRATCH_DIR, "accounts.db")
+ANALYTICS_DB_PATH = os.getenv("NGF_ANALYTICS_DB_PATH", "").strip() or os.path.join(_SERVERLESS_SCRATCH_DIR, "analytics.db")
 ANALYTICS_IP_SALT = os.getenv("NGF_ANALYTICS_IP_SALT", "nextgen-analytics-salt").strip() or "nextgen-analytics-salt"
 ANALYTICS_ENABLED = os.getenv("NGF_ANALYTICS_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 
@@ -4785,7 +4793,64 @@ def _offer_tier_features(offer: Mapping[str, Any]) -> list[str]:
     if hold_supported:
         features.append("Hold booking option available")
 
-    return _unique_preserve([item for item in features if item])[:4]
+    seen: set[str] = set()
+    unique_features: list[str] = []
+    for item in features:
+        if not item:
+            continue
+        key = item.strip().upper()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_features.append(item)
+    return unique_features[:4]
+
+def _offer_fare_rows(
+    carry_on_label: str | None,
+    checked_bag_label: str | None,
+    change_label: str | None,
+    refund_label: str | None,
+    hold_supported: bool,
+) -> list[dict[str, str]]:
+    """Structured (label, value, state) rows for the fare & baggage summary.
+
+    state drives icon/color in the UI: "positive" (green check), "negative"
+    (muted x), or "fee" (amber check — allowed, but costs something).
+    """
+    rows: list[dict[str, str]] = []
+
+    def bag_row(label: str, text: str | None) -> None:
+        if not text:
+            return
+        is_included = "includes" in text.lower()
+        rows.append({
+            "label": label,
+            "value": "Included" if is_included else "Not included",
+            "state": "positive" if is_included else "negative",
+        })
+
+    bag_row("Carry-on bag", carry_on_label)
+    bag_row("Checked bag", checked_bag_label)
+
+    def policy_row(label: str, text: str | None) -> None:
+        if not text:
+            return
+        lowered = text.lower()
+        if lowered.startswith("not "):
+            state = "negative"
+        elif "fee" in lowered:
+            state = "fee"
+        else:
+            state = "positive"
+        rows.append({"label": label, "value": text, "state": state})
+
+    policy_row("Changes", change_label)
+    policy_row("Refunds", refund_label)
+
+    if hold_supported:
+        rows.append({"label": "Hold booking", "value": "Available", "state": "positive"})
+
+    return rows
 
 def _offer_tier_summary(offer: dict[str, Any]) -> dict[str, Any]:
     total_price = _safe_float(offer.get("total_amount"))
@@ -5750,6 +5815,7 @@ def _parse_offer(offer: dict[str, Any], params: dict[str, Any], detailed: bool) 
         refund_rule = (conditions.get("refund_before_departure") or {}) if isinstance(conditions, Mapping) else {}
         change_label = _duffel_like_change_label(change_rule if isinstance(change_rule, Mapping) else None)
         refund_label = _duffel_like_refund_label(refund_rule if isinstance(refund_rule, Mapping) else None)
+        hold_ok = _offer_hold_supported(offer)
         connection_airports = _unique_preserve([*out_via_codes, *in_via_codes])
 
         return {
@@ -5800,6 +5866,13 @@ def _parse_offer(offer: dict[str, Any], params: dict[str, Any], detailed: bool) 
             "checked_bag_label": checked_bag_label,
             "change_label": change_label[0] if change_label else "",
             "refund_label": refund_label[0] if refund_label else "",
+            "fare_rows": _offer_fare_rows(
+                carry_on_label,
+                checked_bag_label,
+                change_label[0] if change_label else None,
+                refund_label[0] if refund_label else None,
+                hold_ok,
+            ),
             "fare_profile_label": _fare_profile_label_from_rules(
                 change_rule if isinstance(change_rule, Mapping) else None,
                 refund_rule if isinstance(refund_rule, Mapping) else None,
@@ -5808,7 +5881,7 @@ def _parse_offer(offer: dict[str, Any], params: dict[str, Any], detailed: bool) 
                 change_rule if isinstance(change_rule, Mapping) else None,
                 refund_rule if isinstance(refund_rule, Mapping) else None,
             ),
-            "hold_supported": _offer_hold_supported(offer),
+            "hold_supported": hold_ok,
             "connection_airports": connection_airports,
             "is_multicity": len(slice_meta) > 2,
             "_slice_meta": slice_meta,

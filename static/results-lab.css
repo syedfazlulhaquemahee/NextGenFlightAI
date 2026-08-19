@@ -1,0 +1,1258 @@
+/* ==========================================================================
+   Skairova Flight Results — "Lab" experience
+   Experimental redesign per skairova_flight_results_sonnet_build_spec.
+   Fully scoped under .results-lab-body so it can never affect the classic
+   results page. Hidden by default; body.lab-active reveals it and hides
+   the classic .wrap in its place. See templates/partials/results_lab_body.html
+   and static/results-lab.js.
+   ========================================================================== */
+
+.results-lab-body {
+  display: none;
+}
+body.lab-active .wrap {
+  display: none !important;
+}
+body.lab-active .results-lab-body {
+  display: block;
+}
+
+.results-lab-body {
+  --lab-brand: #4F6FFF;
+  --lab-brand-ink: #ffffff;
+  --lab-ink: #0B0D12;
+  --lab-muted: #5F6673;
+  --lab-bg: #F7F8FA;
+  --lab-card-bg: #ffffff;
+  --lab-border: #E4E7EC;
+  --lab-positive: #128A4C;
+  --lab-positive-bg: rgba(18, 138, 76, 0.09);
+  --lab-warning: #A56408;
+  --lab-warning-bg: rgba(165, 100, 8, 0.1);
+  --lab-danger: #B42318;
+  --lab-danger-bg: rgba(180, 35, 24, 0.08);
+  --lab-radius-card: 14px;
+  --lab-radius-ctrl: 10px;
+  --lab-shadow-hover: 0 4px 16px rgba(11, 13, 18, 0.08);
+  --lab-focus: 0 0 0 3px rgba(79, 111, 255, 0.35);
+  font-family: var(--font-ui, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  color: var(--lab-ink);
+  background: var(--lab-bg);
+  min-height: 100vh;
+}
+
+html:not([data-theme="light"]) .results-lab-body {
+  --lab-brand: #8DA0FF;
+  --lab-brand-ink: #0B0D12;
+  --lab-ink: #F3F5F8;
+  --lab-muted: #9AA3AF;
+  --lab-bg: #0B0D12;
+  --lab-card-bg: #14171F;
+  --lab-border: #262B36;
+  --lab-positive: #3ECB84;
+  --lab-positive-bg: rgba(62, 203, 132, 0.12);
+  --lab-warning: #E2A63B;
+  --lab-warning-bg: rgba(226, 166, 59, 0.12);
+  --lab-danger: #F0685D;
+  --lab-danger-bg: rgba(240, 104, 93, 0.12);
+  --lab-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.results-lab-body * {
+  box-sizing: border-box;
+}
+
+.results-lab-body a {
+  color: inherit;
+}
+
+.results-lab-body button {
+  font-family: inherit;
+}
+
+.results-lab-body .lab-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- shell ---------- */
+
+.lab-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 64px;
+}
+
+/* ---------- sticky search summary (spec 6.2) ---------- */
+
+.lab-summary {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 72px;
+  padding: 12px 24px;
+  margin: 0 -24px 20px;
+  background: var(--lab-card-bg);
+  border-bottom: 1px solid var(--lab-border);
+  flex-wrap: wrap;
+}
+
+.lab-summary-route {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.lab-summary-arrow {
+  color: var(--lab-muted);
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.lab-summary-city {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--lab-muted);
+}
+
+.lab-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--lab-muted);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.lab-summary-meta .lab-dot::before {
+  content: "\00b7";
+  margin: 0 2px;
+}
+
+.lab-summary-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: var(--lab-radius-ctrl);
+  border: 1px solid var(--lab-border);
+  background: transparent;
+  color: var(--lab-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.lab-summary-edit:hover {
+  border-color: var(--lab-brand);
+  color: var(--lab-brand);
+}
+.lab-summary-edit:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+
+/* ---------- booking progress (spec 6.3) — compact, not a wizard ---------- */
+
+.lab-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lab-muted);
+}
+.lab-progress-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.lab-progress-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--lab-border);
+  color: var(--lab-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.lab-progress-line {
+  width: 32px;
+  height: 1px;
+  background: var(--lab-border);
+}
+.lab-progress-step.is-current {
+  color: var(--lab-ink);
+}
+.lab-progress-step.is-current .lab-progress-dot {
+  border-color: var(--lab-brand);
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+}
+.lab-progress-step.is-done .lab-progress-dot {
+  border-color: var(--lab-positive);
+  color: var(--lab-positive);
+}
+
+/* ---------- pinned chosen-departure summary (shown during Return/Review) ---------- */
+
+.lab-pinned {
+  margin-bottom: 14px;
+}
+.lab-pinned-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--lab-border);
+  background: color-mix(in srgb, var(--lab-brand) 6%, var(--lab-card-bg));
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.lab-pinned-label {
+  font-weight: 700;
+  color: var(--lab-brand);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+.lab-pinned-route {
+  font-weight: 600;
+}
+.lab-pinned-meta {
+  color: var(--lab-muted);
+}
+.lab-pinned-change {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.lab-pinned-change:hover {
+  text-decoration: underline;
+}
+
+.lab-review-actions {
+  margin-top: 6px;
+}
+
+/* ---------- flexible date strip ---------- */
+/* Compact date cells, never a price (no adjacent-date pricing data exists
+   anywhere in this app) — clicking a non-selected date genuinely resubmits
+   the search rather than sitting there decoratively. */
+
+.lab-datestrip {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  height: 68px;
+  margin-bottom: 10px;
+}
+.lab-datestrip-nav {
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--lab-border);
+  border-radius: 10px;
+  background: var(--lab-card-bg);
+  color: var(--lab-muted);
+  cursor: pointer;
+}
+.lab-datestrip-nav:hover {
+  border-color: var(--lab-brand);
+  color: var(--lab-brand);
+}
+.lab-datestrip-cells {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.lab-datestrip-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--lab-border);
+  border-radius: 10px;
+  background: var(--lab-card-bg);
+  cursor: pointer;
+  font: inherit;
+  color: var(--lab-ink);
+  padding: 0;
+}
+button.lab-datestrip-cell:hover {
+  border-color: var(--lab-brand);
+}
+.lab-datestrip-cell.is-selected {
+  border-color: var(--lab-brand);
+  border-width: 1.5px;
+  cursor: default;
+}
+.lab-datestrip-cell.is-past {
+  opacity: 0.4;
+  cursor: default;
+}
+.lab-datestrip-day {
+  font-size: 11px;
+  color: var(--lab-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.lab-datestrip-cell.is-selected .lab-datestrip-day {
+  color: var(--lab-brand);
+  font-weight: 700;
+}
+.lab-datestrip-date {
+  font-size: 13px;
+  font-weight: 600;
+}
+.lab-datestrip-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--lab-brand);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- price intelligence ---------- */
+/* No forecast backend exists, so this is deliberately thin: a Track price
+   toggle and nothing else. No "Good price" / "prices may rise" claims. */
+
+.lab-price-intel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 42px;
+  padding: 0 14px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+}
+.lab-price-intel-text {
+  font-size: 12.5px;
+  color: var(--lab-muted);
+}
+.lab-price-intel-track {
+  flex-shrink: 0;
+  border: 1px solid var(--lab-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lab-brand);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.lab-price-intel-track:hover {
+  border-color: var(--lab-brand);
+}
+.lab-price-intel-track[aria-pressed="true"] {
+  background: rgba(79, 111, 255, 0.1);
+  border-color: var(--lab-brand);
+}
+
+/* ---------- comparison tabs (spec 8) ---------- */
+
+.lab-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.lab-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  height: 64px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  box-sizing: border-box;
+}
+.lab-tab:hover {
+  border-color: var(--lab-brand);
+}
+.lab-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-tab[aria-selected="true"] {
+  border-color: var(--lab-brand);
+  background: color-mix(in srgb, var(--lab-brand) 6%, var(--lab-card-bg));
+}
+.lab-tab[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lab-tab-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--lab-ink);
+}
+.lab-tab[aria-selected="true"] .lab-tab-name {
+  color: var(--lab-brand);
+}
+.lab-tab-value {
+  font-size: 12.5px;
+  color: var(--lab-muted);
+}
+
+/* ---------- quick filter row (spec 9.1) ---------- */
+
+.lab-quickrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.lab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  color: var(--lab-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lab-chip:hover {
+  border-color: var(--lab-brand);
+}
+.lab-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-chip[aria-pressed="true"] {
+  background: rgba(79, 111, 255, 0.1);
+  border-color: var(--lab-brand);
+  color: var(--lab-brand);
+}
+.lab-chip-more {
+  margin-left: auto;
+}
+
+/* ---------- layout: rail + column ---------- */
+
+.lab-layout {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.lab-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-card);
+  background: var(--lab-card-bg);
+  position: sticky;
+  top: 96px;
+  max-height: calc(100vh - 116px);
+  overflow-y: auto;
+}
+
+.lab-rail-group-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lab-muted);
+  margin-bottom: 8px;
+}
+
+.lab-rail-group {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--lab-border);
+}
+.lab-rail-group:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.lab-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 5px 0;
+  cursor: pointer;
+  color: var(--lab-ink);
+}
+.lab-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--lab-brand);
+}
+.lab-check-price {
+  margin-left: auto;
+  color: var(--lab-muted);
+  font-size: 12.5px;
+}
+.lab-check.is-disabled {
+  color: var(--lab-muted);
+  cursor: not-allowed;
+}
+.lab-check.is-disabled input {
+  accent-color: var(--lab-muted);
+}
+
+.lab-rail-note {
+  font-size: 12px;
+  color: var(--lab-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.lab-duration-slider {
+  width: 100%;
+  accent-color: var(--lab-brand);
+  margin-top: 6px;
+}
+.lab-duration-label {
+  font-size: 12.5px;
+  color: var(--lab-muted);
+  margin-top: 4px;
+}
+
+.lab-checklist {
+  display: flex;
+  flex-direction: column;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.lab-rail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lab-clear-filters {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: var(--lab-radius-ctrl);
+  border: 1px solid var(--lab-border);
+  background: transparent;
+  color: var(--lab-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lab-clear-filters:hover {
+  border-color: var(--lab-brand);
+  color: var(--lab-brand);
+}
+.lab-apply-filters {
+  /* Desktop filters already update live (spec 9.1); the explicit "Show
+     results" action only earns its place in the mobile sheet below. */
+  display: none;
+}
+
+/* ---------- results column ---------- */
+
+.lab-column {
+  min-width: 0;
+}
+
+.lab-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.lab-results-count {
+  font-size: 13.5px;
+  color: var(--lab-muted);
+}
+.lab-results-count strong {
+  color: var(--lab-ink);
+}
+.lab-updating {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--lab-muted);
+}
+.lab-updating.is-active {
+  display: inline-flex;
+}
+
+.lab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lab-empty {
+  padding: 48px 24px;
+  text-align: center;
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-card);
+  background: var(--lab-card-bg);
+}
+.lab-empty h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.lab-empty p {
+  margin: 0 0 16px;
+  color: var(--lab-muted);
+  font-size: 13.5px;
+}
+.lab-empty button {
+  padding: 9px 18px;
+  border-radius: var(--lab-radius-ctrl);
+  border: 1px solid var(--lab-brand);
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- flight result card (spec 10 — the important part) ---------- */
+/* Target collapsed height ~190-230px: tight padding, one dense main row,
+   journey-adjacent meta (baggage/stops) instead of a footer "table row",
+   and a footer that carries only the details disclosure. */
+
+.lab-card {
+  border: 1px solid var(--lab-border);
+  border-radius: var(--lab-radius-card);
+  background: var(--lab-card-bg);
+  padding: 14px 18px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.lab-card:hover {
+  border-color: color-mix(in srgb, var(--lab-brand) 40%, var(--lab-border));
+  box-shadow: var(--lab-shadow-hover);
+}
+
+.lab-card-badges {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.lab-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.lab-badge--match {
+  background: rgba(79, 111, 255, 0.12);
+  color: var(--lab-brand);
+}
+.lab-badge--rank {
+  background: var(--lab-positive-bg);
+  color: var(--lab-positive);
+}
+.lab-badge--warn {
+  background: var(--lab-warning-bg);
+  color: var(--lab-warning);
+}
+.lab-badge-why {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-left: -2px;
+  display: inline-flex;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.75;
+}
+.lab-badge-why:hover {
+  opacity: 1;
+}
+.lab-badge-why-pop {
+  position: absolute;
+  z-index: 20;
+  margin-top: 6px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  color: var(--lab-ink);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: var(--lab-shadow-hover);
+}
+
+.lab-card-main {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.lab-carrier {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.lab-carrier-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  object-fit: contain;
+  border: 1px solid var(--lab-border);
+  background: #fff;
+  flex-shrink: 0;
+}
+.lab-carrier-logo-ph {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: var(--lab-border);
+  flex-shrink: 0;
+}
+.lab-carrier-text {
+  min-width: 0;
+}
+.lab-carrier-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lab-carrier-mix {
+  display: block;
+  font-size: 11.5px;
+  color: var(--lab-muted);
+  line-height: 1.3;
+  /* Real carrier-mix copy varies in length ("Operated by X" vs longer
+     airline-specific phrasing) — wrap it rather than truncating real
+     information with an ellipsis. */
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.lab-itinerary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.lab-leg {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.lab-leg-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lab-muted);
+  grid-column: 1 / -1;
+}
+.lab-leg-point {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.lab-leg-point--end {
+  text-align: right;
+}
+.lab-leg-time {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lab-leg-iata {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lab-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.lab-leg-point--end .lab-leg-iata {
+  justify-content: flex-end;
+}
+.lab-leg-day {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--lab-muted);
+  opacity: 0.8;
+}
+.lab-leg-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 84px;
+}
+.lab-leg-duration {
+  font-size: 11px;
+  color: var(--lab-muted);
+}
+.lab-leg-line {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: var(--lab-border);
+  margin: 2px 0;
+}
+.lab-leg-line::before,
+.lab-leg-line::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lab-muted);
+  transform: translateY(-50%);
+}
+.lab-leg-line::before { left: -1px; }
+.lab-leg-line::after { right: -1px; }
+.lab-leg-stops {
+  font-size: 11px;
+  font-weight: 600;
+}
+.lab-leg-stops.is-nonstop {
+  color: var(--lab-positive);
+}
+.lab-leg-stops.is-warn {
+  color: var(--lab-warning);
+}
+
+/* Journey-adjacent attributes (spec #27): baggage/stop status live right
+   under the itinerary line, not in a detached footer row. */
+.lab-journey-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: 11.5px;
+}
+.lab-meta-item {
+  display: inline-flex;
+  align-items: center;
+  color: var(--lab-muted);
+}
+.lab-meta-item--yes { color: var(--lab-positive); font-weight: 600; }
+.lab-meta-item--warn { color: var(--lab-warning); font-weight: 600; }
+.lab-meta-item--muted { color: var(--lab-muted); }
+
+.lab-pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+  min-width: 132px;
+}
+/* Each line of the price block (amount / trip+traveler qualifier / any
+   secondary note / taxes) must be its own row unconditionally — this was
+   previously only flex-column inside the mobile media query, so at desktop
+   widths these spans just inline-wrapped together (spec #19: "a vertical
+   unit", not incidentally-wrapped text). */
+.lab-pricing-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.lab-price-caption {
+  font-size: 11.5px;
+  color: var(--lab-muted);
+}
+.lab-price-amt {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.lab-price-note {
+  display: block;
+  font-size: 11px;
+  color: var(--lab-muted);
+}
+.lab-price-cue {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lab-muted);
+}
+.lab-price-cue.is-low {
+  color: var(--lab-positive);
+}
+.lab-select-btn {
+  margin-top: 8px;
+  padding: 0 20px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: var(--lab-radius-ctrl);
+  border: none;
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+}
+.lab-select-btn:hover {
+  filter: brightness(1.06);
+}
+.lab-select-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-select-btn[aria-disabled="true"] {
+  background: var(--lab-border);
+  color: var(--lab-muted);
+  cursor: not-allowed;
+}
+
+.lab-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--lab-border);
+}
+
+.lab-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px;
+}
+.lab-details-toggle svg {
+  width: 10px;
+  height: 10px;
+  transition: transform 160ms ease;
+}
+.lab-details-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* ---------- expanded details (spec 11) ---------- */
+
+.lab-details {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--lab-border);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.lab-details[hidden] {
+  display: none;
+}
+.lab-details-leg-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lab-muted);
+  margin-bottom: 10px;
+}
+.lab-timeline {
+  display: flex;
+  flex-direction: column;
+}
+.lab-timeline-pt {
+  display: flex;
+  gap: 12px;
+}
+.lab-timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--lab-brand);
+  background: var(--lab-card-bg);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.lab-timeline-body {
+  padding-bottom: 4px;
+}
+.lab-timeline-time {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.lab-timeline-place {
+  font-size: 12.5px;
+  color: var(--lab-muted);
+}
+.lab-timeline-track {
+  width: 8px;
+  display: flex;
+  justify-content: center;
+}
+.lab-timeline-track-line {
+  width: 1px;
+  flex: 1;
+  background: var(--lab-border);
+  min-height: 28px;
+}
+.lab-timeline-row {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 12px;
+}
+.lab-timeline-layover {
+  font-size: 12.5px;
+  color: var(--lab-warning);
+  background: var(--lab-warning-bg);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 4px 0;
+  display: inline-block;
+}
+
+/* ---------- stop / transfer warnings (spec 10.5) ---------- */
+
+.lab-risk-note {
+  font-size: 12.5px;
+  color: var(--lab-warning);
+  background: var(--lab-warning-bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 4px;
+}
+
+/* ---------- mobile filter sheet (spec 15) ---------- */
+
+.lab-mobile-topbar {
+  display: none;
+}
+
+.lab-sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .lab-shell {
+    padding: 0 16px 48px;
+  }
+  .lab-summary {
+    margin: 0 -16px 16px;
+    padding: 12px 16px;
+  }
+  .lab-tabs {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .lab-layout {
+    grid-template-columns: 1fr;
+  }
+  .lab-rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: 12%;
+    z-index: 60;
+    border-radius: 18px 18px 0 0;
+    max-height: 88vh;
+    transform: translateY(100%);
+    transition: transform 220ms ease;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
+  }
+  .lab-rail.is-open {
+    transform: translateY(0);
+  }
+  .lab-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 13, 18, 0.45);
+    z-index: 55;
+  }
+  .lab-sheet-backdrop.is-open {
+    display: block;
+  }
+  .lab-rail-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--lab-card-bg);
+    padding-top: 10px;
+  }
+  .lab-rail-actions .lab-apply-filters {
+    display: block;
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--lab-radius-ctrl);
+    border: none;
+    background: var(--lab-brand);
+    color: var(--lab-brand-ink);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 720px) {
+  .lab-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .lab-tab {
+    padding: 0 8px;
+  }
+  .lab-tab-name,
+  .lab-tab-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lab-card-main {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .lab-carrier {
+    order: 1;
+  }
+  .lab-itinerary {
+    order: 2;
+  }
+  .lab-pricing {
+    order: 3;
+    align-items: stretch;
+    text-align: left;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+  }
+  .lab-pricing-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lab-select-btn {
+    margin-top: 0;
+  }
+  .lab-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lab-leg-time {
+    font-size: 18px;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .results-lab-body * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ---------- [hidden] overrides ---------- */
+/* The HTML `hidden` attribute only maps to `display:none` via the browser's
+   default stylesheet, which loses to any author rule that also sets
+   `display` on the same element (e.g. `.lab-tabs{display:grid}` beats the
+   UA's `[hidden]{display:none}` on specificity). Every element the JS
+   toggles via `.hidden = true/false` needs an explicit override here or it
+   silently stays visible — this bit the Review step, which sets
+   tabsWrap/quickRow/layoutEl hidden but they kept rendering underneath. */
+.lab-tabs[hidden],
+.lab-quickrow[hidden],
+.lab-layout[hidden],
+.lab-rail[hidden],
+.lab-results-header[hidden],
+.lab-progress[hidden],
+.lab-datestrip[hidden] {
+  display: none;
+}
+
+/* Review step: rail is hidden but #labList (the review card) is a sibling
+   inside the same .lab-layout grid, so collapse to one column instead of
+   leaving the rail's 252px track as dead space. */
+.lab-layout--single {
+  grid-template-columns: 1fr;
+}
+
+/* ---------- focus/skeleton ---------- */
+.results-lab-body :focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+
+.lab-skeleton-card {
+  height: 132px;
+  border-radius: var(--lab-radius-card);
+  border: 1px solid var(--lab-border);
+  background: linear-gradient(
+    100deg,
+    var(--lab-card-bg) 30%,
+    var(--lab-bg) 50%,
+    var(--lab-card-bg) 70%
+  );
+  background-size: 200% 100%;
+  animation: lab-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes lab-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}

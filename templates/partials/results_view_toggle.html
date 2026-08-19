@@ -1,0 +1,63 @@
+{# Floating switcher between the classic results page and the experimental
+   "Lab" redesign. Purely additive: reads/writes a `resultsView` cookie and
+   toggles a class on <body>. No page reload, no route change, no effect on
+   classic markup/scripts (they keep running against still-present DOM). #}
+{% if not manual_flow and not flex_streaming and not search_pending %}
+<button type="button" id="labViewToggle" class="lab-view-toggle" aria-pressed="{{ 'true' if lab_view else 'false' }}">
+  <span class="lab-view-toggle-to-lab">✦ Try the new results design</span>
+  <span class="lab-view-toggle-to-classic">← Back to classic results</span>
+</button>
+<style>
+  .lab-view-toggle {
+    /* Bottom-left, not bottom-right: the site's AI-assistant chat bubble
+       lives at bottom:24px/right:24px with z-index:9999 and would
+       otherwise sit directly on top of this button. */
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 200;
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(79, 111, 255, 0.35);
+    background: #4F6FFF;
+    color: #fff;
+    font: 600 13px/1 var(--font-ui, "Inter", sans-serif);
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(79, 111, 255, 0.35);
+  }
+  .lab-view-toggle:hover { filter: brightness(1.05); }
+  .lab-view-toggle .lab-view-toggle-to-classic { display: none; }
+  body.lab-active .lab-view-toggle {
+    background: #14171f;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  body.lab-active .lab-view-toggle .lab-view-toggle-to-lab { display: none; }
+  body.lab-active .lab-view-toggle .lab-view-toggle-to-classic { display: inline; }
+  @media (max-width: 640px) {
+    .lab-view-toggle { left: 12px; bottom: 12px; padding: 10px 14px; font-size: 12.5px; }
+  }
+</style>
+<script>
+  (function () {
+    var btn = document.getElementById("labViewToggle");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var goingToLab = !document.body.classList.contains("lab-active");
+      document.body.classList.toggle("lab-active", goingToLab);
+      btn.setAttribute("aria-pressed", String(goingToLab));
+      try {
+        document.cookie =
+          "resultsView=" + (goingToLab ? "lab" : "classic") +
+          ";path=/;max-age=" + 60 * 60 * 24 * 180 + ";SameSite=Lax";
+      } catch (e) {}
+      if (goingToLab) {
+        window.dispatchEvent(new CustomEvent("skair:lab-activated"));
+        btn.scrollIntoView({ block: "nearest" });
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+    });
+  })();
+</script>
+{% endif %}

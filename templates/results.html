@@ -25,14 +25,15 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-results-calendar') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260818-trip-cta-spacing') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260514-slim2') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260819-route-timeline') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='results-lab.css', v='20260818-1') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260818-typography-hierarchy') }}" />
   {% if flex_streaming or search_pending %}
   <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
   {% endif %}
   {% include "partials/flights_parity_head.html" %}
 </head>
-<body class="results-page{% if flex_streaming or search_pending %} flex-stream-results{% endif %}">
+<body class="results-page{% if flex_streaming or search_pending %} flex-stream-results{% endif %}{% if request.cookies.get('resultsView') == 'lab' %} lab-active{% endif %}">
   {% macro results_icon(name, class_name='') -%}
     {% if name == 'search' %}
       <svg class="results-svg-icon {{ class_name }}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -89,7 +90,10 @@
     {% endfor %}
   </form>
   {% endif %}
+  {% set fc_dtl_id_ns = namespace(n=0) %}
   {% macro flight_card(f, featured=False, rank=1, action=None, price_caption='Total price', price_note=None, price_badge=None, show_booking=True, best_price=None, best_duration=None, endpoint_airport_mode='outbound') %}
+    {% set fc_dtl_id_ns.n = fc_dtl_id_ns.n + 1 %}
+    {% set fc_details_id = "fcDetails" ~ fc_dtl_id_ns.n %}
     {% set tiers = f.tiers | default([]) %}
     {% set has_tier_picker = false %}
     {% set selected_tier = tiers[0] if tiers else None %}
@@ -259,7 +263,7 @@
             {% elif show_booking %}
               <span class="btn fc-book booking-unavailable" aria-disabled="true">Unavailable</span>
             {% endif %}
-            <button type="button" class="fc-dtl-btn" aria-expanded="false">
+            <button type="button" class="fc-dtl-btn" aria-expanded="false" data-details-target="{{ fc_details_id }}">
               Details
               <svg class="fc-dtl-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -299,67 +303,150 @@
       </section>
       {% endif %}
 
-      <div class="fc-details" hidden>
+      <div class="fc-details" id="{{ fc_details_id }}" hidden role="dialog" aria-modal="true" aria-label="Full flight details">
         <div class="fc-details-inner">
-          {% for seg in f.segments_ui %}
-            <div class="fc-dtl-seg">
-              <div class="fc-dtl-seg-head">
-                {% if f.segments_ui|length > 1 %}<span class="fc-dtl-dir">{{ seg.label }}</span>{% endif %}
-                <div class="fc-dtl-airline">
-                  {% if seg.airline_logo_url %}<img class="fc-dtl-alogo" src="{{ seg.airline_logo_url }}" alt="" width="16" height="16" loading="lazy" />{% endif %}
-                  <span>{{ seg.airline }}</span>
-                </div>
-                {% if seg.airline_note %}
-                  <span class="fc-chip">{{ seg.airline_note }}</span>
-                {% endif %}
-                <div class="fc-dtl-chips">
-                  <span class="fc-chip fc-chip--time">{{ seg.time_chip }}</span>
-                  <span class="fc-chip{{ ' fc-chip--good' if seg.stops_label|lower == 'nonstop' else (' fc-chip--warn' if seg.layovers|length > 1 else '') }}">{{ seg.stops_label }}</span>
-                  {% if seg.stops_label|lower != 'nonstop' %}<span class="fc-chip">{{ seg.route_chip }}</span>{% endif %}
-                </div>
+          <div class="fc-dtl-grabber" aria-hidden="true"></div>
+          <div class="fc-dtl-modal-head">
+            <div class="fc-dtl-modal-head-main">
+              {% if f.airline_logo_url %}
+                <img class="fc-dtl-modal-logo" src="{{ f.airline_logo_url }}" alt="" width="30" height="30" loading="lazy" />
+              {% endif %}
+              <div class="fc-dtl-modal-head-text">
+                <div class="fc-dtl-modal-title">{{ f.airline_summary }}</div>
+                <div class="fc-dtl-modal-sub">{{ primary_price_label }}{% if not price_badge %} total{% if pax > 1 %} for {{ pax }} travelers{% endif %}{% endif %}</div>
               </div>
-              <div class="fc-dtl-timeline">
-                <div class="fc-dtl-pt">
-                  <div class="fc-dtl-time">{{ seg.depart_time }}</div>
-                  <div class="fc-dtl-day">{{ seg.depart_day }}</div>
-                  <div class="fc-dtl-apt">
-                    <span class="fc-dtl-iata">{{ seg.origin }}</span>
-                    {% if seg.origin_name %}<span class="fc-dtl-apt-name">{{ seg.origin_name }}</span>{% endif %}
+            </div>
+            <button type="button" class="fc-dtl-close" aria-label="Close flight details">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="fc-dtl-trip-meta">
+            <span>{{ 'Nonstop' if total_stops == 0 else (total_stops|string ~ ' stop' ~ ('s' if total_stops != 1 else '')) }}</span>
+            <span class="fc-dtl-trip-meta-dot" aria-hidden="true"></span>
+            <span>{{ minutes_to_hm(total_duration) }} total</span>
+          </div>
+
+          {% for seg in f.segments_ui %}
+            <div class="fc-dtl-phase">
+              {% if f.segments_ui|length > 1 %}
+              <div class="fc-dtl-phase-marker" aria-hidden="true">
+                <span class="fc-dtl-phase-num">{{ loop.index }}</span>
+                {% if not loop.last %}<span class="fc-dtl-phase-line"></span>{% endif %}
+              </div>
+              {% endif %}
+              <div class="fc-dtl-seg">
+                <div class="fc-dtl-seg-head">
+                  {% if f.segments_ui|length > 1 %}<span class="fc-dtl-dir">{{ seg.label }}</span>{% endif %}
+                  <div class="fc-dtl-airline">
+                    {% if seg.airline_logo_url %}<img class="fc-dtl-alogo" src="{{ seg.airline_logo_url }}" alt="" width="16" height="16" loading="lazy" />{% endif %}
+                    <span>{{ seg.airline }}</span>
+                  </div>
+                  {% if seg.airline_note %}
+                    <span class="fc-chip">{{ seg.airline_note }}</span>
+                  {% endif %}
+                  <div class="fc-dtl-chips">
+                    <span class="fc-chip fc-chip--time">{{ seg.time_chip }}</span>
+                    <span class="fc-chip{{ ' fc-chip--good' if seg.stops_label|lower == 'nonstop' else (' fc-chip--warn' if seg.layovers|length > 1 else '') }}">{{ seg.stops_label }}</span>
+                    {% if seg.stops_label|lower != 'nonstop' %}<span class="fc-chip">{{ seg.route_chip }}</span>{% endif %}
                   </div>
                 </div>
-                <div class="fc-dtl-track">
-                  <div class="fc-dtl-dur">{{ seg.duration }}</div>
-                  <div class="fc-dtl-line{{ ' is-nonstop' if not seg.layovers else '' }}"></div>
-                  {% if seg.layovers %}
-                    <div class="fc-dtl-lays">
-                      {% for lay in seg.layovers %}
-                        <div class="fc-dtl-lay">
-                          <span class="fc-dtl-lay-code">{{ lay.code }}</span>
-                          <span class="fc-dtl-lay-info">{{ lay.name }} · {{ lay.duration_label }}</span>
-                          {% if lay.quality_label %}<span class="fc-dtl-lay-q">{{ lay.quality_label }}</span>{% endif %}
-                        </div>
-                      {% endfor %}
+                <div class="fc-dtl-route">
+                  <div class="fc-dtl-node">
+                    <div class="fc-dtl-node-rail"><span class="fc-dtl-node-dot"></span><span class="fc-dtl-node-stem"></span></div>
+                    <div class="fc-dtl-node-content">
+                      <div class="fc-dtl-time">{{ seg.depart_time }}</div>
+                      <div class="fc-dtl-node-place"><span class="fc-dtl-iata">{{ seg.origin }}</span>{% if seg.origin_name %} · <span class="fc-dtl-apt-name">{{ seg.origin_name }}</span>{% endif %}</div>
+                      <div class="fc-dtl-day">{{ seg.depart_day }}</div>
                     </div>
+                  </div>
+
+                  <div class="fc-dtl-node fc-dtl-node--connector">
+                    <div class="fc-dtl-node-rail"><span class="fc-dtl-node-stem"></span></div>
+                    <div class="fc-dtl-node-content fc-dtl-connector-content">
+                      <span class="fc-dtl-dur">{{ seg.duration }}</span>
+                      <span class="fc-dtl-connector-tag{{ ' is-nonstop' if not seg.layovers else '' }}">{{ seg.stops_label }}</span>
+                    </div>
+                  </div>
+
+                  {% for lay in seg.layovers %}
+                  <div class="fc-dtl-node fc-dtl-node--stop">
+                    <div class="fc-dtl-node-rail"><span class="fc-dtl-node-dot fc-dtl-node-dot--stop"></span><span class="fc-dtl-node-stem"></span></div>
+                    <div class="fc-dtl-node-content">
+                      <div class="fc-dtl-lay-info">
+                        <span class="fc-dtl-lay-code">{{ lay.code }}</span>
+                        <span>{{ lay.name }} · {{ lay.duration_label }} layover{% if lay.overnight %} · Overnight{% endif %}</span>
+                      </div>
+                      {% if lay.quality_label %}<span class="fc-dtl-lay-q fc-dtl-lay-q--tone-{{ lay.tone }}">{{ lay.quality_label }}</span>{% endif %}
+                    </div>
+                  </div>
+                  {% if not loop.last %}
+                  <div class="fc-dtl-node fc-dtl-node--connector fc-dtl-node--connector-sm">
+                    <div class="fc-dtl-node-rail"><span class="fc-dtl-node-stem"></span></div>
+                    <div class="fc-dtl-node-content"></div>
+                  </div>
                   {% endif %}
-                </div>
-                <div class="fc-dtl-pt fc-dtl-pt--end">
-                  <div class="fc-dtl-time">{{ seg.arrive_time }}</div>
-                  <div class="fc-dtl-day">{{ seg.arrive_day }}</div>
-                  <div class="fc-dtl-apt">
-                    <span class="fc-dtl-iata">{{ seg.destination }}</span>
-                    {% if seg.destination_name %}<span class="fc-dtl-apt-name">{{ seg.destination_name }}</span>{% endif %}
+                  {% endfor %}
+
+                  <div class="fc-dtl-node fc-dtl-node--end">
+                    <div class="fc-dtl-node-rail"><span class="fc-dtl-node-dot"></span></div>
+                    <div class="fc-dtl-node-content">
+                      <div class="fc-dtl-time">{{ seg.arrive_time }}</div>
+                      <div class="fc-dtl-node-place"><span class="fc-dtl-iata">{{ seg.destination }}</span>{% if seg.destination_name %} · <span class="fc-dtl-apt-name">{{ seg.destination_name }}</span>{% endif %}</div>
+                      <div class="fc-dtl-day">{{ seg.arrive_day }}</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            {% if not loop.last %}<div class="fc-dtl-sep"></div>{% endif %}
           {% endfor %}
+
+          {% if f.cabin_label or f.fare_brand or f.fare_rows %}
+          <div class="fc-dtl-fare">
+            <div class="fc-dtl-fare-head">Fare &amp; baggage</div>
+            {% if f.cabin_label or f.fare_brand or f.airline_mix_label %}
+            <div class="fc-dtl-fare-tags">
+              {% if f.cabin_label %}<span class="fc-chip">{{ f.cabin_label }}</span>{% endif %}
+              {% if f.fare_brand and f.fare_brand != f.cabin_label %}<span class="fc-chip">{{ f.fare_brand }}</span>{% endif %}
+              {% if f.airline_mix_label and f.airline_mix_label not in ['Single-airline itinerary', 'Same airline both ways'] %}<span class="fc-chip">{{ f.airline_mix_label }}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if f.fare_rows %}
+            <div class="fc-dtl-fare-grid">
+              {% for row in f.fare_rows %}
+              <div class="fc-dtl-fare-row is-{{ row.state }}">
+                <span class="fc-dtl-fare-icon" aria-hidden="true">
+                  {% if row.state == 'negative' %}
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/></svg>
+                  {% else %}
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.36-9.78a.75.75 0 00-1.22-.87l-2.62 3.67-1.28-1.28a.75.75 0 00-1.06 1.06l1.9 1.9a.75.75 0 001.14-.09l3.14-4.4z" clip-rule="evenodd"/></svg>
+                  {% endif %}
+                </span>
+                <span class="fc-dtl-fare-label">{{ row.label }}</span>
+                <span class="fc-dtl-fare-value">{{ row.value }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
       </div>
     </article>
   {% endmacro %}
 
   {% include "partials/platform_header.html" %}
+
+  <div class="fc-modal-backdrop" id="fcModalBackdrop" hidden></div>
+
+  {# ── Experimental "Lab" results redesign: additive only, renders from the
+       same query/flights/error context as the classic markup below and does
+       not modify it. Hidden by CSS unless body.lab-active; toggled by the
+       floating switcher. See templates/partials/results_lab_body.html. ── #}
+  {% include "partials/results_view_toggle.html" %}
+  {% if not manual_flow and not flex_streaming and not search_pending %}
+    {% include "partials/results_lab_body.html" %}
+  {% endif %}
 
   <main class="wrap">
     {% set requested_trip_type = query.get('trip_type') %}
@@ -2678,21 +2765,62 @@
     </script>
   <script>
     (function () {
+      var backdrop = document.getElementById("fcModalBackdrop");
+      var openPanel = null;
+      var openBtn = null;
+      var openCard = null;
+
+      function closeDetails() {
+        if (!openPanel) return;
+        openPanel.setAttribute("hidden", "");
+        openPanel.classList.remove("fc-modal-active");
+        if (openCard) openCard.classList.remove("fc-expanded");
+        if (openBtn) openBtn.setAttribute("aria-expanded", "false");
+        if (backdrop) { backdrop.classList.remove("is-open"); backdrop.setAttribute("hidden", ""); }
+        document.body.classList.remove("fc-modal-open");
+        if (openBtn) openBtn.focus({ preventScroll: true });
+        openPanel = null;
+        openBtn = null;
+        openCard = null;
+      }
+
+      function openDetails(btn, panel) {
+        if (openPanel && openPanel !== panel) closeDetails();
+        var card = btn.closest(".flight-card");
+        // .flight-card has backdrop-filter, which establishes a new containing
+        // block for fixed-position descendants — reparent to <body> so the
+        // modal positions/escapes clipping relative to the viewport instead.
+        document.body.appendChild(panel);
+        panel.removeAttribute("hidden");
+        panel.classList.add("fc-modal-active");
+        panel.scrollTop = 0;
+        if (card) card.classList.add("fc-expanded");
+        btn.setAttribute("aria-expanded", "true");
+        if (backdrop) { backdrop.removeAttribute("hidden"); requestAnimationFrame(function () { backdrop.classList.add("is-open"); }); }
+        document.body.classList.add("fc-modal-open");
+        openPanel = panel;
+        openBtn = btn;
+        openCard = card;
+        var closeBtn = panel.querySelector(".fc-dtl-close");
+        if (closeBtn) closeBtn.focus({ preventScroll: true });
+      }
+
       document.addEventListener("click", function (e) {
         var btn = e.target.closest(".fc-dtl-btn");
-        if (!btn) return;
-        var card = btn.closest(".flight-card");
-        var panel = card && card.querySelector(".fc-details");
-        if (!panel) return;
-        var open = btn.getAttribute("aria-expanded") === "true";
-        btn.setAttribute("aria-expanded", open ? "false" : "true");
-        if (open) {
-          panel.setAttribute("hidden", "");
-          card.classList.remove("fc-expanded");
-        } else {
-          panel.removeAttribute("hidden");
-          card.classList.add("fc-expanded");
+        if (btn) {
+          var targetId = btn.getAttribute("data-details-target");
+          var panel = targetId && document.getElementById(targetId);
+          if (!panel) return;
+          var isOpen = btn.getAttribute("aria-expanded") === "true";
+          if (isOpen) { closeDetails(); } else { openDetails(btn, panel); }
+          return;
         }
+        if (e.target.closest(".fc-dtl-close")) { closeDetails(); return; }
+        if (e.target === backdrop) { closeDetails(); return; }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && openPanel) closeDetails();
       });
     })();
   </script>

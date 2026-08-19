@@ -90,8 +90,8 @@
 }
 
 .ai-insight-label {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #a5b4fc;
@@ -119,21 +119,21 @@
   align-items: center;
   gap: 8px;
   color: rgba(255,255,255,0.38);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 400;
 }
 .ai-insight-headline {
   display: block;
-  font-size: 13.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: rgba(255,255,255,0.92);
-  line-height: 1.5;
+  line-height: 1.4;
   margin-bottom: 5px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 .ai-insight-detail {
   display: block;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 400;
   color: rgba(255,255,255,0.48);
   line-height: 1.55;

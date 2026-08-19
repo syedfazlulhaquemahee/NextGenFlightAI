@@ -1,0 +1,309 @@
+{# ==========================================================================
+   Skairova Flight Results — "Lab" experience (experimental redesign, v2)
+
+   Renders from the exact same `flights` / `query` context as the classic
+   results.html — no separate route, no separate data fetch. This file only
+   emits a compact JSON payload + empty containers; static/results-lab.js
+   owns all card rendering, the departure/return/review staging, tabs and
+   filters. Moving rendering to JS is what makes the staged round-trip flow
+   possible without touching the search backend: departure and return
+   "steps" are just client-side groupings of the same bundled round-trip
+   `flights` list Duffel already returned.
+
+   Scope for this pass: the standard search-results flow only (a plain
+   `flights` list). Manual outbound/return pairing and the AI flex-date
+   streaming flow are intentionally left to the classic page — the toggle
+   itself is hidden for those flows (see results_view_toggle.html).
+
+   Deliberately deferred vs. the full build spec, because the app has no
+   reliable backing data for them yet:
+     - Flexible-date price strip (no adjacent-date live pricing API)
+     - Price intelligence / "prices may rise" (no forecast model)
+     - Repricing modal on Select (no client-reachable revalidation endpoint;
+       Select still goes through the existing checkout flow unchanged)
+   ========================================================================== #}
+{% set trip_mode = (query.get('trip_type') if query.get('trip_type') in ['roundtrip', 'oneway'] else ('roundtrip' if query.get('return_date') else 'oneway')) %}
+{% set passenger_count = query.get('passengers', 1) %}
+{% set cabin_label = query.get('cabin', 'ECONOMY').replace('_', ' ')|title %}
+{% set trip_intent_active = trip_intent and trip_intent.wants_hotel %}
+
+{% set lab_flights_data = [] %}
+{% for f in flights %}
+  {% set tiers = f.tiers | default([]) %}
+  {% set selected_tier = tiers[0] if tiers else None %}
+  {% set price_label = selected_tier.price_label if (selected_tier and selected_tier.price_label) else ('$' ~ '%.2f'|format(f.price or 0)) %}
+  {% set effective_offer_id = selected_tier.offer_id if (selected_tier and selected_tier.offer_id) else f.offer_id %}
+  {% set checkout_url = url_for('trip_select_flight', offer_id=effective_offer_id) if (effective_offer_id and trip_intent_active) else (url_for('checkout_offer', offer_id=effective_offer_id) if effective_offer_id else None) %}
+  {% set total_duration = f.total_duration_min if f.total_duration_min is defined else ((f.out_duration_min or 0) + (f.in_duration_min or 0)) %}
+  {% set total_stops = f.total_stop_count if f.total_stop_count is defined else ((f.out_stops or 0) + (f.in_stops or 0)) %}
+  {% set out_seg = f.segments_ui[0] if (f.segments_ui and f.segments_ui|length > 0) else None %}
+  {% set ret_seg = f.segments_ui[1] if (f.segments_ui and f.segments_ui|length > 1) else None %}
+
+  {% set out_layovers = [] %}
+  {% if out_seg %}
+    {% for lay in (out_seg.layovers or []) %}
+      {% set _ = out_layovers.append({'code': lay.code or '', 'name': lay.name or '', 'durationLabel': lay.duration_label or ''}) %}
+    {% endfor %}
+  {% endif %}
+  {% set ret_layovers = [] %}
+  {% if ret_seg %}
+    {% for lay in (ret_seg.layovers or []) %}
+      {% set _ = ret_layovers.append({'code': lay.code or '', 'name': lay.name or '', 'durationLabel': lay.duration_label or ''}) %}
+    {% endfor %}
+  {% endif %}
+
+  {% set _ = lab_flights_data.append({
+      'id': f.offer_id or ('idx-' ~ loop.index0),
+      'checkoutUrl': checkout_url,
+      'tripCombo': trip_intent_active,
+      'price': f.price or 0,
+      'priceLabel': price_label,
+      'pax': [(f.passenger_count | default(passenger_count, true)) | int, 1] | max,
+      'badge': f.smart_badge or None,
+      'badgeReasoning': f.badge_reasoning or None,
+      'metricBest': f.metric_is_best or False,
+      'metricCheapest': f.metric_is_cheapest or False,
+      'metricFastest': f.metric_is_fastest or False,
+      'priceVsCheapest': f.price_vs_cheapest or 0,
+      'totalDurationMin': total_duration,
+      'totalStops': total_stops,
+      'airlineName': f.airline_summary or '',
+      'airlineLogoUrl': f.airline_logo_url or '',
+      'airlineMix': f.airline_mix_label or '',
+      'out': ({
+          'label': out_seg.label or 'Departure',
+          'originCode': out_seg.origin or '',
+          'originName': out_seg.origin_name or '',
+          'destCode': out_seg.destination or '',
+          'destName': out_seg.destination_name or '',
+          'departTime': out_seg.depart_time or '',
+          'departDay': out_seg.depart_day or '',
+          'departIso': f.out_depart_at or f.first_depart_at or '',
+          'arriveTime': out_seg.arrive_time or '',
+          'arriveDay': out_seg.arrive_day or '',
+          'arriveIso': f.out_arrive_at or '',
+          'durationLabel': out_seg.duration or '',
+          'durationMin': f.out_duration_min if f.out_duration_min is defined else total_duration,
+          'stops': f.out_stops if f.out_stops is defined else 0,
+          'stopsLabel': out_seg.stops_label or '',
+          'layovers': out_layovers,
+      }) if out_seg else None,
+      'ret': ({
+          'label': ret_seg.label or 'Return',
+          'originCode': ret_seg.origin or '',
+          'originName': ret_seg.origin_name or '',
+          'destCode': ret_seg.destination or '',
+          'destName': ret_seg.destination_name or '',
+          'departTime': ret_seg.depart_time or '',
+          'departDay': ret_seg.depart_day or '',
+          'departIso': f.in_depart_at or '',
+          'arriveTime': ret_seg.arrive_time or '',
+          'arriveDay': ret_seg.arrive_day or '',
+          'arriveIso': f.in_arrive_at or f.final_arrive_at or '',
+          'durationLabel': ret_seg.duration or '',
+          'durationMin': f.in_duration_min if f.in_duration_min is defined else 0,
+          'stops': f.in_stops if f.in_stops is defined else 0,
+          'stopsLabel': ret_seg.stops_label or '',
+          'layovers': ret_layovers,
+      }) if ret_seg else None,
+  }) %}
+{% endfor %}
+
+{% set lab_payload = {
+    'tripMode': trip_mode,
+    'flights': lab_flights_data,
+    'query': {
+        'origin': (query.get('origin') or '')|upper,
+        'destination': (query.get('destination') or '')|upper,
+        'originCity': airport_header_label_local(query.get('origin')) if query.get('origin') else '',
+        'destinationCity': airport_header_label_local(query.get('destination')) if query.get('destination') else '',
+        'dateLabel': ((query.depart_date|format_date) ~ (' – ' ~ (query.return_date|format_date)) if query.get('return_date') else '') if query.get('depart_date') else 'Any dates',
+        'passengers': passenger_count,
+        'cabinLabel': cabin_label,
+    },
+    'searchForm': {
+        'searchUrl': url_for('search'),
+        'originRaw': query.get('origin') or '',
+        'destinationRaw': query.get('destination') or '',
+        'tripTypeRaw': trip_mode,
+        'passengersRaw': query.get('passengers') or 1,
+        'cabinRaw': query.get('cabin') or 'ECONOMY',
+        'nonstopRaw': True if query.get('nonstop') else False,
+        'departDateRaw': query.get('depart_date') or '',
+        'returnDateRaw': query.get('return_date') or '',
+    },
+} %}
+
+<div class="results-lab-body" id="resultsLabBody">
+  <div class="lab-shell">
+
+    <header class="lab-summary">
+      <div>
+        <div class="lab-summary-route">
+          <span>{{ (query.get('origin') or '')|upper }}</span>
+          <span class="lab-summary-arrow" aria-hidden="true">{{ '⇄' if trip_mode == 'roundtrip' else '→' }}</span>
+          <span>{{ (query.get('destination') or '')|upper }}</span>
+        </div>
+        <div class="lab-summary-meta">
+          {% if query.get('origin') and query.get('destination') %}
+            <span class="lab-summary-city">{{ airport_header_label_local(query.get('origin')) }} {{ '⇄' if trip_mode == 'roundtrip' else '→' }} {{ airport_header_label_local(query.get('destination')) }}</span>
+            <span class="lab-dot"></span>
+          {% endif %}
+          <span>
+            {% if query.get('depart_date') %}
+              {{ query.depart_date|format_date }}{% if query.return_date %} – {{ query.return_date|format_date }}{% endif %}
+            {% else %}Any dates{% endif %}
+          </span>
+          <span class="lab-dot"></span>
+          <span>{{ passenger_count }} traveler{{ '' if passenger_count == 1 else 's' }} &middot; {{ cabin_label }}</span>
+        </div>
+      </div>
+      <button type="button" class="lab-summary-edit" id="labEditSearch">Edit search</button>
+    </header>
+
+    {% if error %}
+      <div class="lab-empty">
+        <h3>Need another option</h3>
+        <p>{{ error }}</p>
+      </div>
+    {% elif not flights %}
+      <div class="lab-empty">
+        <h3>No flights found for these dates</h3>
+        <p>Try different dates, nearby airports, or fewer constraints.</p>
+      </div>
+    {% else %}
+
+      <nav class="lab-progress" id="labProgress" hidden aria-label="Booking progress">
+        <span class="lab-progress-step" data-lab-step="departure" aria-current="step">
+          <span class="lab-progress-dot">1</span> Departure
+        </span>
+        <span class="lab-progress-line"></span>
+        <span class="lab-progress-step" data-lab-step="return">
+          <span class="lab-progress-dot">2</span> Return
+        </span>
+        <span class="lab-progress-line"></span>
+        <span class="lab-progress-step" data-lab-step="review">
+          <span class="lab-progress-dot">3</span> Review
+        </span>
+      </nav>
+
+      <div class="lab-pinned" id="labPinnedDeparture" hidden></div>
+
+      {% if query.get('depart_date') and not manual_flow %}
+      <div class="lab-datestrip" id="labDateStrip" aria-label="Nearby dates">
+        <button type="button" class="lab-datestrip-nav" id="labDateStripPrev" aria-label="Earlier dates">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="lab-datestrip-cells" id="labDateStripCells"></div>
+        <button type="button" class="lab-datestrip-nav" id="labDateStripNext" aria-label="Later dates">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <div class="lab-price-intel" id="labPriceIntel">
+        <span class="lab-price-intel-text" id="labPriceIntelText">Track this route to catch price changes.</span>
+        <button type="button" class="lab-price-intel-track" id="labTrackPrice" aria-pressed="false">Track price</button>
+      </div>
+      {% endif %}
+
+      <div class="lab-tabs" role="tablist" aria-label="Compare flights">
+        <button type="button" class="lab-tab" role="tab" data-lab-tab="best" aria-selected="true">
+          <span class="lab-tab-name">Best</span>
+          <span class="lab-tab-value" data-lab-tab-value="best">&nbsp;</span>
+        </button>
+        <button type="button" class="lab-tab" role="tab" data-lab-tab="cheapest" aria-selected="false">
+          <span class="lab-tab-name">Cheapest</span>
+          <span class="lab-tab-value" data-lab-tab-value="cheapest">&nbsp;</span>
+        </button>
+        <button type="button" class="lab-tab" role="tab" data-lab-tab="fastest" aria-selected="false">
+          <span class="lab-tab-name">Fastest</span>
+          <span class="lab-tab-value" data-lab-tab-value="fastest">&nbsp;</span>
+        </button>
+        <button type="button" class="lab-tab" role="tab" data-lab-tab="direct" aria-selected="false">
+          <span class="lab-tab-name">Direct</span>
+          <span class="lab-tab-value" data-lab-tab-value="direct">&nbsp;</span>
+        </button>
+      </div>
+
+      <div class="lab-quickrow">
+        <button type="button" class="lab-chip" data-lab-quick="nonstop" aria-pressed="false">Nonstop</button>
+        <button type="button" class="lab-chip" data-lab-quick="stop1" aria-pressed="false">1 stop or fewer</button>
+        <button type="button" class="lab-chip" data-lab-open-rail="times">Times</button>
+        <button type="button" class="lab-chip" data-lab-open-rail="airlines">Airlines</button>
+        <button type="button" class="lab-chip" data-lab-open-rail="price">Price</button>
+        <button type="button" class="lab-chip lab-chip-more" data-lab-open-rail="more">More filters</button>
+      </div>
+
+      <div class="lab-sheet-backdrop" id="labSheetBackdrop"></div>
+
+      <div class="lab-layout">
+        <aside class="lab-rail" id="labRail" aria-label="Flight filters">
+          <div class="lab-rail-group" data-lab-rail-section="stops">
+            <div class="lab-rail-group-title">Stops</div>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-stop="0" /> Nonstop <span class="lab-check-price" data-lab-price-for-stop="0"></span></label>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-stop="1" /> 1 stop <span class="lab-check-price" data-lab-price-for-stop="1"></span></label>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-stop="2" /> 2+ stops <span class="lab-check-price" data-lab-price-for-stop="2"></span></label>
+          </div>
+
+          <div class="lab-rail-group">
+            <div class="lab-rail-group-title">Bags</div>
+            <label class="lab-check is-disabled"><input type="checkbox" disabled /> Not available until you pick a fare</label>
+          </div>
+
+          <div class="lab-rail-group" data-lab-rail-section="times">
+            <div class="lab-rail-group-title">Departure time</div>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-depart="morning" /> Morning &middot; 5am–12pm</label>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-depart="afternoon" /> Afternoon &middot; 12–6pm</label>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-depart="evening" /> Evening &middot; 6–10pm</label>
+            <label class="lab-check"><input type="checkbox" data-lab-filter-depart="night" /> Night &middot; 10pm–5am</label>
+          </div>
+
+          <div class="lab-rail-group" data-lab-rail-section="airlines">
+            <div class="lab-rail-group-title">Airlines</div>
+            <div class="lab-checklist" id="labAirlineFilterList"></div>
+          </div>
+
+          <div class="lab-rail-group" data-lab-rail-section="price">
+            <div class="lab-rail-group-title">Price</div>
+            <input type="range" class="lab-duration-slider" id="labPriceMax" min="0" max="0" step="1" />
+            <div class="lab-duration-label" id="labPriceMaxLabel"></div>
+          </div>
+
+          <div class="lab-rail-group">
+            <div class="lab-rail-group-title">Journey duration</div>
+            <input type="range" class="lab-duration-slider" id="labDurationMax" min="60" max="3000" step="30" />
+            <div class="lab-duration-label" id="labDurationMaxLabel"></div>
+          </div>
+
+          <div class="lab-rail-group">
+            <div class="lab-rail-group-title">Layover airports</div>
+            <div class="lab-checklist" id="labLayoverFilterList"></div>
+          </div>
+
+          <div class="lab-rail-actions">
+            <button type="button" class="lab-clear-filters" id="labClearFilters">Clear all</button>
+            <button type="button" class="lab-apply-filters" id="labApplyFilters">Show results</button>
+          </div>
+        </aside>
+
+        <div class="lab-column">
+          <div class="lab-results-header" id="labResultsHeader">
+            <div class="lab-results-count"><strong id="labVisibleCount">{{ flights|length }}</strong> <span id="labResultsCountLabel">flights</span></div>
+            <div class="lab-updating" id="labUpdating"><span>Updating results…</span></div>
+          </div>
+
+          <div class="lab-list" id="labList"></div>
+
+          <div class="lab-empty" id="labNoMatch" hidden>
+            <h3>No flights match these filters</h3>
+            <p>Try clearing a filter to see more options.</p>
+            <button type="button" id="labClearFiltersFromEmpty">Clear filters</button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script type="application/json" id="labFlightsData">{{ lab_payload | tojson }}</script>
+<script src="{{ url_for('static', filename='results-lab.js', v='20260819-2') }}" defer></script>
