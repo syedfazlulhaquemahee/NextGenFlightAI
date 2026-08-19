@@ -31,9 +31,11 @@ from dotenv import load_dotenv
 
 try:
     import psycopg
+    from psycopg.conninfo import conninfo_to_dict as psycopg_conninfo_to_dict
     from psycopg.rows import dict_row as psycopg_dict_row
 except ImportError:  # Keeps local SQLite-only development usable before install.
     psycopg = None
+    psycopg_conninfo_to_dict = None
     psycopg_dict_row = None
 
 import analytics_store
@@ -8529,14 +8531,23 @@ def _use_postgres_account_store() -> bool:
     Tests deliberately keep using their temporary SQLite database, which lets
     the existing account-flow test suite run without a hosted dependency.
     """
-    return bool(
+    if not (
         NGF_DATABASE_URL
         and psycopg is not None
+        and psycopg_conninfo_to_dict is not None
         # Test suites intentionally replace ACCOUNT_DB_PATH with an isolated
         # temporary SQLite file, even while exercising non-TESTING code paths.
         and os.path.abspath(ACCOUNT_DB_PATH) == os.path.abspath(DEFAULT_ACCOUNT_DB_PATH)
         and not bool(app.config.get("TESTING"))
-    )
+    ):
+        return False
+    try:
+        # A malformed URI must never take account pages down. Keep the prior
+        # SQLite fallback active until a valid Supabase URI is configured.
+        psycopg_conninfo_to_dict(NGF_DATABASE_URL, sslmode="require")
+    except Exception:
+        return False
+    return True
 
 
 def _postgres_account_connection():
@@ -8820,7 +8831,10 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 nationality = excluded.nationality,
                 passport_number = excluded.passport_number,
                 gender = excluded.gender,
-                oauth_provider = CASE WHEN excluded.oauth_provider != '' THEN excluded.oauth_provider ELSE oauth_provider END,
+                oauth_provider = CASE
+                    WHEN excluded.oauth_provider != '' THEN excluded.oauth_provider
+                    ELSE manage_booking_accounts.oauth_provider
+                END,
                 updated_at = excluded.updated_at
             """
     values = (
