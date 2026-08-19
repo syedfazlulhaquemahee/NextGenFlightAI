@@ -35,6 +35,9 @@ body.lab-active .results-lab-body {
   --lab-radius-ctrl: 10px;
   --lab-shadow-hover: 0 4px 16px rgba(11, 13, 18, 0.08);
   --lab-focus: 0 0 0 3px rgba(79, 111, 255, 0.35);
+  --lab-neutral-bg: rgba(95, 102, 115, 0.1);
+  --lab-neutral-ink: #4A5160;
+  --lab-brand-tint: color-mix(in srgb, var(--lab-brand) 5%, var(--lab-card-bg));
   font-family: var(--font-ui, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   color: var(--lab-ink);
   background: var(--lab-bg);
@@ -56,6 +59,12 @@ html:not([data-theme="light"]) .results-lab-body {
   --lab-danger: #F0685D;
   --lab-danger-bg: rgba(240, 104, 93, 0.12);
   --lab-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --lab-neutral-bg: rgba(154, 163, 175, 0.14);
+  --lab-neutral-ink: #B8C0CC;
+}
+
+.lab-spark {
+  color: var(--lab-brand);
 }
 
 .results-lab-body * {
@@ -114,8 +123,8 @@ html:not([data-theme="light"]) .results-lab-body {
   gap: 10px;
   flex-wrap: wrap;
   font-weight: 700;
-  font-size: 19px;
-  letter-spacing: -0.01em;
+  font-size: 21px;
+  letter-spacing: -0.015em;
 }
 
 .lab-summary-arrow {
@@ -382,13 +391,19 @@ button.lab-datestrip-cell:hover {
   border-color: var(--lab-brand);
 }
 
-/* ---------- comparison tabs (spec 8) ---------- */
+/* ---------- comparison tabs (spec 8, 11) ---------- */
+/* One connected selection surface, not four separate white cards: a single
+   frame with a padded track, each option an inset segment. */
 
 .lab-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 4px;
+  border: 1px solid var(--lab-border);
+  border-radius: 14px;
+  background: var(--lab-bg);
 }
 
 .lab-tab {
@@ -397,18 +412,19 @@ button.lab-datestrip-cell:hover {
   align-items: flex-start;
   justify-content: center;
   gap: 3px;
-  height: 64px;
+  height: 56px;
+  min-width: 0;
   padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid var(--lab-border);
-  background: var(--lab-card-bg);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
   box-sizing: border-box;
 }
 .lab-tab:hover {
-  border-color: var(--lab-brand);
+  background: var(--lab-card-bg);
 }
 .lab-tab:focus-visible {
   outline: none;
@@ -416,23 +432,90 @@ button.lab-datestrip-cell:hover {
 }
 .lab-tab[aria-selected="true"] {
   border-color: var(--lab-brand);
-  background: color-mix(in srgb, var(--lab-brand) 6%, var(--lab-card-bg));
+  background: var(--lab-card-bg);
+  box-shadow: 0 1px 6px rgba(11, 13, 18, 0.06);
 }
 .lab-tab[disabled] {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 .lab-tab-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   font-size: 13.5px;
   font-weight: 700;
   color: var(--lab-ink);
 }
+.lab-tab-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .lab-tab[aria-selected="true"] .lab-tab-name {
   color: var(--lab-brand);
 }
+.lab-tab--ai .lab-tab-name {
+  letter-spacing: -0.005em;
+}
 .lab-tab-value {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12.5px;
   color: var(--lab-muted);
+}
+
+/* ---------- ranking explainer (spec 12) ---------- */
+
+.lab-rank-note {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 2px;
+}
+.lab-rank-note-text {
+  font-size: 12px;
+  color: var(--lab-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.lab-rank-note-btn {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.lab-rank-pop {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  max-width: 80vw;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  color: var(--lab-ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+  box-shadow: var(--lab-shadow-hover);
 }
 
 /* ---------- quick filter row (spec 9.1) ---------- */
@@ -448,7 +531,8 @@ button.lab-datestrip-cell:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  height: 40px;
+  padding: 0 15px;
   border-radius: 999px;
   border: 1px solid var(--lab-border);
   background: var(--lab-card-bg);
@@ -486,8 +570,8 @@ button.lab-datestrip-cell:hover {
 .lab-rail {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 16px;
+  gap: 20px;
+  padding: 18px;
   border: 1px solid var(--lab-border);
   border-radius: var(--lab-radius-card);
   background: var(--lab-card-bg);
@@ -497,22 +581,151 @@ button.lab-datestrip-cell:hover {
   overflow-y: auto;
 }
 
+.lab-rail-title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
 .lab-rail-group-title {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: var(--lab-muted);
-  margin-bottom: 8px;
+  margin-bottom: 9px;
 }
 
 .lab-rail-group {
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--lab-border);
+  padding-bottom: 2px;
 }
-.lab-rail-group:last-of-type {
-  border-bottom: none;
-  padding-bottom: 0;
+
+/* ---------- AI filter input (spec 14) — the signature Skairova control ---------- */
+
+.lab-ai-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--lab-brand-tint);
+  border: 1px solid color-mix(in srgb, var(--lab-brand) 22%, var(--lab-border));
+}
+.lab-ai-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lab-brand);
+}
+.lab-ai-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lab-ai-filter-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  color: var(--lab-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.lab-ai-filter-input::placeholder {
+  color: var(--lab-muted);
+}
+.lab-ai-filter-input:focus-visible {
+  outline: none;
+  border-color: var(--lab-brand);
+  box-shadow: var(--lab-focus);
+}
+.lab-ai-filter-go {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: none;
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+  cursor: pointer;
+}
+.lab-ai-filter-go:hover {
+  filter: brightness(1.06);
+}
+.lab-ai-filter-go:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-ai-filter-applied {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 2px;
+}
+.lab-ai-filter-applied-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--lab-brand);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.lab-ai-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lab-ai-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: var(--lab-card-bg);
+  border: 1px solid color-mix(in srgb, var(--lab-brand) 28%, var(--lab-border));
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lab-ink);
+}
+.lab-ai-filter-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: color-mix(in srgb, var(--lab-brand) 12%, transparent);
+  color: var(--lab-brand);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+}
+.lab-ai-filter-undo {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--lab-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+.lab-ai-filter-empty {
+  font-size: 12px;
+  color: var(--lab-muted);
 }
 
 .lab-check {
@@ -599,6 +812,60 @@ button.lab-datestrip-cell:hover {
   min-width: 0;
 }
 
+/* ---------- AI match summary (spec 31, 38) ---------- */
+
+.lab-ai-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: var(--lab-brand-tint);
+  border: 1px solid color-mix(in srgb, var(--lab-brand) 18%, var(--lab-border));
+}
+.lab-ai-summary[hidden] {
+  display: none;
+}
+.lab-ai-summary-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lab-brand);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.lab-ai-summary-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--lab-ink);
+  max-width: 62ch;
+}
+.lab-ai-summary-text strong {
+  font-weight: 650;
+}
+.lab-ai-summary-link {
+  flex-shrink: 0;
+  align-self: center;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 6px 4px;
+}
+.lab-ai-summary-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- results header ---------- */
+
 .lab-results-header {
   display: flex;
   align-items: center;
@@ -606,12 +873,47 @@ button.lab-datestrip-cell:hover {
   gap: 12px;
   margin-bottom: 14px;
 }
+.lab-results-title {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
 .lab-results-count {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--lab-muted);
 }
 .lab-results-count strong {
   color: var(--lab-ink);
+  font-weight: 700;
+}
+.lab-results-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.lab-track-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--lab-border);
+  background: transparent;
+  color: var(--lab-brand);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lab-track-price:hover {
+  border-color: var(--lab-brand);
+}
+.lab-track-price[aria-pressed="true"] {
+  background: rgba(79, 111, 255, 0.1);
+  border-color: var(--lab-brand);
 }
 .lab-updating {
   display: none;
@@ -666,7 +968,7 @@ button.lab-datestrip-cell:hover {
   border: 1px solid var(--lab-border);
   border-radius: var(--lab-radius-card);
   background: var(--lab-card-bg);
-  padding: 14px 18px;
+  padding: 16px 20px;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .lab-card:hover {
@@ -674,29 +976,45 @@ button.lab-datestrip-cell:hover {
   box-shadow: var(--lab-shadow-hover);
 }
 
+/* Top-ranked result gets a quiet brand tint — never repeated on every card
+   (spec #32: "not give every card purple borders"). */
+.lab-card--top {
+  border-color: color-mix(in srgb, var(--lab-brand) 45%, var(--lab-border));
+  background: color-mix(in srgb, var(--lab-brand) 3%, var(--lab-card-bg));
+}
+.lab-card--top:hover {
+  border-color: var(--lab-brand);
+}
+
 .lab-card-badges {
   position: relative;
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 .lab-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
 .lab-badge--match {
-  background: rgba(79, 111, 255, 0.12);
+  background: rgba(79, 111, 255, 0.13);
   color: var(--lab-brand);
 }
-.lab-badge--rank {
+.lab-badge--positive {
   background: var(--lab-positive-bg);
   color: var(--lab-positive);
+}
+.lab-badge--neutral {
+  background: var(--lab-neutral-bg);
+  color: var(--lab-neutral-ink);
 }
 .lab-badge--warn {
   background: var(--lab-warning-bg);
@@ -715,20 +1033,60 @@ button.lab-datestrip-cell:hover {
 .lab-badge-why:hover {
   opacity: 1;
 }
-.lab-badge-why-pop {
+
+/* Trade-off (spec #29): the calculated price/schedule/stops delta vs
+   Skairova Best, inline alongside any contextual badge on the same row
+   so the user never has to do the subtraction themselves. */
+.lab-card-tradeoff {
+  font-size: 12px;
+  color: var(--lab-muted);
+}
+.lab-card-tradeoff strong {
+  font-weight: 700;
+}
+.lab-card-tradeoff.is-savings strong {
+  color: var(--lab-positive);
+}
+
+/* ---------- "why" panel (spec 30) — checklist, not a plain tooltip ---------- */
+.lab-why-pop {
   position: absolute;
   z-index: 20;
-  margin-top: 6px;
-  max-width: 240px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 280px;
+  max-width: 84vw;
+  padding: 12px 14px;
+  border-radius: 12px;
   border: 1px solid var(--lab-border);
   background: var(--lab-card-bg);
   color: var(--lab-ink);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
   line-height: 1.4;
   box-shadow: var(--lab-shadow-hover);
+}
+.lab-why-pop-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.lab-why-pop ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lab-why-pop li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.lab-why-pop li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--lab-positive);
 }
 
 .lab-card-main {
@@ -745,18 +1103,18 @@ button.lab-datestrip-cell:hover {
   min-width: 0;
 }
 .lab-carrier-logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   object-fit: contain;
   border: 1px solid var(--lab-border);
   background: #fff;
   flex-shrink: 0;
 }
 .lab-carrier-logo-ph {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: var(--lab-border);
   flex-shrink: 0;
 }
@@ -765,7 +1123,7 @@ button.lab-datestrip-cell:hover {
 }
 .lab-carrier-name {
   display: block;
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -812,12 +1170,13 @@ button.lab-datestrip-cell:hover {
   text-align: right;
 }
 .lab-leg-time {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
 }
 .lab-leg-iata {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--lab-muted);
   display: flex;
@@ -837,36 +1196,40 @@ button.lab-datestrip-cell:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 84px;
+  gap: 3px;
+  min-width: 96px;
+  padding: 0 6px;
 }
 .lab-leg-duration {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--lab-muted);
 }
 .lab-leg-line {
   position: relative;
   width: 100%;
-  height: 1px;
+  height: 2px;
+  border-radius: 1px;
   background: var(--lab-border);
-  margin: 2px 0;
+  margin: 3px 0;
 }
 .lab-leg-line::before,
 .lab-leg-line::after {
   content: "";
   position: absolute;
   top: 50%;
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--lab-muted);
+  background: color-mix(in srgb, var(--lab-brand) 55%, var(--lab-border));
   transform: translateY(-50%);
 }
-.lab-leg-line::before { left: -1px; }
-.lab-leg-line::after { right: -1px; }
+.lab-leg-line::before { left: -1.5px; }
+.lab-leg-line::after { right: -1.5px; }
 .lab-leg-stops {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--lab-muted);
 }
 .lab-leg-stops.is-nonstop {
   color: var(--lab-positive);
@@ -882,12 +1245,13 @@ button.lab-datestrip-cell:hover {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 2px;
-  font-size: 11.5px;
+  margin-top: 6px;
+  font-size: 12px;
 }
 .lab-meta-item {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   color: var(--lab-muted);
 }
 .lab-meta-item--yes { color: var(--lab-positive); font-weight: 600; }
@@ -917,19 +1281,19 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-muted);
 }
 .lab-price-amt {
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 .lab-price-note {
   display: block;
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--lab-muted);
 }
 .lab-price-cue {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 650;
   color: var(--lab-muted);
 }
 .lab-price-cue.is-low {
@@ -937,9 +1301,10 @@ button.lab-datestrip-cell:hover {
 }
 .lab-select-btn {
   margin-top: 8px;
-  padding: 0 20px;
-  height: 40px;
-  line-height: 40px;
+  padding: 0 24px;
+  min-width: 130px;
+  height: 44px;
+  line-height: 44px;
   border-radius: var(--lab-radius-ctrl);
   border: none;
   background: var(--lab-brand);
@@ -951,6 +1316,7 @@ button.lab-datestrip-cell:hover {
   white-space: nowrap;
   text-decoration: none;
   display: inline-block;
+  text-align: center;
 }
 .lab-select-btn:hover {
   filter: brightness(1.06);
@@ -968,10 +1334,25 @@ button.lab-datestrip-cell:hover {
 .lab-card-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--lab-border);
+}
+
+.lab-why-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 2px;
 }
 
 .lab-details-toggle {
@@ -985,6 +1366,7 @@ button.lab-datestrip-cell:hover {
   font-weight: 600;
   cursor: pointer;
   padding: 2px;
+  margin-left: auto;
 }
 .lab-details-toggle svg {
   width: 10px;
@@ -1148,6 +1530,20 @@ button.lab-datestrip-cell:hover {
     font-size: 14px;
     cursor: pointer;
   }
+  .lab-ai-summary {
+    flex-direction: column;
+  }
+  .lab-results-header {
+    flex-wrap: wrap;
+  }
+  .lab-rank-note {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .lab-rank-pop {
+    left: 0;
+    right: auto;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1157,12 +1553,6 @@ button.lab-datestrip-cell:hover {
   }
   .lab-tab {
     padding: 0 8px;
-  }
-  .lab-tab-name,
-  .lab-tab-value {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .lab-card-main {
     grid-template-columns: 1fr;
@@ -1217,6 +1607,7 @@ button.lab-datestrip-cell:hover {
    silently stays visible — this bit the Review step, which sets
    tabsWrap/quickRow/layoutEl hidden but they kept rendering underneath. */
 .lab-tabs[hidden],
+.lab-rank-note[hidden],
 .lab-quickrow[hidden],
 .lab-layout[hidden],
 .lab-rail[hidden],

@@ -95,6 +95,8 @@
   var railEl = document.getElementById("labRail");
   var layoutEl = root.querySelector(".lab-layout");
   var resultsHeaderEl = document.getElementById("labResultsHeader");
+  var rankNoteEl = root.querySelector(".lab-rank-note");
+  var aiSummaryEl = document.getElementById("labAiSummary");
 
   var stopInputs = {
     0: root.querySelector('[data-lab-filter-stop="0"]'),
@@ -226,27 +228,107 @@
      "Nonstop"/"N stops" (spec #17). Unknown baggage is never a green check
      (this app has no fare-bundle baggage data at itinerary level). */
   function journeyMeta(warnings) {
-    var bits = ['<span class="lab-meta-item lab-meta-item--muted">Baggage: details at fare selection</span>'];
+    var bits = ['<span class="lab-meta-item lab-meta-item--muted">🧳 Baggage details at fare selection</span>'];
     (warnings || []).forEach(function (w) {
       bits.push('<span class="lab-meta-item lab-meta-item--warn">⚠ ' + esc(w) + "</span>");
     });
     return '<div class="lab-journey-meta">' + bits.join("") + "</div>";
   }
 
-  var BADGE_DISPLAY = { "Top pick": "Best value", "Lowest price": "Cheapest" };
+  /* ---------------- trade-off math (spec #29) ----------------
+     Every non-top card is compared against the stage's Skairova Best item
+     (the server-recommended items[0] for this stage — see bestRefForStage
+     below), so the user never has to do the subtraction themselves. Purely
+     arithmetic over real payload numbers; nothing here invents a claim. */
+  function computeTradeoff(item, best) {
+    if (!best || item.key === best.key) return null;
+    var priceDelta = item.price - best.price;
+    var durDelta = item.duration - best.duration;
+    var stopsDelta = item.stops - best.stops;
+    var depDeltaMin = null;
+    if (item.departIso && best.departIso) {
+      var a = new Date(item.departIso).getTime();
+      var b = new Date(best.departIso).getTime();
+      if (!isNaN(a) && !isNaN(b)) depDeltaMin = Math.round((a - b) / 60000);
+    }
+    return { priceDelta: priceDelta, durDelta: durDelta, stopsDelta: stopsDelta, depDeltaMin: depDeltaMin };
+  }
 
-  function badgeRow(badge, reasoning) {
-    if (!badge) return "";
-    var isTop = badge === "Top pick";
-    var label = BADGE_DISPLAY[badge] || badge;
-    return (
-      '<div class="lab-card-badges">' +
-        '<span class="lab-badge ' + (isTop ? "lab-badge--match" : "lab-badge--rank") + '">' +
-          esc(label) +
-          (reasoning ? '<button type="button" class="lab-badge-why" data-lab-why data-reason="' + esc(reasoning) + '" aria-label="Why this is ranked here"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4.5M12 8h.01" stroke-linecap="round"/></svg></button>' : "") +
-        "</span>" +
-      "</div>"
-    );
+  function tradeoffText(tradeoff) {
+    if (!tradeoff) return "";
+    var isSavings = tradeoff.priceDelta < -0.5;
+    var head = Math.abs(tradeoff.priceDelta) > 0.5
+      ? (isSavings ? "Save " + money(-tradeoff.priceDelta) : "+" + money(tradeoff.priceDelta))
+      : "Same price";
+    var clause = null;
+    if (tradeoff.stopsDelta > 0) {
+      clause = "adds " + tradeoff.stopsDelta + " stop" + (tradeoff.stopsDelta > 1 ? "s" : "");
+    } else if (tradeoff.stopsDelta < 0) {
+      clause = "fewer stops";
+    } else if (tradeoff.depDeltaMin !== null && Math.abs(tradeoff.depDeltaMin) >= 30) {
+      clause = "leaves " + hm(Math.abs(tradeoff.depDeltaMin)) + (tradeoff.depDeltaMin > 0 ? " later" : " earlier");
+    } else if (Math.abs(tradeoff.durDelta) >= 20) {
+      clause = (tradeoff.durDelta > 0 ? "+" : "-") + hm(Math.abs(tradeoff.durDelta)) + " total";
+    }
+    var text = "<strong>" + esc(head) + "</strong>" + (clause ? " &middot; " + esc(clause) : "");
+    return '<span class="lab-card-tradeoff' + (isSavings ? " is-savings" : "") + '">' + text + "</span>";
+  }
+
+  /* ---------------- badges (spec #27, #28) ----------------
+     The item that IS the stage's Skairova Best (server-recommended items[0])
+     always gets the AI badge, regardless of which raw label the backend
+     assigned it. Every other badge gets a contextual label computed from
+     the real trade-off rather than the generic "Alternative option". */
+  function contextualBadge(rawBadge, item, tradeoff) {
+    if (rawBadge === "Top pick") return { text: "Skairova Best", cls: "match", sparkle: true };
+    if (rawBadge === "Lowest price" || rawBadge === "Cheapest") return { text: "Cheapest", cls: "positive" };
+    if (rawBadge === "Fastest" || rawBadge === "Fastest trip") return { text: "Fastest", cls: "neutral" };
+    if (rawBadge === "Most direct") return { text: "Fewest stops", cls: "neutral" };
+    if (rawBadge === "Earliest departure") return { text: "Earliest departure", cls: "neutral" };
+    if (rawBadge === "Arrives earliest") return { text: "Arrives earliest", cls: "neutral" };
+    if (rawBadge === "Alternative option") {
+      if (tradeoff && tradeoff.priceDelta < -0.5) return { text: "Cheapest alternative", cls: "positive" };
+      if (tradeoff && tradeoff.stopsDelta < 0) return { text: "Fewer stops", cls: "neutral" };
+      var bucket = timeBucket(hourOf(item.departIso));
+      if (bucket) return { text: "Best " + bucket.charAt(0).toUpperCase() + bucket.slice(1) + " flight", cls: "neutral" };
+      return { text: "Alternative option", cls: "neutral" };
+    }
+    return rawBadge ? { text: rawBadge, cls: "neutral" } : null;
+  }
+
+  function whyButton(reason, ariaLabel) {
+    if (!reason) return "";
+    return '<button type="button" class="lab-badge-why" data-lab-why data-reason="' + esc(reason) + '" aria-label="' + esc(ariaLabel) + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4.5M12 8h.01" stroke-linecap="round"/></svg></button>';
+  }
+
+  /* One row for both the contextual badge and the numeric trade-off — kept
+     on a single line (rather than stacked) so a card carrying real
+     information density doesn't grow taller than one that has none. */
+  function metaRow(isTop, rawBadge, reasoning, item, tradeoff) {
+    if (isTop) {
+      return (
+        '<div class="lab-card-badges">' +
+          '<span class="lab-badge lab-badge--match"><span class="lab-spark" aria-hidden="true">✦</span> Skairova Best' +
+            whyButton(reasoning, "Why this is ranked #1") +
+          "</span>" +
+        "</div>"
+      );
+    }
+    var badgeHtml = "";
+    if (rawBadge) {
+      var disp = contextualBadge(rawBadge, item, tradeoff);
+      if (disp) {
+        badgeHtml =
+          '<span class="lab-badge lab-badge--' + disp.cls + '">' +
+            (disp.sparkle ? '<span class="lab-spark" aria-hidden="true">✦</span> ' : "") +
+            esc(disp.text) +
+            whyButton(reasoning, "Why this is ranked here") +
+          "</span>";
+      }
+    }
+    var tradeoffHtml = tradeoffText(tradeoff);
+    if (!badgeHtml && !tradeoffHtml) return "";
+    return '<div class="lab-card-badges">' + badgeHtml + tradeoffHtml + "</div>";
   }
 
   function detailsPanel(legs) {
@@ -302,8 +384,11 @@
     return tripWord + " · " + paxWord;
   }
 
-  /* Renders one card. `kind` = "departure" | "return" | "review" | "flat". */
-  function cardHtml(kind, entity) {
+  /* Renders one card. `kind` = "departure" | "return" | "review" | "flat".
+     `stageItem`/`bestRef` are the normalized {key,price,duration,stops,...}
+     views from itemsForStage() — present for every kind except "review" —
+     used only to compute isTop/tradeoff; never re-rendered directly. */
+  function cardHtml(kind, entity, stageItem, bestRef) {
     var legs, priceAmt, priceQualifier, secondaryNote, cueHtml, ctaHtml, badge, reasoning, key, airlineName, logoUrl, mix;
 
     if (kind === "departure") {
@@ -315,7 +400,7 @@
       cueHtml = "";
       badge = g.best.badge; reasoning = g.best.badgeReasoning;
       key = g.key; airlineName = g.airlineName; logoUrl = g.airlineLogoUrl; mix = "";
-      ctaHtml = '<button type="button" class="lab-select-btn" data-lab-choose-departure="' + esc(g.key) + '">Select</button>';
+      ctaHtml = '<button type="button" class="lab-select-btn" data-lab-choose-departure="' + esc(g.key) + '">Select flight</button>';
     } else if (kind === "return") {
       var f = entity;
       var base = flow.chosenGroup.best.price;
@@ -333,7 +418,7 @@
       cueHtml = "";
       badge = f.badge; reasoning = f.badgeReasoning;
       key = f.id; airlineName = f.airlineName; logoUrl = f.airlineLogoUrl; mix = "";
-      ctaHtml = '<button type="button" class="lab-select-btn" data-lab-choose-return="' + esc(f.id) + '">Select</button>';
+      ctaHtml = '<button type="button" class="lab-select-btn" data-lab-choose-return="' + esc(f.id) + '">Select flight</button>';
     } else {
       // "flat" (one-way, or fallback) and "review" both show the full itinerary.
       var fl = entity;
@@ -347,15 +432,20 @@
       badge = fl.badge; reasoning = fl.badgeReasoning;
       key = fl.id; airlineName = fl.airlineName; logoUrl = fl.airlineLogoUrl; mix = fl.airlineMix;
       ctaHtml = fl.checkoutUrl
-        ? '<a class="lab-select-btn" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '">Select</a>'
+        ? '<a class="lab-select-btn" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '">Select flight</a>'
         : '<span class="lab-select-btn" aria-disabled="true">Unavailable</span>';
     }
 
     var showLegLabel = legs.length > 1;
+    var isTop = !!(stageItem && bestRef && stageItem.key === bestRef.key);
+    var tradeoff = (!isTop && stageItem && bestRef) ? computeTradeoff(stageItem, bestRef) : null;
+    var whyFooterLink = isTop
+      ? '<button type="button" class="lab-why-link" data-lab-why data-reason="' + esc(reasoning || "") + '">Why this is #1</button>'
+      : "";
 
     return (
-      '<article class="lab-card" data-key="' + esc(key) + '">' +
-        badgeRow(badge, reasoning) +
+      '<article class="lab-card' + (isTop ? " lab-card--top" : "") + '" data-key="' + esc(key) + '">' +
+        metaRow(isTop, badge, reasoning, stageItem || {}, tradeoff) +
         '<div class="lab-card-main">' +
           carrierBlock(airlineName, logoUrl, mix) +
           '<div class="lab-itinerary">' +
@@ -374,6 +464,7 @@
           "</div>" +
         "</div>" +
         '<div class="lab-card-footer">' +
+          whyFooterLink +
           '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
           "</button>" +
@@ -391,6 +482,8 @@
     if (bucket && anyChecked(filterState.depart) && !filterState.depart[bucket]) return false;
     if (item.duration > filterState.maxDuration) return false;
     if (item.price > filterState.maxPrice) return false;
+    if (filterState.minPrice && item.price < filterState.minPrice) return false;
+    if (!passesNlHourFilter(item)) return false;
     if (anyChecked(filterState.airlines) && !airlineTokens(item.airlineName).some(function (n) { return filterState.airlines[n]; })) return false;
     if (anyChecked(filterState.layovers) && item.layovers.length && !item.layovers.some(function (l) { return filterState.layovers[l.code]; })) return false;
     if (anyChecked(filterState.layovers) && !item.layovers.length && item.stops > 0) return false;
@@ -412,6 +505,16 @@
 
   /* ---------------- render orchestration ---------------- */
 
+  /* Recomputes slider ranges + the airline/layover checklists for the
+     current stage's full item set. Bounds are always refreshed, but an
+     in-progress user constraint (slider dragged down, an airline checked,
+     the AI filter's price ceiling) must survive the next render — this
+     used to unconditionally snap every value back to "unrestricted" on
+     every renderStage() call, silently no-op'ing the price/duration/
+     airline/layover filters (and the AI filter's price parsing) the
+     instant they were set. Stage transitions still fully reset via
+     clearFilterInputs(), which runs on every departure/return/review
+     transition. */
   function rebuildRailBounds(items) {
     if (!items.length) return;
     var durations = items.map(function (i) { return i.duration; });
@@ -421,25 +524,27 @@
     var pMin = Math.min.apply(null, prices);
     durationSlider.min = "0";
     durationSlider.max = String(Math.max(dMax, 60));
-    durationSlider.value = String(dMax);
-    filterState.maxDuration = dMax;
-    durationLabel.textContent = "Up to " + hm(dMax);
+    if (!(filterState.maxDuration <= dMax)) filterState.maxDuration = dMax;
+    durationSlider.value = String(filterState.maxDuration);
+    durationLabel.textContent = "Up to " + hm(filterState.maxDuration);
 
     priceSlider.min = String(Math.floor(pMin));
     priceSlider.max = String(Math.ceil(pMax));
-    priceSlider.value = String(Math.ceil(pMax));
-    filterState.maxPrice = Math.ceil(pMax);
-    priceLabel.textContent = "Up to " + money(pMax);
+    if (!(filterState.maxPrice <= Math.ceil(pMax))) filterState.maxPrice = Math.ceil(pMax);
+    priceSlider.value = String(filterState.maxPrice);
+    priceLabel.textContent = "Up to " + money(filterState.maxPrice);
 
     var airlineNames = Array.from(new Set(items.reduce(function (acc, i) { return acc.concat(airlineTokens(i.airlineName)); }, []))).sort();
+    var prevAirlines = filterState.airlines || {};
     filterState.airlines = {};
     airlineListEl.innerHTML = "";
     airlineNames.forEach(function (name) {
-      filterState.airlines[name] = false;
+      filterState.airlines[name] = !!prevAirlines[name];
       var label = document.createElement("label");
       label.className = "lab-check";
       label.innerHTML = '<input type="checkbox" data-lab-filter-airline="' + esc(name) + '" /> <span></span>';
       label.querySelector("span").textContent = name;
+      label.querySelector("input").checked = filterState.airlines[name];
       airlineListEl.appendChild(label);
     });
     Array.from(airlineListEl.querySelectorAll("[data-lab-filter-airline]")).forEach(function (input) {
@@ -450,16 +555,18 @@
     });
 
     var layoverCodes = Array.from(new Set(items.reduce(function (acc, i) { return acc.concat(i.layovers.map(function (l) { return l.code; })); }, []))).sort();
+    var prevLayovers = filterState.layovers || {};
     filterState.layovers = {};
     layoverListEl.innerHTML = "";
     var layoverGroup = layoverListEl.closest(".lab-rail-group");
     layoverGroup.hidden = layoverCodes.length === 0;
     layoverCodes.forEach(function (code) {
-      filterState.layovers[code] = false;
+      filterState.layovers[code] = !!prevLayovers[code];
       var label = document.createElement("label");
       label.className = "lab-check";
       label.innerHTML = '<input type="checkbox" data-lab-filter-layover="' + esc(code) + '" /> <span></span>';
       label.querySelector("span").textContent = code.toUpperCase();
+      label.querySelector("input").checked = filterState.layovers[code];
       layoverListEl.appendChild(label);
     });
     Array.from(layoverListEl.querySelectorAll("[data-lab-filter-layover]")).forEach(function (input) {
@@ -512,6 +619,42 @@
     directTabBtn.classList.toggle("is-unavailable", !direct);
   }
 
+  /* ---------------- AI match summary (spec #31, #38) ----------------
+     Every claim here is derived from the real stage item set — no invented
+     "Good price" / forecast-style language. Falls back to a neutral
+     "balances price, timing, and connection quality" line when the top
+     pick doesn't clearly win any single metric outright. */
+  function renderAiSummary(items, bestRef) {
+    if (!aiSummaryEl) return;
+    if (!items.length || !bestRef) { aiSummaryEl.hidden = true; return; }
+    var minPrice = Math.min.apply(null, items.map(function (i) { return i.price; }));
+    var minDuration = Math.min.apply(null, items.map(function (i) { return i.duration; }));
+    var reasons = [];
+    if (bestRef.price <= minPrice + 0.5) reasons.push("the lowest fare");
+    if (bestRef.stops === 0) reasons.push("nonstop");
+    if (bestRef.duration <= minDuration + 0.5) reasons.push("the shortest travel time");
+    else if (bestRef.duration <= minDuration + 30) reasons.push("among the shortest travel times");
+
+    var lead = bestRef.airlineName ? "<strong>" + esc(bestRef.airlineName) + "</strong>" : "This flight";
+    var reasonList = reasons.length > 1
+      ? reasons.slice(0, -1).join(", ") + " and " + reasons[reasons.length - 1]
+      : reasons[0];
+    var body = reasons.length
+      ? lead + " is currently the strongest option: " + reasonList + "."
+      : lead + " is currently the strongest option overall, balancing price, timing, and connection quality across " + items.length + " flight" + (items.length === 1 ? "" : "s") + ".";
+
+    var reasoningText = "";
+    if (bestRef.ref) reasoningText = bestRef.ref.badgeReasoning || (bestRef.ref.best && bestRef.ref.best.badgeReasoning) || "";
+
+    aiSummaryEl.hidden = false;
+    aiSummaryEl.innerHTML =
+      "<div>" +
+        '<div class="lab-ai-summary-eyebrow"><span class="lab-spark" aria-hidden="true">✦</span> Skairova analyzed ' + items.length + " flight" + (items.length === 1 ? "" : "s") + "</div>" +
+        '<div class="lab-ai-summary-text">' + body + "</div>" +
+      "</div>" +
+      (reasoningText ? '<button type="button" class="lab-ai-summary-link" data-lab-why data-reason="' + esc(reasoningText) + '">Why this is #1 →</button>' : "");
+  }
+
   function updateProgress() {
     if (!isRoundTrip) { progressEl.hidden = true; return; }
     progressEl.hidden = false;
@@ -554,9 +697,11 @@
       // .lab-layout too, so hiding that container hid the review card
       // along with the filters it was meant to remove.
       tabsWrap.hidden = true;
+      if (rankNoteEl) rankNoteEl.hidden = true;
       quickRow.hidden = true;
       railEl.hidden = true;
       resultsHeaderEl.hidden = true;
+      if (aiSummaryEl) aiSummaryEl.hidden = true;
       layoutEl.classList.add("lab-layout--single");
       noMatchEl.hidden = true;
       listEl.innerHTML = cardHtml("review", flow.chosenFlight) +
@@ -566,14 +711,17 @@
     }
 
     tabsWrap.hidden = false;
+    if (rankNoteEl) rankNoteEl.hidden = false;
     quickRow.hidden = false;
     railEl.hidden = false;
     resultsHeaderEl.hidden = false;
     layoutEl.classList.remove("lab-layout--single");
 
     var items = itemsForStage();
+    var bestRef = items.length ? items[0] : null;
     rebuildRailBounds(items);
     updateTabSummaries(items);
+    renderAiSummary(items, bestRef);
 
     var visible = sortedVisible(items);
     updateStopPriceLabels(items);
@@ -583,7 +731,7 @@
     noMatchEl.hidden = visible.length !== 0;
 
     var kind = flow.stage === "departure" ? "departure" : (flow.stage === "return" ? "return" : "flat");
-    listEl.innerHTML = visible.map(function (it) { return cardHtml(kind, it.ref); }).join("");
+    listEl.innerHTML = visible.map(function (it) { return cardHtml(kind, it.ref, it, bestRef); }).join("");
     wireCardEvents();
   }
 
@@ -680,23 +828,28 @@
     renderStage();
   });
 
+  /* Full filter reset — called on every departure/return/review stage
+     transition, since a price cap or airline pick from one leg's item set
+     is meaningless (or actively hides everything) against the next leg's
+     different price range and carrier mix. */
   function clearFilterInputs() {
     [0, 1, 2].forEach(function (b) { filterState.stops[b] = false; stopInputs[b].checked = false; });
     ["morning", "afternoon", "evening", "night"].forEach(function (b) { filterState.depart[b] = false; departInputs[b].checked = false; });
+    filterState.maxDuration = Infinity;
+    filterState.maxPrice = Infinity;
+    filterState.minPrice = 0;
+    filterState.departAfterHour = null;
+    filterState.departBeforeHour = null;
+    Object.keys(filterState.airlines).forEach(function (k) { filterState.airlines[k] = false; });
+    Object.keys(filterState.layovers).forEach(function (k) { filterState.layovers[k] = false; });
+    appliedNlFilters = [];
+    if (aiFilterInput) aiFilterInput.value = "";
+    renderAppliedNlChips();
     syncQuickChips();
   }
 
   function clearAllFilters() {
     clearFilterInputs();
-    var items = itemsForStage();
-    if (items.length) {
-      var dMax = Math.max.apply(null, items.map(function (i) { return i.duration; }));
-      var pMax = Math.ceil(Math.max.apply(null, items.map(function (i) { return i.price; })));
-      filterState.maxDuration = dMax;
-      filterState.maxPrice = pMax;
-    }
-    Object.keys(filterState.airlines).forEach(function (k) { filterState.airlines[k] = false; });
-    Object.keys(filterState.layovers).forEach(function (k) { filterState.layovers[k] = false; });
     renderStage();
   }
   document.getElementById("labClearFilters").addEventListener("click", clearAllFilters);
@@ -747,13 +900,25 @@
     }
     var why = event.target.closest("[data-lab-why]");
     if (why) {
-      var existing = why.parentElement.querySelector(".lab-badge-why-pop");
-      if (existing) { existing.remove(); return; }
-      document.querySelectorAll(".lab-badge-why-pop").forEach(function (n) { n.remove(); });
+      var existingPop = document.querySelector(".lab-why-pop");
+      var sameTrigger = existingPop && existingPop.parentElement === why;
+      if (existingPop) existingPop.remove();
+      if (sameTrigger) return;
+      var reasonText = why.dataset.reason || "";
+      if (!reasonText) return;
+      /* Real backend copy (e.g. "the lowest fare in this search; nonstop,
+         as requested") re-formatted as a checklist — never new claims. */
+      var reasonItems = reasonText.split(/;\s*/).map(function (s) { return s.trim(); }).filter(Boolean).map(function (s) { return s.charAt(0).toUpperCase() + s.slice(1); });
+      var isAi = why.classList.contains("lab-why-link") || why.classList.contains("lab-ai-summary-link") || !!why.closest(".lab-badge--match");
       var pop = document.createElement("div");
-      pop.className = "lab-badge-why-pop";
-      pop.textContent = why.dataset.reason || "";
-      why.parentElement.appendChild(pop);
+      pop.className = "lab-why-pop";
+      pop.innerHTML =
+        (isAi ? '<div class="lab-why-pop-title">Why Skairova recommends this</div>' : "") +
+        "<ul>" + reasonItems.map(function (s) {
+          return '<li><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 10 8 14 16 5"/></svg><span>' + esc(s) + "</span></li>";
+        }).join("") + "</ul>";
+      if (getComputedStyle(why).position === "static") why.style.position = "relative";
+      why.appendChild(pop);
       setTimeout(function () {
         document.addEventListener("click", function onDocClick(e) {
           if (!pop.contains(e.target) && e.target !== why) {
@@ -902,11 +1067,182 @@
      no-data fallback. Purely a client-side toggle; nothing is persisted,
      so it never implies a notification that won't actually arrive. */
   var trackBtn = document.getElementById("labTrackPrice");
+  var trackBtnLabel = document.getElementById("labTrackPriceLabel");
   if (trackBtn) {
     trackBtn.addEventListener("click", function () {
       var tracking = trackBtn.getAttribute("aria-pressed") === "true";
       trackBtn.setAttribute("aria-pressed", String(!tracking));
-      trackBtn.textContent = tracking ? "Track price" : "Tracking";
+      if (trackBtnLabel) trackBtnLabel.textContent = tracking ? "Track price" : "Tracking";
+    });
+  }
+
+  /* ---------------- ranking explainer popover (spec #12) ---------------- */
+
+  var howRankingBtn = document.getElementById("labHowRanking");
+  var howRankingPop = document.getElementById("labHowRankingPop");
+  if (howRankingBtn && howRankingPop) {
+    howRankingBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      howRankingPop.hidden = !howRankingPop.hidden;
+    });
+    document.addEventListener("click", function (e) {
+      if (!howRankingPop.hidden && !howRankingPop.contains(e.target) && e.target !== howRankingBtn) {
+        howRankingPop.hidden = true;
+      }
+    });
+  }
+
+  /* ---------------- AI natural-language filter (spec #14) ----------------
+     Client-side heuristic parsing over the free-text box, in the same
+     regex-driven style this app already uses for its AI search bar
+     (parse_ai_flight_request in app.py) — no backend call, no external LLM.
+     Only acts on things the user explicitly stated: nonstop/stop count,
+     a price ceiling, an explicit "after/before" hour, an "early morning"
+     exclusion, or an airline name that actually appears in this result
+     set. Every constraint it derives reuses the exact same filterState the
+     checkboxes already drive, and renders as a removable chip so nothing
+     is applied invisibly. */
+  filterState.departAfterHour = null;
+  filterState.departBeforeHour = null;
+  filterState.minPrice = 0;
+
+  var aiFilterInput = document.getElementById("labAiFilterInput");
+  var aiFilterGo = document.getElementById("labAiFilterGo");
+  var aiFilterApplied = document.getElementById("labAiFilterApplied");
+  var appliedNlFilters = []; // [{ key, label }]
+
+  function hourFrom(hStr, ampm) {
+    var h = parseInt(hStr, 10) % 12;
+    if (/pm/i.test(ampm)) h += 12;
+    return h;
+  }
+
+  function parseAiFilterText(text) {
+    var q = " " + text.toLowerCase().trim() + " ";
+    var applied = [];
+
+    if (/\b(nonstop|non-stop|no stops|direct only|only direct)\b/.test(q)) {
+      filterState.stops[0] = true; filterState.stops[1] = false; filterState.stops[2] = false;
+      applied.push({ key: "stops", label: "Nonstop" });
+    } else {
+      var stopMax = /\b(\d)\s*stop[s]?\s*(or fewer|or less|max|maximum)\b/.exec(q) || /\bat most (\d)\s*stop/.exec(q);
+      if (stopMax) {
+        var n = parseInt(stopMax[1], 10);
+        filterState.stops[0] = true;
+        if (n >= 1) filterState.stops[1] = true;
+        if (n >= 2) filterState.stops[2] = true;
+        applied.push({ key: "stops", label: n + " stop" + (n === 1 ? "" : "s") + " or fewer" });
+      }
+    }
+
+    var under = /\b(?:under|below|less than|cheaper than)\s*\$?(\d[\d,]*)/.exec(q);
+    if (under) {
+      var maxP = parseInt(under[1].replace(/,/g, ""), 10);
+      filterState.maxPrice = maxP;
+      if (priceSlider) priceSlider.value = String(Math.min(maxP, parseInt(priceSlider.max || maxP, 10)));
+      if (priceLabel) priceLabel.textContent = "Up to " + money(maxP);
+      applied.push({ key: "maxPrice", label: "Under " + money(maxP) });
+    }
+    var over = /\b(?:over|above|more than)\s*\$?(\d[\d,]*)/.exec(q);
+    if (over) {
+      var minP = parseInt(over[1].replace(/,/g, ""), 10);
+      filterState.minPrice = minP;
+      applied.push({ key: "minPrice", label: "Over " + money(minP) });
+    }
+
+    var after = /\bafter\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?/.exec(q);
+    if (after) {
+      var h = after[2] ? hourFrom(after[1], after[2]) : parseInt(after[1], 10);
+      filterState.departAfterHour = h;
+      applied.push({ key: "departAfterHour", label: "After " + esc(after[1]) + (after[2] ? after[2].toUpperCase() : "") });
+    } else if (/\b(no early morning|not early morning|skip early morning)\b/.test(q)) {
+      filterState.departAfterHour = 8;
+      applied.push({ key: "departAfterHour", label: "After 8 AM" });
+    }
+    var before = /\bbefore\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?/.exec(q);
+    if (before) {
+      var h2 = before[2] ? hourFrom(before[1], before[2]) : parseInt(before[1], 10);
+      filterState.departBeforeHour = h2;
+      applied.push({ key: "departBeforeHour", label: "Before " + esc(before[1]) + (before[2] ? before[2].toUpperCase() : "") });
+    }
+
+    var stageAirlines = Object.keys(filterState.airlines);
+    stageAirlines.forEach(function (name) {
+      var needle = name.toLowerCase();
+      if (q.indexOf(needle) !== -1) {
+        filterState.airlines[name] = true;
+        applied.push({ key: "airline:" + name, label: name });
+      }
+    });
+
+    return applied;
+  }
+
+  function passesNlHourFilter(item) {
+    var h = hourOf(item.departIso);
+    if (h === null) return true;
+    if (filterState.departAfterHour !== null && h < filterState.departAfterHour) return false;
+    if (filterState.departBeforeHour !== null && h >= filterState.departBeforeHour) return false;
+    return true;
+  }
+
+  function renderAppliedNlChips() {
+    if (!aiFilterApplied) return;
+    if (!appliedNlFilters.length) { aiFilterApplied.hidden = true; aiFilterApplied.innerHTML = ""; return; }
+    aiFilterApplied.hidden = false;
+    aiFilterApplied.innerHTML =
+      '<div class="lab-ai-filter-applied-label"><span class="lab-spark" aria-hidden="true">✦</span> Skairova applied ' + appliedNlFilters.length + " filter" + (appliedNlFilters.length === 1 ? "" : "s") + "</div>" +
+      '<div class="lab-ai-filter-chips">' +
+        appliedNlFilters.map(function (f) {
+          return '<span class="lab-ai-filter-chip">' + esc(f.label) + ' <button type="button" data-nl-remove="' + esc(f.key) + '" aria-label="Remove filter">×</button></span>';
+        }).join("") +
+      "</div>" +
+      '<button type="button" class="lab-ai-filter-undo" id="labAiFilterUndo">Undo</button>';
+  }
+
+  function removeNlFilter(key) {
+    appliedNlFilters = appliedNlFilters.filter(function (f) { return f.key !== key; });
+    if (key === "stops") { filterState.stops[0] = false; filterState.stops[1] = false; filterState.stops[2] = false; syncQuickChips(); [0, 1, 2].forEach(function (b) { stopInputs[b].checked = filterState.stops[b]; }); }
+    else if (key === "maxPrice") { filterState.maxPrice = Infinity; }
+    else if (key === "minPrice") { filterState.minPrice = 0; }
+    else if (key === "departAfterHour") filterState.departAfterHour = null;
+    else if (key === "departBeforeHour") filterState.departBeforeHour = null;
+    else if (key.indexOf("airline:") === 0) {
+      var name = key.slice(8);
+      filterState.airlines[name] = false;
+      var input = airlineListEl.querySelector('[data-lab-filter-airline="' + name + '"]');
+      if (input) input.checked = false;
+    }
+    renderAppliedNlChips();
+    renderStage();
+  }
+
+  if (aiFilterApplied) {
+    aiFilterApplied.addEventListener("click", function (e) {
+      var removeBtn = e.target.closest("[data-nl-remove]");
+      if (removeBtn) { removeNlFilter(removeBtn.dataset.nlRemove); return; }
+      if (e.target.id === "labAiFilterUndo") {
+        appliedNlFilters = [];
+        if (aiFilterInput) aiFilterInput.value = "";
+        clearAllFilters();
+        renderAppliedNlChips();
+      }
+    });
+  }
+
+  function runAiFilter() {
+    if (!aiFilterInput) return;
+    var text = aiFilterInput.value.trim();
+    if (!text) return;
+    var applied = parseAiFilterText(text);
+    appliedNlFilters = applied;
+    renderAppliedNlChips();
+    renderStage();
+  }
+  if (aiFilterGo) aiFilterGo.addEventListener("click", runAiFilter);
+  if (aiFilterInput) {
+    aiFilterInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); runAiFilter(); }
     });
   }
 
