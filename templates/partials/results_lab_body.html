@@ -174,17 +174,9 @@
     {% else %}
 
       <nav class="lab-progress" id="labProgress" hidden aria-label="Booking progress">
-        <span class="lab-progress-step" data-lab-step="departure" aria-current="step">
-          <span class="lab-progress-dot">1</span> Departure
-        </span>
-        <span class="lab-progress-line"></span>
-        <span class="lab-progress-step" data-lab-step="return">
-          <span class="lab-progress-dot">2</span> Return
-        </span>
-        <span class="lab-progress-line"></span>
-        <span class="lab-progress-step" data-lab-step="review">
-          <span class="lab-progress-dot">3</span> Review
-        </span>
+        <span class="lab-progress-step" data-lab-step="departure" aria-current="step">Departure</span>
+        <span class="lab-progress-step" data-lab-step="return">Return</span>
+        <span class="lab-progress-step" data-lab-step="review">Review</span>
       </nav>
 
       <div class="lab-pinned" id="labPinnedDeparture" hidden></div>
@@ -204,7 +196,10 @@
 
       <div class="lab-tabs" role="tablist" aria-label="Compare flights">
         <button type="button" class="lab-tab lab-tab--ai" role="tab" data-lab-tab="best" aria-selected="true">
-          <span class="lab-tab-name"><span class="lab-spark" aria-hidden="true">✦</span><span class="lab-tab-name-text">Skairova Best</span></span>
+          <span class="lab-tab-name">
+            <span class="lab-spark" aria-hidden="true">✦</span><span class="lab-tab-name-text">Skairova Best</span>
+            <span class="lab-tab-info" data-lab-how-ranking role="button" tabindex="0" aria-label="How Skairova ranks results">i</span>
+          </span>
           <span class="lab-tab-value" data-lab-tab-value="best">&nbsp;</span>
         </button>
         <button type="button" class="lab-tab" role="tab" data-lab-tab="cheapest" aria-selected="false">
@@ -219,33 +214,19 @@
           <span class="lab-tab-name">Nonstop</span>
           <span class="lab-tab-value" data-lab-tab-value="direct">&nbsp;</span>
         </button>
-      </div>
-
-      <div class="lab-rank-note">
-        <span class="lab-rank-note-text"><span class="lab-spark" aria-hidden="true">✦</span> Ranked using price, duration, stops and connection quality</span>
-        <button type="button" class="lab-rank-note-btn" id="labHowRanking">How ranking works</button>
         <div class="lab-rank-pop" id="labHowRankingPop" hidden>
           Skairova Best weighs price the most heavily, then rewards nonstop and low-stop itineraries, a good departure time, a safe connection window, and meaningfully shorter total trip time — in that order.
         </div>
-      </div>
-
-      <div class="lab-quickrow">
-        <button type="button" class="lab-chip" data-lab-quick="nonstop" aria-pressed="false">Nonstop</button>
-        <button type="button" class="lab-chip" data-lab-quick="stop1" aria-pressed="false">1 stop or fewer</button>
-        <button type="button" class="lab-chip" data-lab-open-rail="times">Times</button>
-        <button type="button" class="lab-chip" data-lab-open-rail="airlines">Airlines</button>
-        <button type="button" class="lab-chip" data-lab-open-rail="price">Price</button>
-        <button type="button" class="lab-chip lab-chip-more" data-lab-open-rail="more">More filters</button>
       </div>
 
       <div class="lab-sheet-backdrop" id="labSheetBackdrop"></div>
 
       <div class="lab-layout">
         <aside class="lab-rail" id="labRail" aria-label="Flight filters">
-          <div class="lab-rail-title">Refine flights</div>
+          <div class="lab-rail-title">Refine</div>
 
           <div class="lab-ai-filter">
-            <label class="lab-ai-filter-label" for="labAiFilterInput"><span class="lab-spark" aria-hidden="true">✦</span> Ask Skairova to filter</label>
+            <label class="lab-ai-filter-label" for="labAiFilterInput"><span class="lab-spark" aria-hidden="true">✦</span> Ask Skairova</label>
             <div class="lab-ai-filter-row">
               <input type="text" id="labAiFilterInput" class="lab-ai-filter-input" placeholder="Nonstop under $400" autocomplete="off" />
               <button type="button" id="labAiFilterGo" class="lab-ai-filter-go" aria-label="Apply Skairova filter">
@@ -304,21 +285,26 @@
         </aside>
 
         <div class="lab-column">
-          <div class="lab-ai-summary" id="labAiSummary" hidden></div>
-
-          <div class="lab-results-header" id="labResultsHeader">
-            <div class="lab-results-heading">
-              <div class="lab-results-title">Top matches</div>
-              <div class="lab-results-count"><strong id="labVisibleCount">{{ flights|length }}</strong> <span id="labResultsCountLabel">flights</span> ranked by Skairova</div>
-            </div>
-            <div class="lab-results-actions">
-              <div class="lab-updating" id="labUpdating"><span>Updating results…</span></div>
-              {% if query.get('depart_date') and not manual_flow %}
-              <button type="button" class="lab-track-price" id="labTrackPrice" aria-pressed="false">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a5 5 0 0 0-5 5v3.4c0 .8-.32 1.56-.88 2.12L5 14.6c-.6.6-.17 1.6.66 1.6h12.68c.83 0 1.26-1 .66-1.6l-1.12-1.08a3 3 0 0 1-.88-2.12V8a5 5 0 0 0-5-5Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
-                <span id="labTrackPriceLabel">Track price</span>
-              </button>
-              {% endif %}
+          <div class="lab-toolbar" id="labResultsHeader">
+            <div class="lab-toolbar-count"><strong id="labVisibleCount">{{ flights|length }}</strong> <span id="labResultsCountLabel">flights</span></div>
+            <div class="lab-toolbar-row">
+              <div class="lab-toolbar-chips">
+                <button type="button" class="lab-chip" data-lab-quick="nonstop" aria-pressed="false">Nonstop</button>
+                <button type="button" class="lab-chip" data-lab-quick="stop1" aria-pressed="false">1 stop or fewer</button>
+                <button type="button" class="lab-chip" data-lab-open-rail="times">Times</button>
+                <button type="button" class="lab-chip" data-lab-open-rail="airlines">Airlines</button>
+                <button type="button" class="lab-chip" data-lab-open-rail="price">Price</button>
+              </div>
+              <div class="lab-toolbar-actions">
+                <div class="lab-updating" id="labUpdating"><span>Updating results…</span></div>
+                {% if query.get('depart_date') and not manual_flow %}
+                <button type="button" class="lab-track-price" id="labTrackPrice" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a5 5 0 0 0-5 5v3.4c0 .8-.32 1.56-.88 2.12L5 14.6c-.6.6-.17 1.6.66 1.6h12.68c.83 0 1.26-1 .66-1.6l-1.12-1.08a3 3 0 0 1-.88-2.12V8a5 5 0 0 0-5-5Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
+                  <span id="labTrackPriceLabel">Track price</span>
+                </button>
+                {% endif %}
+                <button type="button" class="lab-chip lab-chip-more" data-lab-open-rail="more">More filters</button>
+              </div>
             </div>
           </div>
 
@@ -336,4 +322,4 @@
 </div>
 
 <script type="application/json" id="labFlightsData">{{ lab_payload | tojson }}</script>
-<script src="{{ url_for('static', filename='results-lab.js', v='20260819-3') }}" defer></script>
+<script src="{{ url_for('static', filename='results-lab.js', v='20260820-1') }}" defer></script>

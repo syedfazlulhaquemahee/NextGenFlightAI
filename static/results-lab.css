@@ -22,6 +22,7 @@ body.lab-active .results-lab-body {
   --lab-brand-ink: #ffffff;
   --lab-ink: #0B0D12;
   --lab-muted: #5F6673;
+  --lab-tertiary: #98A2B3;
   --lab-bg: #F7F8FA;
   --lab-card-bg: #ffffff;
   --lab-border: #E4E7EC;
@@ -49,6 +50,7 @@ html:not([data-theme="light"]) .results-lab-body {
   --lab-brand-ink: #0B0D12;
   --lab-ink: #F3F5F8;
   --lab-muted: #9AA3AF;
+  --lab-tertiary: #6B7482;
   --lab-bg: #0B0D12;
   --lab-card-bg: #14171F;
   --lab-border: #262B36;
@@ -109,11 +111,10 @@ html:not([data-theme="light"]) .results-lab-body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 72px;
-  padding: 12px 24px;
-  margin: 0 -24px 20px;
-  background: var(--lab-card-bg);
-  border-bottom: 1px solid var(--lab-border);
+  min-height: 64px;
+  padding: 14px 24px;
+  margin: 0 -24px 8px;
+  background: var(--lab-bg);
   flex-wrap: wrap;
 }
 
@@ -122,9 +123,9 @@ html:not([data-theme="light"]) .results-lab-body {
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  font-weight: 700;
-  font-size: 21px;
-  letter-spacing: -0.015em;
+  font-weight: 680;
+  font-size: 27px;
+  letter-spacing: -0.02em;
 }
 
 .lab-summary-arrow {
@@ -177,51 +178,33 @@ html:not([data-theme="light"]) .results-lab-body {
   box-shadow: var(--lab-focus);
 }
 
-/* ---------- booking progress (spec 6.3) — compact, not a wizard ---------- */
+/* ---------- booking progress (spec 6.3) ---------- */
+/* Plain spaced text, no stepper-library circles/connector lines — the
+   active step reads via weight + a thin underline, done steps via a
+   small check mark, nothing else changes shape. */
 
 .lab-progress {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 34px;
-  margin-bottom: 14px;
-  font-size: 12.5px;
+  gap: 22px;
+  margin: 4px 0 18px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--lab-muted);
+  color: var(--lab-tertiary);
 }
 .lab-progress-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.lab-progress-dot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--lab-border);
-  color: var(--lab-muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-.lab-progress-line {
-  width: 32px;
-  height: 1px;
-  background: var(--lab-border);
+  padding-bottom: 5px;
+  border-bottom: 2px solid transparent;
 }
 .lab-progress-step.is-current {
   color: var(--lab-ink);
+  border-bottom-color: var(--lab-brand);
 }
-.lab-progress-step.is-current .lab-progress-dot {
-  border-color: var(--lab-brand);
-  background: var(--lab-brand);
-  color: var(--lab-brand-ink);
+.lab-progress-step.is-done {
+  color: var(--lab-muted);
 }
-.lab-progress-step.is-done .lab-progress-dot {
-  border-color: var(--lab-positive);
-  color: var(--lab-positive);
+.lab-progress-step.is-done::before {
+  content: "✓ ";
 }
 
 /* ---------- pinned chosen-departure summary (shown during Return/Review) ---------- */
@@ -278,52 +261,50 @@ html:not([data-theme="light"]) .results-lab-body {
 
 .lab-datestrip {
   display: flex;
-  align-items: stretch;
-  gap: 6px;
-  height: 68px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  margin-bottom: 16px;
 }
 .lab-datestrip-nav {
-  flex: 0 0 28px;
+  flex: 0 0 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--lab-border);
-  border-radius: 10px;
-  background: var(--lab-card-bg);
-  color: var(--lab-muted);
+  border: none;
+  background: none;
+  color: var(--lab-tertiary);
   cursor: pointer;
 }
 .lab-datestrip-nav:hover {
-  border-color: var(--lab-brand);
   color: var(--lab-brand);
 }
 .lab-datestrip-cells {
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
 }
 .lab-datestrip-cell {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: 1px solid var(--lab-border);
-  border-radius: 10px;
-  background: var(--lab-card-bg);
+  align-items: baseline;
+  gap: 5px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
   cursor: pointer;
   font: inherit;
-  color: var(--lab-ink);
-  padding: 0;
+  color: var(--lab-tertiary);
+  padding: 0 0 5px;
 }
 button.lab-datestrip-cell:hover {
-  border-color: var(--lab-brand);
+  color: var(--lab-ink);
 }
 .lab-datestrip-cell.is-selected {
-  border-color: var(--lab-brand);
-  border-width: 1.5px;
+  color: var(--lab-ink);
+  border-bottom-color: var(--lab-brand);
   cursor: default;
 }
 .lab-datestrip-cell.is-past {
@@ -331,10 +312,9 @@ button.lab-datestrip-cell:hover {
   cursor: default;
 }
 .lab-datestrip-day {
-  font-size: 11px;
-  color: var(--lab-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .lab-datestrip-cell.is-selected .lab-datestrip-day {
   color: var(--lab-brand);
@@ -343,52 +323,7 @@ button.lab-datestrip-cell:hover {
 .lab-datestrip-date {
   font-size: 13px;
   font-weight: 600;
-}
-.lab-datestrip-tag {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--lab-brand);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-/* ---------- price intelligence ---------- */
-/* No forecast backend exists, so this is deliberately thin: a Track price
-   toggle and nothing else. No "Good price" / "prices may rise" claims. */
-
-.lab-price-intel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 42px;
-  padding: 0 14px;
-  margin-bottom: 14px;
-  border-radius: 10px;
-  border: 1px solid var(--lab-border);
-  background: var(--lab-card-bg);
-}
-.lab-price-intel-text {
-  font-size: 12.5px;
-  color: var(--lab-muted);
-}
-.lab-price-intel-track {
-  flex-shrink: 0;
-  border: 1px solid var(--lab-border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--lab-brand);
-  font-size: 12.5px;
-  font-weight: 700;
-  padding: 6px 14px;
-  cursor: pointer;
-}
-.lab-price-intel-track:hover {
-  border-color: var(--lab-brand);
-}
-.lab-price-intel-track[aria-pressed="true"] {
-  background: rgba(79, 111, 255, 0.1);
-  border-color: var(--lab-brand);
+  white-space: nowrap;
 }
 
 /* ---------- comparison tabs (spec 8, 11) ---------- */
@@ -396,10 +331,11 @@ button.lab-datestrip-cell:hover {
    frame with a padded track, each option an inset segment. */
 
 .lab-tabs {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   padding: 4px;
   border: 1px solid var(--lab-border);
   border-radius: 14px;
@@ -471,41 +407,40 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-muted);
 }
 
-/* ---------- ranking explainer (spec 12) ---------- */
+/* ---------- ranking explainer (spec 12, 13) ---------- */
+/* Folded into the Skairova Best tab itself as a small "i" — no separate
+   row on the page for this. */
 
-.lab-rank-note {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 0 2px;
-}
-.lab-rank-note-text {
-  font-size: 12px;
-  color: var(--lab-muted);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.lab-rank-note-btn {
+.lab-tab-info {
   flex-shrink: 0;
-  border: none;
-  background: none;
-  color: var(--lab-brand);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 2px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  color: var(--lab-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  opacity: 0.9;
 }
+.lab-tab-info:hover,
+.lab-tab-info:focus-visible {
+  color: var(--lab-brand);
+  outline: none;
+}
+.lab-tab[aria-selected="true"] .lab-tab-info {
+  color: var(--lab-brand);
+  opacity: 0.75;
+}
+
 .lab-rank-pop {
   position: absolute;
   z-index: 25;
-  top: calc(100% + 6px);
-  right: 0;
+  top: calc(100% + 8px);
+  left: 4px;
   width: 300px;
   max-width: 80vw;
   padding: 12px 14px;
@@ -518,14 +453,35 @@ button.lab-datestrip-cell:hover {
   box-shadow: var(--lab-shadow-hover);
 }
 
-/* ---------- quick filter row (spec 9.1) ---------- */
+/* ---------- result toolbar (spec 14, 35) ---------- */
+/* One toolbar: count, quick filters, track price and "more filters" all
+   belong together instead of stacking as separate rows/cards. */
 
-.lab-quickrow {
+.lab-toolbar {
+  margin-bottom: 18px;
+}
+.lab-toolbar-count {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--lab-ink);
+  margin-bottom: 10px;
+}
+.lab-toolbar-count strong {
+  font-weight: 700;
+}
+.lab-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lab-toolbar-chips,
+.lab-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
 }
 .lab-chip {
   display: inline-flex;
@@ -554,15 +510,11 @@ button.lab-datestrip-cell:hover {
   border-color: var(--lab-brand);
   color: var(--lab-brand);
 }
-.lab-chip-more {
-  margin-left: auto;
-}
-
 /* ---------- layout: rail + column ---------- */
 
 .lab-layout {
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: 232px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -570,11 +522,10 @@ button.lab-datestrip-cell:hover {
 .lab-rail {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 18px;
-  border: 1px solid var(--lab-border);
-  border-radius: var(--lab-radius-card);
-  background: var(--lab-card-bg);
+  gap: 22px;
+  padding: 0;
+  border: none;
+  background: none;
   position: sticky;
   top: 96px;
   max-height: calc(100vh - 116px);
@@ -588,11 +539,9 @@ button.lab-datestrip-cell:hover {
 }
 
 .lab-rail-group-title {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--lab-muted);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--lab-ink);
   margin-bottom: 9px;
 }
 
@@ -606,19 +555,14 @@ button.lab-datestrip-cell:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--lab-brand-tint);
-  border: 1px solid color-mix(in srgb, var(--lab-brand) 22%, var(--lab-border));
 }
 .lab-ai-filter-label {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--lab-brand);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--lab-ink);
 }
 .lab-ai-filter-row {
   display: flex;
@@ -628,9 +572,9 @@ button.lab-datestrip-cell:hover {
 .lab-ai-filter-input {
   flex: 1;
   min-width: 0;
-  height: 36px;
+  height: 38px;
   padding: 0 12px;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid var(--lab-border);
   background: var(--lab-card-bg);
   color: var(--lab-ink);
@@ -647,8 +591,8 @@ button.lab-datestrip-cell:hover {
 }
 .lab-ai-filter-go {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -812,87 +756,6 @@ button.lab-datestrip-cell:hover {
   min-width: 0;
 }
 
-/* ---------- AI match summary (spec 31, 38) ---------- */
-
-.lab-ai-summary {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  border-radius: 12px;
-  background: var(--lab-brand-tint);
-  border: 1px solid color-mix(in srgb, var(--lab-brand) 18%, var(--lab-border));
-}
-.lab-ai-summary[hidden] {
-  display: none;
-}
-.lab-ai-summary-eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--lab-brand);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 4px;
-}
-.lab-ai-summary-text {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--lab-ink);
-  max-width: 62ch;
-}
-.lab-ai-summary-text strong {
-  font-weight: 650;
-}
-.lab-ai-summary-link {
-  flex-shrink: 0;
-  align-self: center;
-  border: none;
-  background: none;
-  color: var(--lab-brand);
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-  white-space: nowrap;
-  padding: 6px 4px;
-}
-.lab-ai-summary-link:hover {
-  text-decoration: underline;
-}
-
-/* ---------- results header ---------- */
-
-.lab-results-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.lab-results-title {
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  margin-bottom: 2px;
-}
-.lab-results-count {
-  font-size: 13px;
-  color: var(--lab-muted);
-}
-.lab-results-count strong {
-  color: var(--lab-ink);
-  font-weight: 700;
-}
-.lab-results-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
-}
 .lab-track-price {
   display: inline-flex;
   align-items: center;
@@ -968,7 +831,7 @@ button.lab-datestrip-cell:hover {
   border: 1px solid var(--lab-border);
   border-radius: var(--lab-radius-card);
   background: var(--lab-card-bg);
-  padding: 16px 20px;
+  padding: 14px 20px;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .lab-card:hover {
@@ -991,7 +854,7 @@ button.lab-datestrip-cell:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   flex-wrap: wrap;
 }
 .lab-badge {
@@ -1091,8 +954,8 @@ button.lab-datestrip-cell:hover {
 
 .lab-card-main {
   display: grid;
-  grid-template-columns: minmax(140px, 190px) minmax(0, 1fr) auto;
-  gap: 16px;
+  grid-template-columns: minmax(150px, 0.85fr) minmax(340px, 2.1fr) minmax(150px, 0.85fr);
+  gap: 20px;
   align-items: center;
 }
 
@@ -1245,7 +1108,7 @@ button.lab-datestrip-cell:hover {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 3px;
   font-size: 12px;
 }
 .lab-meta-item {
@@ -1257,6 +1120,66 @@ button.lab-datestrip-cell:hover {
 .lab-meta-item--yes { color: var(--lab-positive); font-weight: 600; }
 .lab-meta-item--warn { color: var(--lab-warning); font-weight: 600; }
 .lab-meta-item--muted { color: var(--lab-muted); }
+.lab-meta-item svg {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------- top-card AI reasoning (spec 20, 32, 44) ---------- */
+/* Only the top card carries this — the AI explanation lives inside the
+   result it explains instead of a separate panel above the list. */
+.lab-card-summary {
+  font-size: 13px;
+  color: var(--lab-muted);
+  line-height: 1.4;
+  margin: 0 0 8px;
+  max-width: 62ch;
+}
+.lab-card-why-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  border: none;
+  background: none;
+  color: var(--lab-brand);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 0;
+}
+.lab-card-why-toggle svg {
+  width: 9px;
+  height: 9px;
+  transition: transform 160ms ease;
+}
+.lab-card-why-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.lab-card-why-list {
+  list-style: none;
+  margin: -4px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--lab-ink);
+}
+.lab-card-why-list[hidden] {
+  display: none;
+}
+.lab-card-why-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+.lab-card-why-list li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--lab-positive);
+}
 
 .lab-pricing {
   display: flex;
@@ -1281,7 +1204,7 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-muted);
 }
 .lab-price-amt {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -1300,7 +1223,7 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-positive);
 }
 .lab-select-btn {
-  margin-top: 8px;
+  margin-top: 6px;
   padding: 0 24px;
   min-width: 130px;
   height: 44px;
@@ -1334,25 +1257,10 @@ button.lab-datestrip-cell:hover {
 .lab-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  padding-top: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px solid var(--lab-border);
-}
-
-.lab-why-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: none;
-  background: none;
-  color: var(--lab-brand);
-  font-size: 12.5px;
-  font-weight: 650;
-  cursor: pointer;
-  padding: 2px;
 }
 
 .lab-details-toggle {
@@ -1366,7 +1274,6 @@ button.lab-datestrip-cell:hover {
   font-weight: 600;
   cursor: pointer;
   padding: 2px;
-  margin-left: auto;
 }
 .lab-details-toggle svg {
   width: 10px;
@@ -1530,16 +1437,6 @@ button.lab-datestrip-cell:hover {
     font-size: 14px;
     cursor: pointer;
   }
-  .lab-ai-summary {
-    flex-direction: column;
-  }
-  .lab-results-header {
-    flex-wrap: wrap;
-  }
-  .lab-rank-note {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
   .lab-rank-pop {
     left: 0;
     right: auto;
@@ -1547,6 +1444,18 @@ button.lab-datestrip-cell:hover {
 }
 
 @media (max-width: 720px) {
+  .lab-datestrip-cells {
+    gap: 2px;
+  }
+  .lab-datestrip-cell {
+    gap: 3px;
+  }
+  .lab-datestrip-day {
+    font-size: 10.5px;
+  }
+  .lab-datestrip-date {
+    font-size: 12px;
+  }
   .lab-tabs {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
@@ -1607,11 +1516,9 @@ button.lab-datestrip-cell:hover {
    silently stays visible — this bit the Review step, which sets
    tabsWrap/quickRow/layoutEl hidden but they kept rendering underneath. */
 .lab-tabs[hidden],
-.lab-rank-note[hidden],
-.lab-quickrow[hidden],
+.lab-toolbar[hidden],
 .lab-layout[hidden],
 .lab-rail[hidden],
-.lab-results-header[hidden],
 .lab-progress[hidden],
 .lab-datestrip[hidden] {
   display: none;
@@ -1619,7 +1526,7 @@ button.lab-datestrip-cell:hover {
 
 /* Review step: rail is hidden but #labList (the review card) is a sibling
    inside the same .lab-layout grid, so collapse to one column instead of
-   leaving the rail's 252px track as dead space. */
+   leaving the rail's 232px track as dead space. */
 .lab-layout--single {
   grid-template-columns: 1fr;
 }
