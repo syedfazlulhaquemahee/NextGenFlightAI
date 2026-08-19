@@ -11807,8 +11807,13 @@ def auth_page():
     next_url = _safe_next_url(request.args.get("next"))
     signed_out = str(request.args.get("signed_out") or "").strip().lower() in {"1", "true", "yes"}
 
-    # Already signed in — there's nothing to do here except send them on.
-    if not signed_out and _session_account_email():
+    # A password-reset request can legitimately begin while the user is still
+    # signed in (for example, they are changing a password from the account
+    # menu).  Do not bounce those reset steps back to the portal: doing so
+    # previously hid the six-digit-code screen immediately after a successful
+    # request.
+    reset_modes = {"reset_request", "reset_verify", "reset_complete"}
+    if not signed_out and _session_account_email() and mode not in reset_modes:
         if booking_reference:
             return redirect(url_for("manage_booking", booking_reference=booking_reference))
         if next_url:

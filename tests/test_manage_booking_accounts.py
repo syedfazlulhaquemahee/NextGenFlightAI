@@ -357,6 +357,26 @@ class ManageBookingAccountTests(unittest.TestCase):
         )
         self.assertIn(b'id="portalMenuDropdown"', new_login.data)
 
+    @patch.object(flight_app.email_service, "send_password_reset_code_email", return_value=(True, "sent"))
+    @patch.object(flight_app.email_service, "send_welcome_email", return_value=(True, "sent"))
+    def test_signed_in_user_can_open_password_reset_code_screen(self, mock_send_welcome, mock_send_reset):
+        self.client.post(
+            "/manage-booking/account/signup",
+            data=self._signup_payload(""),
+            follow_redirects=True,
+        )
+
+        response = self.client.post(
+            "/manage-booking/account/reset/request",
+            data={"account_email": "traveler@example.com", "booking_reference": ""},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'data-initial-view="reset_verify"', response.data)
+        self.assertIn(b'data-auth-view="reset_verify"', response.data)
+        mock_send_reset.assert_called_once()
+
     def test_reset_password_rejects_missing_or_invalid_token(self):
         self.client.post(
             "/manage-booking/account/signup",
