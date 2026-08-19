@@ -11556,12 +11556,21 @@ def manage_booking_account_reset_verify():
         session.pop("ngf_reset_code", None)
         session.pop("ngf_reset_code_expires_at", None)
 
-    db_code_valid = analytics_store.validate_password_reset_code(
-        ACCOUNT_DB_PATH,
-        email,
-        verification_code,
-        consume=True,
-    )
+    # Reset codes issued by this flow live in the signed browser session. The
+    # old SQLite fallback table is only relevant for SQLite deployments; once
+    # accounts use Supabase, attempting to open that ephemeral Vercel path
+    # during verification can raise a 500 even when the emailed code is valid.
+    db_code_valid = False
+    if not _use_postgres_account_store():
+        try:
+            db_code_valid = analytics_store.validate_password_reset_code(
+                ACCOUNT_DB_PATH,
+                email,
+                verification_code,
+                consume=True,
+            )
+        except sqlite3.Error:
+            db_code_valid = False
     if not session_code_valid and not db_code_valid:
         if expires_at and now_ts > expires_at:
             _set_manage_account_notice(error="Verification code expired. Request a new code.")
