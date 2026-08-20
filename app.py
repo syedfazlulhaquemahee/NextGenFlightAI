@@ -4039,6 +4039,8 @@ class DuffelClient:
         booking_reference: str | None = None,
         passenger_last_name: str | None = None,
         limit: int = 10,
+        timeout: float | None = None,
+        fast: bool = False,
     ) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"limit": max(1, min(int(limit or 10), 50))}
         if booking_reference:
@@ -4046,7 +4048,13 @@ class DuffelClient:
         if passenger_last_name:
             params["passenger_name[]"] = [passenger_last_name]
         try:
-            resp = self._request("GET", "/air/orders", params=params)
+            resp = self._request(
+                "GET",
+                "/air/orders",
+                params=params,
+                timeout=timeout if timeout is not None else DUFFEL_HTTP_TIMEOUT,
+                fast=fast,
+            )
         except requests.RequestException as exc:
             print("DUFFEL ORDER LIST EXCEPTION:", repr(exc))
             raise DuffelAPIError("We couldn't reach Duffel to find that booking.")
@@ -8579,6 +8587,7 @@ def _ensure_postgres_account_db() -> None:
                     terms_accepted_at TEXT NOT NULL DEFAULT '',
                     saved_searches TEXT NOT NULL DEFAULT '[]',
                     linked_booking_references TEXT NOT NULL DEFAULT '[]',
+                    trip_summaries TEXT NOT NULL DEFAULT '{}',
                     session_nonce TEXT NOT NULL DEFAULT '',
                     last_login_at TEXT NOT NULL DEFAULT '',
                     last_login_ip TEXT NOT NULL DEFAULT '',
@@ -8596,6 +8605,10 @@ def _ensure_postgres_account_db() -> None:
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS idx_manage_booking_accounts_updated_at "
                 "ON manage_booking_accounts(updated_at)"
+            )
+            cur.execute(
+                "ALTER TABLE manage_booking_accounts "
+                "ADD COLUMN IF NOT EXISTS trip_summaries TEXT NOT NULL DEFAULT '{}'"
             )
             cur.execute(
                 """
@@ -8641,6 +8654,7 @@ def _ensure_account_db() -> None:
                     terms_accepted_at TEXT NOT NULL DEFAULT '',
                     saved_searches TEXT NOT NULL DEFAULT '[]',
                     linked_booking_references TEXT NOT NULL DEFAULT '[]',
+                    trip_summaries TEXT NOT NULL DEFAULT '{}',
                     updated_at TEXT NOT NULL
                 )
                 """
@@ -8658,6 +8672,7 @@ def _ensure_account_db() -> None:
                 "dob": "TEXT NOT NULL DEFAULT ''",
                 "terms_accepted_at": "TEXT NOT NULL DEFAULT ''",
                 "saved_searches": "TEXT NOT NULL DEFAULT '[]'",
+                "trip_summaries": "TEXT NOT NULL DEFAULT '{}'",
                 "session_nonce": "TEXT NOT NULL DEFAULT ''",
                 "last_login_at": "TEXT NOT NULL DEFAULT ''",
                 "last_login_ip": "TEXT NOT NULL DEFAULT ''",
@@ -8698,6 +8713,7 @@ def _db_fetch_account(email: str) -> dict[str, Any] | None:
                 terms_accepted_at,
                 saved_searches,
                 linked_booking_references,
+                trip_summaries,
                 session_nonce,
                 last_login_at,
                 last_login_ip,
@@ -8735,6 +8751,17 @@ def _db_fetch_account(email: str) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         saved_searches_raw = []
     saved_searches = _safe_saved_searches(saved_searches_raw)
+    try:
+        trip_summaries_raw = json.loads(row["trip_summaries"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        trip_summaries_raw = {}
+    if not isinstance(trip_summaries_raw, Mapping):
+        trip_summaries_raw = {}
+    trip_summaries = {
+        _normalize_booking_reference(str(reference)): dict(summary)
+        for reference, summary in (trip_summaries_raw or {}).items()
+        if _normalize_booking_reference(str(reference)) and isinstance(summary, Mapping)
+    }
     return {
         "email": str(row["email"] or "").strip().lower(),
         "salt_hex": str(row["salt_hex"] or "").strip(),
@@ -8746,6 +8773,7 @@ def _db_fetch_account(email: str) -> dict[str, Any] | None:
         "terms_accepted_at": str(row["terms_accepted_at"] or "").strip(),
         "saved_searches": saved_searches,
         "linked_booking_references": sorted(set(linked_refs)),
+        "trip_summaries": trip_summaries,
         "session_nonce": str(row["session_nonce"] or "").strip(),
         "last_login_at": str(row["last_login_at"] or "").strip(),
         "last_login_ip": str(row["last_login_ip"] or "").strip(),
@@ -8787,6 +8815,18 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
     saved_searches_json = json.dumps(saved_searches, separators=(",", ":"), ensure_ascii=True)
     linked_refs = [str(item).strip().upper() for item in (account.get("linked_booking_references") or []) if str(item).strip()]
     linked_json = json.dumps(sorted(set(linked_refs)))
+    trip_summaries = account.get("trip_summaries") or {}
+    if not isinstance(trip_summaries, Mapping):
+        trip_summaries = {}
+    trip_summaries_json = json.dumps(
+        {
+            _normalize_booking_reference(str(reference)): dict(summary)
+            for reference, summary in trip_summaries.items()
+            if _normalize_booking_reference(str(reference)) and isinstance(summary, Mapping)
+        },
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
     updated_at = datetime.utcnow().isoformat()
     query = """
             INSERT INTO manage_booking_accounts (
@@ -8805,6 +8845,7 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 route_tracking_enabled,
                 saved_searches,
                 linked_booking_references,
+                trip_summaries,
                 phone_number,
                 nationality,
                 passport_number,
@@ -8827,6 +8868,7 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 route_tracking_enabled = excluded.route_tracking_enabled,
                 saved_searches = excluded.saved_searches,
                 linked_booking_references = excluded.linked_booking_references,
+                trip_summaries = excluded.trip_summaries,
                 phone_number = excluded.phone_number,
                 nationality = excluded.nationality,
                 passport_number = excluded.passport_number,
@@ -8853,6 +8895,7 @@ def _db_upsert_account(account: Mapping[str, Any]) -> None:
                 route_tracking_enabled,
                 saved_searches_json,
                 linked_json,
+                trip_summaries_json,
                 phone_number,
                 nationality,
                 passport_number,
@@ -9457,7 +9500,78 @@ def _issue_manage_reset_token(email: str, *, ttl_seconds: int = 15 * 60) -> str:
     return token
 
 
-def _link_booking_to_account(email: str, booking_reference: str) -> None:
+def _trip_summary_from_order(order: Mapping[str, Any]) -> dict[str, str]:
+    """Return the small, customer-facing trip label needed by account lists.
+
+    This deliberately captures data at confirmation time; profile rendering
+    must not make a live provider request just to turn a reference into a trip.
+    """
+    slices = order.get("slices") or []
+    first_slice = slices[0] if isinstance(slices, Sequence) and slices else {}
+    segments = (first_slice.get("segments") or []) if isinstance(first_slice, Mapping) else []
+    first_segment = segments[0] if isinstance(segments, Sequence) and segments else {}
+    last_segment = segments[-1] if isinstance(segments, Sequence) and segments else {}
+    origin = str(((first_segment.get("origin") or {}) if isinstance(first_segment, Mapping) else {}).get("iata_code") or "").strip().upper()
+    destination = str(((last_segment.get("destination") or {}) if isinstance(last_segment, Mapping) else {}).get("iata_code") or "").strip().upper()
+    departing_at = str((first_segment.get("departing_at") if isinstance(first_segment, Mapping) else "") or "").strip()
+    try:
+        date_label = date.fromisoformat(departing_at[:10]).strftime("%b %-d, %Y") if departing_at else ""
+    except (TypeError, ValueError):
+        date_label = departing_at[:10]
+    return {
+        # Do not invent a customer-facing trip name when the provider did not
+        # return an itinerary. Reference-only records are handled separately
+        # in the account UI rather than appearing as generic "Flight trip" rows.
+        "route": f"{origin} → {destination}" if origin and destination else "",
+        "date_label": date_label,
+    }
+
+
+def _hydrate_account_trip_summaries(account: Mapping[str, Any]) -> dict[str, Any]:
+    """Backfill legacy reference-only account entries with real trip labels.
+
+    A single short provider request is allowed for the account page, then the
+    result is persisted. We never make one request per booking or block the
+    sign-in flow to do this work.
+    """
+    payload = dict(account)
+    references = {
+        _normalize_booking_reference(str(reference))
+        for reference in (payload.get("linked_booking_references") or [])
+        if _normalize_booking_reference(str(reference))
+    }
+    summaries = dict(payload.get("trip_summaries") or {})
+    missing = references - set(summaries)
+    if not missing or app.config.get("TESTING") or not DUFFEL_ACCESS_TOKEN:
+        return payload
+    try:
+        orders = DUFF.list_orders(limit=50, timeout=2.5, fast=True)
+    except Exception:
+        return payload
+    changed = False
+    for order in orders:
+        if not isinstance(order, Mapping):
+            continue
+        reference = _normalize_booking_reference(str(order.get("booking_reference") or ""))
+        if reference not in missing:
+            continue
+        summary = _trip_summary_from_order(order)
+        if not summary.get("route"):
+            continue
+        summaries[reference] = summary
+        changed = True
+    if changed:
+        payload["trip_summaries"] = summaries
+        _account_save(str(payload.get("email") or ""), payload)
+    return payload
+
+
+def _link_booking_to_account(
+    email: str,
+    booking_reference: str,
+    *,
+    trip_summary: Mapping[str, Any] | None = None,
+) -> None:
     key = _normalize_email(email)
     ref = _normalize_booking_reference(booking_reference)
     if not key or not ref:
@@ -9468,6 +9582,13 @@ def _link_booking_to_account(email: str, booking_reference: str) -> None:
     linked = {str(item).strip().upper() for item in (account.get("linked_booking_references") or []) if str(item).strip()}
     linked.add(ref)
     account["linked_booking_references"] = sorted(linked)
+    if isinstance(trip_summary, Mapping):
+        summaries = dict(account.get("trip_summaries") or {})
+        summaries[ref] = {
+            "route": str(trip_summary.get("route") or "").strip()[:80],
+            "date_label": str(trip_summary.get("date_label") or "").strip()[:64],
+        }
+        account["trip_summaries"] = summaries
     _account_save(key, account)
 
 
@@ -9574,6 +9695,7 @@ def _capture_booking_email_links(
     if not booking_reference:
         return
     order_id = str(order.get("id") or "").strip()
+    trip_summary = _trip_summary_from_order(order)
     account_email = _session_account_email() if has_request_context() else ""
     recipients = _collect_itinerary_email_recipients(
         passengers_payload,
@@ -9588,7 +9710,7 @@ def _capture_booking_email_links(
             booking_reference=booking_reference,
             order_id=order_id,
         )
-        _link_booking_to_account(email, booking_reference)
+        _link_booking_to_account(email, booking_reference, trip_summary=trip_summary)
 
 
 def _discover_recent_booking_links_for_email(email: str, *, max_orders: int = 50) -> int:
@@ -9622,7 +9744,7 @@ def _discover_recent_booking_links_for_email(email: str, *, max_orders: int = 50
             booking_reference=booking_reference,
             order_id=str(order.get("id") or "").strip(),
         )
-        _link_booking_to_account(key, booking_reference)
+        _link_booking_to_account(key, booking_reference, trip_summary=_trip_summary_from_order(order))
     return len(linked_refs)
 
 
@@ -11437,9 +11559,12 @@ def manage_booking_account_login():
     _set_session_account_email(email, session_nonce=str(account.get("session_nonce") or ""))
     if booking_reference:
         _link_booking_to_account(email, booking_reference)
-    linked_now = _sync_account_bookings_by_email(email)
-    if linked_now == 0 and _discover_recent_booking_links_for_email(email) > 0:
-        _sync_account_bookings_by_email(email)
+    # Signing in must never wait on a best-effort provider-wide order scan.
+    # On a slow or unavailable provider connection, listing historic orders can
+    # take long enough for the browser to appear stuck on its submit spinner.
+    # Bookings already associated with this email are local and inexpensive to
+    # sync here; historical discovery remains available through booking flows.
+    _sync_account_bookings_by_email(email)
     _track_analytics_event(
         event_type="account_login",
         account_email=email,
@@ -11977,6 +12102,7 @@ def user_portal():
     account = _account_lookup(account_email) if account_email else None
     if not account:
         return redirect(url_for("index"))
+    account = _hydrate_account_trip_summaries(account)
 
     saved_searches = _safe_saved_searches(account.get("saved_searches"))
     saved_search_cards = [_saved_search_card_view(item) for item in saved_searches]

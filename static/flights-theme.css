@@ -256,6 +256,31 @@ body.home-page .home-stays .nu-seg input:focus,
 body.home-page .home-stays .nu-seg select:focus{ outline: none; box-shadow: none; }
 body.home-page .home-stays .nu-seg input::placeholder{ color: #4d5761; font-weight: 400; }
 
+/* The global theme has a coloured focus/autofill state for generic controls.
+   Hotel search is a single, neutral white pill, so typing in its destination
+   field must not turn that field into a purple box. */
+body.home-page .home-stays .nu-seg:focus-within {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.home-page .home-stays .nu-seg input:focus,
+body.home-page .home-stays .nu-seg input:focus-visible,
+body.home-page .home-stays .nu-seg select:focus,
+body.home-page .home-stays .nu-seg select:focus-visible {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+body.home-page .home-stays .nu-seg input:-webkit-autofill,
+body.home-page .home-stays .nu-seg input:-webkit-autofill:hover,
+body.home-page .home-stays .nu-seg input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111322;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+}
+
 body.home-page .home-stays .nu-seg-dates{ display: flex; flex-direction: row; align-items: center; gap: 6px; }
 body.home-page .home-stays .nu-seg-dates input{ font-size: 14px; letter-spacing: -.16px; }
 body.home-page .home-stays .nu-seg-dates select{ font-size: 14px; letter-spacing: -.16px; cursor: pointer; }

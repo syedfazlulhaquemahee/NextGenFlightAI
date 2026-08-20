@@ -61,26 +61,6 @@
     return (name || "").split(/\s*\+\s*/).filter(Boolean);
   }
 
-  /* ---------------- explicit, independently-testable rank derivations ----------------
-     Each takes the current stage's item array and returns one item (or null).
-     None of these read DOM/module state, so they're copy-paste-portable into a
-     plain Node test — see scratchpad/check_lab_derivations.js. */
-  function getBestItem(items) {
-    return items.length ? items[0] : null; // server-recommended order for this stage
-  }
-  function getCheapestItem(items) {
-    if (!items.length) return null;
-    return items.reduce(function (a, b) { return b.price < a.price ? b : a; }, items[0]);
-  }
-  function getFastestItem(items) {
-    if (!items.length) return null;
-    return items.reduce(function (a, b) { return b.duration < a.duration ? b : a; }, items[0]);
-  }
-  function getBestDirectItem(items) {
-    var nonstop = items.filter(function (i) { return i.stops === 0; });
-    if (!nonstop.length) return null;
-    return nonstop.reduce(function (a, b) { return b.price < a.price ? b : a; }, nonstop[0]);
-  }
 
   /* ---------------- DOM refs ---------------- */
 
@@ -90,7 +70,6 @@
   var visibleCountEl = document.getElementById("labVisibleCount");
   var countLabelEl = document.getElementById("labResultsCountLabel");
   var noMatchEl = document.getElementById("labNoMatch");
-  var tabsWrap = root.querySelector(".lab-tabs");
   var railEl = document.getElementById("labRail");
   var layoutEl = root.querySelector(".lab-layout");
   var resultsHeaderEl = document.getElementById("labResultsHeader");
@@ -165,7 +144,7 @@
       return departureGroups.map(function (g) {
         return {
           key: g.key, price: g.best.price, duration: g.out.durationMin, stops: g.out.stops,
-          departIso: g.out.departIso, airlineName: g.airlineName, layovers: g.out.layovers, ref: g,
+          departIso: g.out.departIso, arriveIso: g.out.arriveIso, airlineName: g.airlineName, layovers: g.out.layovers, ref: g,
         };
       });
     }
@@ -173,7 +152,7 @@
       return flow.chosenGroup.members.map(function (f) {
         return {
           key: f.id, price: f.price, duration: f.ret.durationMin, stops: f.ret.stops,
-          departIso: f.ret.departIso, airlineName: f.airlineName, layovers: f.ret.layovers, ref: f,
+          departIso: f.ret.departIso, arriveIso: f.ret.arriveIso, airlineName: f.airlineName, layovers: f.ret.layovers, ref: f,
         };
       });
     }
@@ -181,7 +160,7 @@
       return allFlights.map(function (f) {
         return {
           key: f.id, price: f.price, duration: f.totalDurationMin, stops: f.totalStops,
-          departIso: f.out ? f.out.departIso : "", airlineName: f.airlineName,
+          departIso: f.out ? f.out.departIso : "", arriveIso: f.out ? f.out.arriveIso : "", airlineName: f.airlineName,
           layovers: (f.out ? f.out.layovers : []).concat(f.ret ? f.ret.layovers : []), ref: f,
         };
       });
@@ -195,11 +174,27 @@
      a single-leg departure/return card already has its meaning established
      by the booking-progress stepper and pinned-departure bar, so repeating
      "Departure"/"Outbound" on the card itself is pure noise (spec #13). */
+  /* Calendar-day delta between two ISO timestamps, comparing date parts
+     only so it's unaffected by whether the strings carry a timezone
+     suffix — both already represent each airport's local wall-clock time,
+     the same convention departTime/arriveTime already rely on. Real
+     arithmetic over real fields already in the payload, never fabricated. */
+  function dayOffset(departIso, arriveIso) {
+    var d = /^(\d{4})-(\d{2})-(\d{2})/.exec(departIso || "");
+    var a = /^(\d{4})-(\d{2})-(\d{2})/.exec(arriveIso || "");
+    if (!d || !a) return 0;
+    var dUTC = Date.UTC(+d[1], +d[2] - 1, +d[3]);
+    var aUTC = Date.UTC(+a[1], +a[2] - 1, +a[3]);
+    return Math.round((aUTC - dUTC) / 86400000);
+  }
+
   function legRow(leg, showLabel) {
     var stopsClass = leg.stops === 0 ? "is-nonstop" : (leg.stops >= 2 ? "is-warn" : "");
     var mid = leg.stops === 1 && leg.layovers.length
       ? leg.stopsLabel + " &middot; " + esc(leg.layovers[0].code)
       : leg.stopsLabel;
+    var offset = dayOffset(leg.departIso, leg.arriveIso);
+    var offsetHtml = offset > 0 ? '<span class="lab-leg-offset">+' + offset + "</span>" : "";
     return (
       '<div class="lab-leg">' +
         (showLabel && leg.label ? '<span class="lab-leg-label">' + esc(leg.label) + "</span>" : "") +
@@ -213,7 +208,7 @@
           '<span class="lab-leg-stops ' + stopsClass + '">' + mid + "</span>" +
         "</div>" +
         '<div class="lab-leg-point lab-leg-point--end">' +
-          '<span class="lab-leg-time">' + esc(leg.arriveTime) + "</span>" +
+          '<span class="lab-leg-time">' + esc(leg.arriveTime) + offsetHtml + "</span>" +
           '<span class="lab-leg-iata">' + esc(leg.destCode) + '<span class="lab-leg-day">' + esc(leg.arriveDay) + "</span></span>" +
         "</div>" +
       "</div>"
@@ -255,8 +250,8 @@
     return { priceDelta: priceDelta, durDelta: durDelta, stopsDelta: stopsDelta, depDeltaMin: depDeltaMin };
   }
 
-  function tradeoffText(tradeoff) {
-    if (!tradeoff) return "";
+  function tradeoffFragment(tradeoff) {
+    if (!tradeoff) return null;
     var isSavings = tradeoff.priceDelta < -0.5;
     var head = Math.abs(tradeoff.priceDelta) > 0.5
       ? (isSavings ? "Save " + money(-tradeoff.priceDelta) : "+" + money(tradeoff.priceDelta))
@@ -271,8 +266,10 @@
     } else if (Math.abs(tradeoff.durDelta) >= 20) {
       clause = (tradeoff.durDelta > 0 ? "+" : "-") + hm(Math.abs(tradeoff.durDelta)) + " total";
     }
-    var text = "<strong>" + esc(head) + "</strong>" + (clause ? " &middot; " + esc(clause) : "");
-    return '<span class="lab-card-tradeoff' + (isSavings ? " is-savings" : "") + '">' + text + "</span>";
+    return {
+      isSavings: isSavings,
+      html: "<strong>" + esc(head) + "</strong>" + (clause ? " &middot; " + esc(clause) : ""),
+    };
   }
 
   /* ---------------- badges (spec #27, #28) ----------------
@@ -302,56 +299,34 @@
     return '<button type="button" class="lab-badge-why" data-lab-why data-reason="' + esc(reason) + '" aria-label="' + esc(ariaLabel) + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4.5M12 8h.01" stroke-linecap="round"/></svg></button>';
   }
 
-  /* One row for both the contextual badge and the numeric trade-off — kept
-     on a single line (rather than stacked) so a card carrying real
-     information density doesn't grow taller than one that has none. The
-     top card's own reasoning lives in bestSummaryLine/whyDisclosure below,
-     not on the badge itself, so its pill stays a plain, quiet label. */
+  /* Non-top cards get one quiet plain-text line (label + trade-off merged
+     with a middle dot, e.g. "Best afternoon · +$1") instead of a colored
+     pill — a second visual badge next to Skairova Best's own was reading
+     as competing emphasis. The one exception is a raw "Top pick" badge
+     reaching a non-top card (the committed review-stage card), which keeps
+     the same plain Skairova Best treatment for consistency. */
   function metaRow(isTop, rawBadge, reasoning, item, tradeoff) {
-    if (isTop) {
-      return '<div class="lab-card-badges"><span class="lab-badge lab-badge--match"><span class="lab-spark" aria-hidden="true">✦</span> Skairova Best</span></div>';
+    var disp = isTop
+      ? { text: "Skairova Best", cls: "match" }
+      : (rawBadge ? contextualBadge(rawBadge, item, tradeoff) : null);
+    if (disp && disp.cls === "match") {
+      return (
+        '<div class="lab-card-badges"><span class="lab-badge lab-badge--match"><span class="lab-spark" aria-hidden="true">✦</span> ' +
+          esc(disp.text) + whyButton(reasoning, "Why this is ranked here") +
+        "</span></div>"
+      );
     }
-    var badgeHtml = "";
-    if (rawBadge) {
-      var disp = contextualBadge(rawBadge, item, tradeoff);
-      if (disp) {
-        badgeHtml =
-          '<span class="lab-badge lab-badge--' + disp.cls + '">' +
-            (disp.sparkle ? '<span class="lab-spark" aria-hidden="true">✦</span> ' : "") +
-            esc(disp.text) +
-            whyButton(reasoning, "Why this is ranked here") +
-          "</span>";
-      }
-    }
-    var tradeoffHtml = tradeoffText(tradeoff);
-    if (!badgeHtml && !tradeoffHtml) return "";
-    return '<div class="lab-card-badges">' + badgeHtml + tradeoffHtml + "</div>";
-  }
-
-  /* ---------------- top-card reasoning (spec #20, #32, #44) ----------------
-     Replaces the old floating "Skairova analyzed N flights" panel: the
-     explanation now lives inside the result it explains. The one-line
-     summary is built from the item's own real price/stops/duration (never
-     invented); the expandable list re-formats the backend's real
-     badgeReasoning text, same as the old why-popover did. */
-  function bestSummaryLine(item) {
-    if (!item) return "";
-    var stopsPhrase = item.stops === 0 ? "nonstop service" : (item.stops + " stop" + (item.stops > 1 ? "s" : ""));
-    return "Best balance of " + money(item.price) + " fare, " + stopsPhrase + " and " + hm(item.duration) + " journey.";
-  }
-
-  function whyDisclosure(reasoning) {
-    if (!reasoning) return "";
-    var items = reasoning.split(/;\s*/).map(function (s) { return s.trim(); }).filter(Boolean).map(function (s) { return s.charAt(0).toUpperCase() + s.slice(1); });
-    if (!items.length) return "";
-    var listHtml = items.map(function (s) {
-      return '<li><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 10 8 14 16 5"/></svg><span>' + esc(s) + "</span></li>";
-    }).join("");
+    var tf = tradeoffFragment(tradeoff);
+    if (!disp && !tf) return "";
+    var cls = disp ? disp.cls : (tf.isSavings ? "positive" : "neutral");
+    var parts = [];
+    if (disp) parts.push(esc(disp.text));
+    if (tf) parts.push(tf.html);
     return (
-      '<button type="button" class="lab-card-why-toggle" aria-expanded="false" data-lab-why-toggle>Why this ranks #1' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
-      "</button>" +
-      '<ul class="lab-card-why-list" hidden data-lab-why-list>' + listHtml + "</ul>"
+      '<div class="lab-meta-line lab-meta-line--' + cls + '">' +
+        parts.join(' <span class="lab-meta-dot" aria-hidden="true">&middot;</span> ') +
+        whyButton(reasoning, "Why this is ranked here") +
+      "</div>"
     );
   }
 
@@ -397,6 +372,18 @@
         "</div>" +
       "</div>"
     );
+  }
+
+  /* ---------------- top-card reason line (spatial pass, spec #27) ----------------
+     Restored: the density pass had dropped this to save vertical space,
+     but the spatial-composition spec explicitly wants it back with its own
+     breathing room now that the Skairova Best card has a taller allowance
+     (130-155px) than a normal card. Built from the item's own real
+     price/stops/duration — never invented — same as before. */
+  function bestSummaryLine(item) {
+    if (!item) return "";
+    var stopsPhrase = item.stops === 0 ? "nonstop service" : (item.stops + " stop" + (item.stops > 1 ? "s" : ""));
+    return "Best balance of fare, " + stopsPhrase + " and journey time.";
   }
 
   /* "round trip · per traveler" / "one way · total for 3 travelers" — the
@@ -463,35 +450,46 @@
     var showLegLabel = legs.length > 1;
     var isTop = !!(stageItem && bestRef && stageItem.key === bestRef.key);
     var tradeoff = (!isTop && stageItem && bestRef) ? computeTradeoff(stageItem, bestRef) : null;
-    var topReasoning = isTop
-      ? '<div class="lab-card-summary">' + esc(bestSummaryLine(stageItem)) + "</div>" + whyDisclosure(reasoning)
-      : "";
+
+    /* Density rebuild (spec: airline row → full-width journey row →
+       baggage+price+CTA bottom row). Every row reads left-to-right in one
+       pass instead of a tall content column beside a separate price rail —
+       that's what let the old layout run 195-224px per card. Reasoning
+       (real backend badgeReasoning) is always reachable through the same
+       compact "i" popover metaRow already builds for non-top cards; there
+       is no separate expandable disclosure taking its own row anymore. */
+    var cardMeta = metaRow(isTop, badge, reasoning, stageItem || {}, tradeoff);
+    var summaryHtml = isTop ? '<div class="lab-card-summary">' + esc(bestSummaryLine(stageItem)) + "</div>" : "";
+
+    var priceNotes = ['<span class="lab-price-note">' + esc(priceQualifier) + "</span>"];
+    if (secondaryNote) priceNotes.push('<span class="lab-price-note">' + esc(secondaryNote) + "</span>");
+    priceNotes.push('<span class="lab-price-note lab-price-note--taxes">Taxes &amp; fees included</span>');
+    if (cueHtml) priceNotes.push(cueHtml);
 
     return (
       '<article class="lab-card' + (isTop ? " lab-card--top" : "") + '" data-key="' + esc(key) + '">' +
-        metaRow(isTop, badge, reasoning, stageItem || {}, tradeoff) +
-        topReasoning +
-        '<div class="lab-card-main">' +
+        '<div class="lab-card-top-row">' +
           carrierBlock(airlineName, logoUrl, mix) +
-          '<div class="lab-itinerary">' +
-            legs.map(function (l) { return legRow(l, showLegLabel); }).join("") +
+          cardMeta +
+        "</div>" +
+        '<div class="lab-itinerary">' +
+          legs.map(function (l) { return legRow(l, showLegLabel); }).join("") +
+        "</div>" +
+        summaryHtml +
+        '<div class="lab-card-bottom-row">' +
+          '<div class="lab-card-bottom-meta">' +
             journeyMeta([]) +
+            '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
+            "</button>" +
           "</div>" +
           '<div class="lab-pricing">' +
             '<div class="lab-pricing-info">' +
               '<span class="lab-price-amt">' + priceAmt + "</span>" +
-              '<span class="lab-price-note">' + esc(priceQualifier) + "</span>" +
-              (secondaryNote ? '<span class="lab-price-note">' + esc(secondaryNote) + "</span>" : "") +
-              '<span class="lab-price-note lab-price-note--taxes">Taxes &amp; fees included</span>' +
-              cueHtml +
+              '<div class="lab-price-notes">' + priceNotes.join("") + "</div>" +
             "</div>" +
             ctaHtml +
           "</div>" +
-        "</div>" +
-        '<div class="lab-card-footer">' +
-          '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
-          "</button>" +
         "</div>" +
         '<div class="lab-details" hidden data-lab-details>' + detailsPanel(legs) + "</div>" +
       "</article>"
@@ -516,12 +514,20 @@
 
   var activeTab = "best";
 
+  function isoTime(iso) {
+    var t = iso ? new Date(iso).getTime() : NaN;
+    return isNaN(t) ? Infinity : t;
+  }
+
+  /* Nonstop lives only as a filter now (spec #5) — nothing here filters by
+     stops; every mode is purely an ordering over the already-filtered set. */
   function sortedVisible(items) {
     var visible = items.filter(passesFilters);
-    if (activeTab === "direct") visible = visible.filter(function (it) { return it.stops === 0; });
     if (activeTab === "cheapest") visible.sort(function (a, b) { return a.price - b.price || a.duration - b.duration; });
     else if (activeTab === "fastest") visible.sort(function (a, b) { return a.duration - b.duration || a.price - b.price; });
-    else if (activeTab === "direct") visible.sort(function (a, b) { return a.price - b.price; });
+    else if (activeTab === "stops") visible.sort(function (a, b) { return a.stops - b.stops || a.price - b.price; });
+    else if (activeTab === "departure") visible.sort(function (a, b) { return isoTime(a.departIso) - isoTime(b.departIso); });
+    else if (activeTab === "arrival") visible.sort(function (a, b) { return isoTime(a.arriveIso) - isoTime(b.arriveIso); });
     // "best" keeps original (server-recommended) order — items arrays are
     // already built in that order for every stage.
     return visible;
@@ -625,24 +631,6 @@
     });
   }
 
-  function setTabValue(tab, item) {
-    var el = root.querySelector('[data-lab-tab-value="' + tab + '"]');
-    if (!el) return;
-    el.textContent = item ? money(item.price) + " · " + hm(item.duration) : "—";
-  }
-
-  function updateTabSummaries(items) {
-    if (!items.length) return;
-    var direct = getBestDirectItem(items);
-    setTabValue("best", getBestItem(items));
-    setTabValue("cheapest", getCheapestItem(items));
-    setTabValue("fastest", getFastestItem(items));
-    setTabValue("direct", direct);
-    var directTabBtn = root.querySelector('[data-lab-tab="direct"]');
-    directTabBtn.disabled = !direct;
-    directTabBtn.classList.toggle("is-unavailable", !direct);
-  }
-
   function updateProgress() {
     if (!isRoundTrip) { progressEl.hidden = true; return; }
     progressEl.hidden = false;
@@ -682,7 +670,6 @@
       // #labList (where the review card itself renders) lives inside
       // .lab-layout too, so hiding that container hid the review card
       // along with the filters it was meant to remove.
-      tabsWrap.hidden = true;
       railEl.hidden = true;
       resultsHeaderEl.hidden = true;
       layoutEl.classList.add("lab-layout--single");
@@ -693,7 +680,6 @@
       return;
     }
 
-    tabsWrap.hidden = false;
     railEl.hidden = false;
     resultsHeaderEl.hidden = false;
     layoutEl.classList.remove("lab-layout--single");
@@ -701,7 +687,6 @@
     var items = itemsForStage();
     var bestRef = items.length ? items[0] : null;
     rebuildRailBounds(items);
-    updateTabSummaries(items);
 
     var visible = sortedVisible(items);
     updateStopPriceLabels(items);
@@ -722,7 +707,7 @@
         flow.chosenGroup = departureGroups.filter(function (g) { return g.key === key; })[0];
         flow.stage = "return";
         activeTab = "best";
-        syncTabButtons();
+        syncSortControl();
         clearFilterInputs();
         renderStage();
         window.scrollTo({ top: 0, behavior: "auto" });
@@ -739,21 +724,56 @@
     });
   }
 
-  /* ---------------- tabs ---------------- */
+  /* ---------------- sort dropdown ---------------- */
 
-  function syncTabButtons() {
-    Array.from(root.querySelectorAll("[data-lab-tab]")).forEach(function (b) {
-      b.setAttribute("aria-selected", String(b.dataset.labTab === activeTab));
+  var sortLabels = {
+    best: "Skairova Best",
+    cheapest: "Lowest price",
+    fastest: "Fastest",
+    stops: "Fewest stops",
+    departure: "Departure time",
+    arrival: "Arrival time"
+  };
+  var sortTrigger = document.getElementById("labSortTrigger");
+  var sortMenu = document.getElementById("labSortMenu");
+  var sortLabelEl = document.getElementById("labSortLabel");
+
+  function syncSortControl() {
+    if (sortLabelEl) sortLabelEl.textContent = sortLabels[activeTab] || sortLabels.best;
+    Array.from(root.querySelectorAll(".lab-sort-option")).forEach(function (opt) {
+      opt.setAttribute("aria-selected", String(opt.dataset.labSort === activeTab));
     });
   }
-  Array.from(root.querySelectorAll("[data-lab-tab]")).forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      if (btn.disabled) return;
-      activeTab = btn.dataset.labTab;
-      syncTabButtons();
-      renderStage();
+  function closeSortMenu() {
+    if (!sortMenu || sortMenu.hidden) return;
+    sortMenu.hidden = true;
+    if (sortTrigger) sortTrigger.setAttribute("aria-expanded", "false");
+  }
+  function openSortMenu() {
+    if (!sortMenu) return;
+    sortMenu.hidden = false;
+    if (sortTrigger) sortTrigger.setAttribute("aria-expanded", "true");
+  }
+  if (sortTrigger && sortMenu) {
+    sortTrigger.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (sortMenu.hidden) openSortMenu(); else closeSortMenu();
     });
-  });
+    Array.from(sortMenu.querySelectorAll(".lab-sort-option")).forEach(function (opt) {
+      opt.addEventListener("click", function () {
+        activeTab = opt.dataset.labSort;
+        syncSortControl();
+        closeSortMenu();
+        renderStage();
+      });
+    });
+    document.addEventListener("click", function (e) {
+      if (!sortMenu.hidden && !sortMenu.contains(e.target) && e.target !== sortTrigger) closeSortMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeSortMenu();
+    });
+  }
 
   /* ---------------- quick chips + rail filters ---------------- */
 
@@ -878,18 +898,18 @@
       if (!expanded) details.scrollIntoView({ block: "nearest" });
       return;
     }
-    var whyToggle = event.target.closest("[data-lab-why-toggle]");
-    if (whyToggle) {
-      var whyList = whyToggle.nextElementSibling;
-      var whyExpanded = whyToggle.getAttribute("aria-expanded") === "true";
-      whyToggle.setAttribute("aria-expanded", String(!whyExpanded));
-      if (whyList) whyList.hidden = whyExpanded;
-      return;
-    }
     var why = event.target.closest("[data-lab-why]");
     if (why) {
+      /* Anchor to the badge/meta-line row, not the tiny inline icon itself
+         — the icon's x-position drifts with how long the label text is
+         (e.g. "Skairova Best" vs "Best Afternoon flight · +$7"), which
+         made a fixed left/right CSS anchor overflow the viewport for some
+         label lengths and not others. The row is a stable anchor at every
+         width: compact and right-aligned on desktop, full card width on
+         mobile — either way the popover stays within it. */
+      var anchor = why.closest(".lab-card-badges, .lab-meta-line") || why;
       var existingPop = document.querySelector(".lab-why-pop");
-      var sameTrigger = existingPop && existingPop.parentElement === why;
+      var sameTrigger = existingPop && existingPop.parentElement === anchor;
       if (existingPop) existingPop.remove();
       if (sameTrigger) return;
       var reasonText = why.dataset.reason || "";
@@ -905,8 +925,8 @@
         "<ul>" + reasonItems.map(function (s) {
           return '<li><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 10 8 14 16 5"/></svg><span>' + esc(s) + "</span></li>";
         }).join("") + "</ul>";
-      if (getComputedStyle(why).position === "static") why.style.position = "relative";
-      why.appendChild(pop);
+      if (getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
+      anchor.appendChild(pop);
       setTimeout(function () {
         document.addEventListener("click", function onDocClick(e) {
           if (!pop.contains(e.target) && e.target !== why) {
@@ -923,7 +943,7 @@
       flow.chosenGroup = null;
       flow.chosenFlight = null;
       activeTab = "best";
-      syncTabButtons();
+      syncSortControl();
       clearFilterInputs();
       renderStage();
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -934,7 +954,7 @@
       flow.stage = "return";
       flow.chosenFlight = null;
       activeTab = "best";
-      syncTabButtons();
+      syncSortControl();
       clearFilterInputs();
       renderStage();
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -1064,10 +1084,10 @@
   }
 
   /* ---------------- ranking explainer popover (spec #12, #13) ----------------
-     Folded into the Skairova Best tab as a small "i" — nested inside the
-     tab <button>, so its own handler must stop propagation or clicking it
-     would also re-select the (already-selected) tab and immediately
-     re-close the popover via the document-level outside-click listener. */
+     Small "i" sitting beside the sort trigger inside .lab-sort — its own
+     handler must stop propagation or a click would also bubble into the
+     sort-menu's outside-click listener and immediately close whichever of
+     the two just opened. */
   var howRankingBtn = root.querySelector("[data-lab-how-ranking]");
   var howRankingPop = document.getElementById("labHowRankingPop");
   if (howRankingBtn && howRankingPop) {

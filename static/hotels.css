@@ -311,6 +311,31 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
 .nu-seg select:focus-visible { outline: none !important; }
 .nu-seg input::placeholder { color: var(--nu-muted); font-weight: 400; }
 
+/* Keep the destination field visually quiet while it is being typed in. The
+   shared site theme applies a coloured focus/autofill treatment to every form
+   control; that treatment reads as a purple input box inside the hotel pill. */
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg:focus-within {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg input:focus,
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg input:focus-visible,
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg select:focus,
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg select:focus-visible {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg input:-webkit-autofill,
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg input:-webkit-autofill:hover,
+.hotels-page .nu-search:not(.nu-search--ai) .nu-seg input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--nu-text);
+  box-shadow: 0 0 0 1000px var(--nu-elevated) inset !important;
+}
+
 .nu-seg-dates { display: flex; align-items: center; gap: 6px; }
 .nu-seg-dates input { font-size: 14px; letter-spacing: -.16px; }
 .nu-seg-dates select { font-size: 14px; letter-spacing: -.16px; cursor: pointer; }

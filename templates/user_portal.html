@@ -4,536 +4,70 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   {% include "partials/theme_init.html" %}
-  <title>{{ account.first_name or "My" }} {{ account.last_name or "Account" }} • Skairova</title>
+  <title>Account · Skairova</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='user-portal.css', v='20260516-v4') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='user-portal.css', v='20260819-uniform-mobile-glass-nav') }}" />
   {% include "partials/theme_head.html" %}
 </head>
-<body class="portal-page">
+<body class="portal-page account-page">
+{% include "partials/platform_header.html" %}
+{% if account %}
+{% set trip_images = {'BCN':'img/destinations/barcelona.jpg','CDG':'img/destinations/paris.jpg','ORY':'img/destinations/paris.jpg','LHR':'img/destinations/london.jpg','LGW':'img/destinations/london.jpg','FCO':'img/destinations/rome.jpg','NRT':'img/destinations/tokyo.jpg','HND':'img/destinations/tokyo.jpg','LAX':'img/destinations/losangeles.jpg','MIA':'img/destinations/miami.jpg','MCO':'img/destinations/orlando.jpg','SFO':'img/destinations/sanfrancisco.jpg','ORD':'img/destinations/chicago.jpg','DXB':'img/destinations/dubai.jpg','IST':'img/destinations/istanbul.jpg','BKK':'img/destinations/bangkok.jpg','SYD':'img/destinations/sydney.jpg','MEL':'img/destinations/melbourne.jpg','YYZ':'img/destinations/toronto.jpg','LAS':'img/destinations/lasvegas.jpg','DPS':'img/destinations/bali.jpg','JTR':'img/destinations/santorini.jpg','MLE':'img/destinations/maldives.jpg'} %}
+{% set trip_cities = {'BCN':'Barcelona','CDG':'Paris','ORY':'Paris','LHR':'London','LGW':'London','FCO':'Rome','NRT':'Tokyo','HND':'Tokyo','LAX':'Los Angeles','MIA':'Miami','MCO':'Orlando','SFO':'San Francisco','ORD':'Chicago','DXB':'Dubai','IST':'Istanbul','BKK':'Bangkok','SYD':'Sydney','MEL':'Melbourne','YYZ':'Toronto','LAS':'Las Vegas','DPS':'Bali','JTR':'Santorini','MLE':'Maldives'} %}
+{% set account_icons = {'profile':'icons/user-round.svg','plane':'icons/plane.svg','saved':'icons/heart.svg','settings':'icons/settings.svg','document':'icons/file-text.svg','bell':'icons/bell.svg','sparkle':'icons/sparkles.svg','mail':'icons/mail.svg','phone':'icons/phone.svg'} %}
+{% macro account_icon(name, class_name='') -%}
+<img class="account-icon {{ class_name }}" src="{{ url_for('static', filename=account_icons.get(name, 'icons/info.svg')) }}" alt="" aria-hidden="true" />
+{%- endmacro %}
+<main class="account-shell" id="account-content">
+  <aside class="account-sidebar" aria-label="Account navigation">
+    <div class="account-person"><span class="account-avatar" aria-hidden="true">{{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}</span><div><strong>{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</strong><span>{{ account.email }}</span></div></div>
+    <nav class="account-nav" aria-label="Account sections"><p>Account</p><button type="button" class="is-active" data-account-tab="profile">{{ account_icon('profile') }}Profile</button><button type="button" data-account-tab="trips">{{ account_icon('plane') }}Trips</button><button type="button" data-account-tab="saved">{{ account_icon('saved') }}Saved searches</button><div class="account-nav-divider"></div><p>Preferences</p><button type="button" data-account-tab="settings">{{ account_icon('settings') }}Settings</button></nav>
+    <form class="account-signout" method="post" action="{{ url_for('user_portal_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit">Sign out</button></form>
+  </aside>
+  <section class="account-content">
+    {% if account_notice %}<div class="account-notice account-notice--success" role="status">{{ account_notice }}</div>{% endif %}
+    {% if account_error %}<div class="account-notice account-notice--error" role="alert">{{ account_error }}</div>{% endif %}
 
-  {% include "partials/platform_header.html" %}
+    <section class="account-panel is-active" data-account-panel="profile" aria-label="Profile">
+      {% if request.args.get('tab') == 'profile' and request.args.get('saved') %}<div class="account-notice account-notice--success" role="status">Your profile was updated.</div>{% endif %}
+      <header class="account-heading"><div><h1>Profile</h1><p>Manage your personal details and traveler information.</p></div><button type="button" class="text-action" data-account-tab="profile-edit">Edit profile</button></header>
+      <section class="account-card account-card--identity"><div class="account-identity-copy"><span class="account-kicker">{{ account_icon('sparkle') }} Skairova traveler</span><div class="account-avatar account-avatar--large" aria-hidden="true">{{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}</div><div><h2>{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</h2><p>{{ account.email }}</p><span>Ready for your next journey{% if account.created_at %} · Member since {{ account.created_at[:4] }}{% endif %}</span></div></div><div class="account-identity-art" aria-hidden="true"><svg viewBox="0 0 240 150" fill="none"><path d="M15 111c40-56 70-71 110-62 32 7 58-4 99-39" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6"/><circle cx="15" cy="111" r="5" fill="currentColor"/><circle cx="224" cy="10" r="5" fill="currentColor"/><path d="m127 39 15 5-15 5-5 15-5-15-15-5 15-5 5-15 5 15Z" fill="currentColor"/><path d="m184 87 21-8-13 18 5 18-8 3-8-17-17-5 2-8 18 2Z" fill="currentColor"/></svg></div></section>
+      <section class="account-section"><div class="account-section-heading"><div><h2>Contact details</h2><p>Used for important updates about your trips.</p></div><button type="button" class="text-action" data-account-tab="profile-edit">Edit</button></div><dl class="account-detail-list"><div><dt>{{ account_icon('mail') }}<span>Email address</span></dt><dd>{{ account.email }}</dd></div><div><dt>{{ account_icon('phone') }}<span>Phone number</span></dt><dd>{{ account.phone_number or 'Not added' }}</dd></div></dl></section>
+      <section class="account-section"><div class="account-section-heading"><div><h2>More traveler details</h2><p>Save the details you use most often to speed up booking.</p></div></div><div class="account-action-list"><button type="button" data-account-tab="profile-edit">{{ account_icon('profile') }}<span><b>Traveler information</b><small>Legal name, date of birth, and nationality</small></span><i aria-hidden="true">›</i></button><button type="button" data-account-tab="profile-edit">{{ account_icon('document') }}<span><b>Travel documents</b><small>{% if account.passport_number %}Document saved{% else %}Add a passport or ID number{% endif %}</small></span><i aria-hidden="true">›</i></button><button type="button" data-account-tab="settings">{{ account_icon('bell') }}<span><b>Notifications</b><small>Price alerts and route updates</small></span><i aria-hidden="true">›</i></button></div></section>
+    </section>
 
-  {% if account %}
-  <div class="prtl-root">
+    <section class="account-panel" data-account-panel="profile-edit" aria-label="Edit profile">
+      <header class="account-heading"><div><h1>Edit profile</h1><p>Use your legal name exactly as it appears on travel documents.</p></div><button type="button" class="text-action" data-account-tab="profile">Cancel</button></header>
+      <form method="post" action="{{ url_for('user_portal_update_profile') }}" class="account-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><section><h2>Personal details</h2><div class="account-fields"><label>First name<input type="text" name="first_name" value="{{ account.first_name or '' }}" maxlength="80" autocomplete="given-name" placeholder="First name" /></label><label>Last name<input type="text" name="last_name" value="{{ account.last_name or '' }}" maxlength="80" autocomplete="family-name" placeholder="Last name" /></label><label>Date of birth<input type="date" name="dob" data-nx-calendar="past" value="{{ account.dob or '' }}" autocomplete="bday" /></label><label>Gender<select name="gender"><option value="" {% if not account.gender %}selected{% endif %}>Prefer not to say</option><option value="male" {% if account.gender == 'male' %}selected{% endif %}>Male</option><option value="female" {% if account.gender == 'female' %}selected{% endif %}>Female</option><option value="non_binary" {% if account.gender == 'non_binary' %}selected{% endif %}>Non-binary</option><option value="prefer_not_to_say" {% if account.gender == 'prefer_not_to_say' %}selected{% endif %}>Other</option></select></label></div></section><section><h2>Contact and travel documents</h2><p>These details are private and are only used to pre-fill your travel information.</p><div class="account-fields"><label>Phone number<input type="tel" name="phone_number" value="{{ account.phone_number or '' }}" maxlength="32" autocomplete="tel" placeholder="+1 555 000 0000" /></label><label>Nationality<input type="text" name="nationality" value="{{ account.nationality or '' }}" maxlength="64" autocomplete="country-name" placeholder="e.g. American" /></label><label class="account-field-wide">Passport or ID number <small>Optional</small><input type="text" name="passport_number" value="{{ account.passport_number or '' }}" maxlength="32" autocomplete="off" placeholder="Add a document number" /></label></div></section><footer><button class="button-primary" type="submit">Save changes</button><button type="button" class="button-quiet" data-account-tab="profile">Cancel</button></footer></form>
+    </section>
 
-    <!-- ══ SIDEBAR (desktop) ══ -->
-    <aside class="prtl-sidebar" aria-label="Portal navigation">
-      <div class="prtl-sid-inner">
+    <section class="account-panel" data-account-panel="trips" aria-label="Trips">
+      <header class="account-heading account-heading--action"><div><h1>Trips</h1><p>All of your upcoming and past bookings in one place.</p></div><a class="button-primary" href="{{ url_for('index') }}">Search flights</a></header>
+      {% set trip_count = namespace(value=0) %}{% for ref in account.linked_booking_references %}{% if account.get('trip_summaries', {}).get(ref, {}).get('route') %}{% set trip_count.value = trip_count.value + 1 %}{% endif %}{% endfor %}
+      {% if trip_count.value %}<section class="trip-group"><h2>Trips</h2><div class="trip-grid">{% for ref in account.linked_booking_references %}{% set trip = account.get('trip_summaries', {}).get(ref, {}) %}{% if trip.get('route') %}{% set destination_code = trip.get('route', '').split(' → ')|last %}{% set destination = trip_cities.get(destination_code, destination_code) %}<article class="trip-card" style="--trip-image: url('{{ url_for('static', filename=trip_images.get(destination_code, 'img/flights-hero.jpg')) }}');"><div class="trip-card-image" aria-hidden="true"><span>Trip to</span><h3>{{ destination }}</h3></div><div class="trip-card-body"><p class="trip-route">{{ trip.get('route') }}</p><p class="trip-date">{% if trip.get('date_label') %}{{ trip.get('date_label') }}{% else %}Dates available in trip details{% endif %}</p><div><span>Booking reference {{ ref }}</span><a href="{{ url_for('manage_booking') }}?booking_reference={{ ref }}">View trip <b>→</b></a></div></div></article>{% endif %}{% endfor %}</div></section>{% elif account.linked_booking_references %}<section class="trip-lookup"><div><h2>Find a booking</h2><p>Your saved booking references are ready. Open a booking to see its full itinerary and trip details.</p></div><a class="button-secondary" href="{{ url_for('manage_booking') }}">Manage a booking</a></section>{% else %}<section class="account-empty"><div class="account-empty-icon" aria-hidden="true">✈</div><h2>No trips yet</h2><p>When you book while signed in, your confirmation and itinerary will be here.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a><a href="{{ url_for('manage_booking') }}">Already booked? Manage a booking</a></section>{% endif %}
+    </section>
 
-        <!-- Profile card -->
-        <div class="prtl-sid-profile">
-          <div class="prtl-avatar" aria-hidden="true">
-            {{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}
-          </div>
-          <div class="prtl-sid-info">
-            <div class="prtl-sid-name">{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</div>
-            <div class="prtl-sid-email">{{ account.email }}</div>
-          </div>
-        </div>
+    <section class="account-panel" data-account-panel="saved" aria-label="Saved searches">
+      <header class="account-heading account-heading--action"><div><h1>Saved searches</h1><p>Pick up a search right where you left off.</p></div>{% if saved_searches %}<form method="post" action="{{ url_for('user_portal_clear_searches') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button class="text-action" type="submit">Clear all</button></form>{% endif %}</header>
+      {% if saved_search_cards %}<div class="saved-search-list">{% for item in saved_search_cards %}<article><div class="saved-search-icon" aria-hidden="true">✈</div><div><p>{{ item.mode_label }} · {{ item.date_label }}</p><h2>{{ item.summary }}</h2><span>{{ item.route }}{% if item.cabin %} · {{ item.cabin }}{% endif %}</span></div><footer><form method="post" action="{{ url_for('search_edit') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-secondary">Edit</button></form><form method="post" action="{{ url_for('search_shell') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-primary">Search again</button></form></footer></article>{% endfor %}</div>{% else %}<section class="account-empty"><div class="account-empty-icon" aria-hidden="true">♡</div><h2>No saved searches</h2><p>Search while signed in and we’ll save it here for you.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a></section>{% endif %}
+    </section>
 
-        <!-- Quick stats -->
-        <div class="prtl-sid-stats">
-          <div class="prtl-sid-stat">
-            <span class="prtl-sid-stat-num">{{ account.linked_booking_references|length }}</span>
-            <span class="prtl-sid-stat-lbl">Booking{{ 's' if account.linked_booking_references|length != 1 }}</span>
-          </div>
-          <div class="prtl-sid-stat-div"></div>
-          <div class="prtl-sid-stat">
-            <span class="prtl-sid-stat-num">{{ saved_searches|length }}</span>
-            <span class="prtl-sid-stat-lbl">Search{{ 'es' if saved_searches|length != 1 }}</span>
-          </div>
-          {% if account.created_at %}
-          <div class="prtl-sid-stat-div"></div>
-          <div class="prtl-sid-stat">
-            <span class="prtl-sid-stat-num">{{ account.created_at[:4] }}</span>
-            <span class="prtl-sid-stat-lbl">Member</span>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- Nav -->
-        <nav class="prtl-nav" aria-label="Portal sections">
-          <button class="prtl-nav-item is-active" type="button" data-tab="profile">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
-            <span>Profile</span>
-          </button>
-          <button class="prtl-nav-item" type="button" data-tab="security">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Security</span>
-          </button>
-          <button class="prtl-nav-item" type="button" data-tab="preferences">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
-            <span>Preferences</span>
-          </button>
-          <button class="prtl-nav-item" type="button" data-tab="bookings">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-            <span>Bookings</span>
-            {% if account.linked_booking_references %}<span class="prtl-nav-badge">{{ account.linked_booking_references|length }}</span>{% endif %}
-          </button>
-          <button class="prtl-nav-item" type="button" data-tab="searches">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <span>Searches</span>
-            {% if saved_searches %}<span class="prtl-nav-badge">{{ saved_searches|length }}</span>{% endif %}
-          </button>
-        </nav>
-
-        <div class="prtl-sid-spacer"></div>
-
-        <div class="prtl-sid-foot">
-          <form method="post" action="{{ url_for('user_portal_logout') }}">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-            <button class="prtl-signout-btn" type="submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-              Sign out
-            </button>
-          </form>
-        </div>
-
-      </div>
-    </aside>
-
-    <!-- ══ MAIN ══ -->
-    <main class="prtl-main" id="prtlMain">
-
-      <!-- Mobile hero (hidden on desktop) -->
-      <div class="prtl-mobile-hero">
-        <div class="prtl-mhero-left">
-          <div class="prtl-avatar prtl-avatar--lg" aria-hidden="true">
-            {{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}
-          </div>
-          <div class="prtl-mhero-info">
-            <div class="prtl-mhero-name">{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</div>
-            <div class="prtl-mhero-email">{{ account.email }}</div>
-            <div class="prtl-mhero-stats">
-              <span>{{ account.linked_booking_references|length }} booking{{ 's' if account.linked_booking_references|length != 1 }}</span>
-              <span class="prtl-mhero-dot">·</span>
-              <span>{{ saved_searches|length }} search{{ 'es' if saved_searches|length != 1 }}</span>
-            </div>
-          </div>
-        </div>
-        <form method="post" action="{{ url_for('user_portal_logout') }}">
-          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-          <button class="prtl-mhero-signout" type="submit" aria-label="Sign out">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-          </button>
-        </form>
-      </div>
-
-      {% if account_notice %}
-      <div class="prtl-alert prtl-alert--success" role="status">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        {{ account_notice }}
-      </div>
-      {% endif %}
-      {% if account_error %}
-      <div class="prtl-alert prtl-alert--error" role="alert">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-        {{ account_error }}
-      </div>
-      {% endif %}
-
-      <!-- ── PROFILE TAB ── -->
-      <section class="prtl-tab is-active" data-tab="profile" aria-label="Profile">
-        <div class="prtl-tab-head">
-          <h1 class="prtl-tab-title">Personal Info</h1>
-          <p class="prtl-tab-sub">Your traveler identity used across all bookings.</p>
-        </div>
-
-        {% if request.args.get('tab') == 'profile' and request.args.get('saved') %}
-        <div class="prtl-alert prtl-alert--success" role="status">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-          Profile saved successfully.
-        </div>
-        {% endif %}
-
-        <form method="post" action="{{ url_for('user_portal_update_profile') }}" class="prtl-form" novalidate>
-          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-          <div class="prtl-card">
-            <div class="prtl-card-head">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
-              Basic information
-            </div>
-            <div class="prtl-field-grid">
-              <div class="prtl-field">
-                <label class="prtl-label" for="pFirstName">First name</label>
-                <input class="prtl-input" type="text" id="pFirstName" name="first_name"
-                       value="{{ account.first_name or '' }}" maxlength="80"
-                       autocomplete="given-name" placeholder="Given name" />
-              </div>
-              <div class="prtl-field">
-                <label class="prtl-label" for="pLastName">Last name</label>
-                <input class="prtl-input" type="text" id="pLastName" name="last_name"
-                       value="{{ account.last_name or '' }}" maxlength="80"
-                       autocomplete="family-name" placeholder="Family name" />
-              </div>
-              <div class="prtl-field">
-                <label class="prtl-label" for="pDob">Date of birth</label>
-                <input class="prtl-input" type="date" id="pDob" name="dob" data-nx-calendar="past"
-                       value="{{ account.dob or '' }}" autocomplete="bday" />
-                <span class="prtl-hint">Required for booking verification</span>
-              </div>
-              <div class="prtl-field">
-                <label class="prtl-label" for="pGender">Gender</label>
-                <select class="prtl-input prtl-select" id="pGender" name="gender">
-                  <option value="" {% if not account.gender %}selected{% endif %}>Prefer not to say</option>
-                  <option value="male" {% if account.gender == 'male' %}selected{% endif %}>Male</option>
-                  <option value="female" {% if account.gender == 'female' %}selected{% endif %}>Female</option>
-                  <option value="non_binary" {% if account.gender == 'non_binary' %}selected{% endif %}>Non-binary</option>
-                  <option value="prefer_not_to_say" {% if account.gender == 'prefer_not_to_say' %}selected{% endif %}>Other</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="prtl-card">
-            <div class="prtl-card-head">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.9 11.8a19.79 19.79 0 01-3.07-8.67A2 2 0 013.81 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 8.91a16 16 0 006 6l.91-.91a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
-              Contact &amp; travel documents
-            </div>
-            <div class="prtl-field-grid">
-              <div class="prtl-field">
-                <label class="prtl-label" for="pPhone">Phone number</label>
-                <input class="prtl-input" type="tel" id="pPhone" name="phone_number"
-                       value="{{ account.phone_number or '' }}" maxlength="32"
-                       autocomplete="tel" placeholder="+1 555 000 0000" />
-              </div>
-              <div class="prtl-field">
-                <label class="prtl-label" for="pNationality">Nationality</label>
-                <input class="prtl-input" type="text" id="pNationality" name="nationality"
-                       value="{{ account.nationality or '' }}" maxlength="64"
-                       autocomplete="country-name" placeholder="e.g. British, American" />
-              </div>
-              <div class="prtl-field prtl-field--full">
-                <label class="prtl-label" for="pPassport">Passport / ID number</label>
-                <input class="prtl-input" type="text" id="pPassport" name="passport_number"
-                       value="{{ account.passport_number or '' }}" maxlength="32"
-                       autocomplete="off" placeholder="Document number" />
-                <span class="prtl-hint">Stored securely — only used to pre-fill booking forms</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="prtl-form-foot">
-            <button class="prtl-btn prtl-btn--primary" type="submit">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-              Save profile
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <!-- ── SECURITY TAB ── -->
-      <section class="prtl-tab" data-tab="security" aria-label="Security">
-        <div class="prtl-tab-head">
-          <h1 class="prtl-tab-title">Account &amp; Security</h1>
-          <p class="prtl-tab-sub">Sign-in credentials, email address, and session controls.</p>
-        </div>
-
-        <div class="prtl-info-stack">
-          <div class="prtl-info-row">
-            <div class="prtl-info-icon prtl-info-icon--blue">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            </div>
-            <div class="prtl-info-body">
-              <div class="prtl-info-lbl">Email address</div>
-              <div class="prtl-info-val">{{ account.email }}</div>
-              <div class="prtl-info-note">Primary sign-in address — cannot be changed</div>
-            </div>
-          </div>
-
-          <div class="prtl-info-row">
-            <div class="prtl-info-icon prtl-info-icon--purple">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            </div>
-            <div class="prtl-info-body">
-              <div class="prtl-info-lbl">Password</div>
-              <div class="prtl-info-val">••••••••••••</div>
-              {% if account.get('oauth_provider') %}
-              <div class="prtl-info-note">Signed in via {{ account.oauth_provider | capitalize }} — no password set</div>
-              {% else %}
-              <div class="prtl-info-note">Use a strong, unique password</div>
-              {% endif %}
-            </div>
-            <a class="prtl-btn prtl-btn--ghost prtl-btn--sm"
-               href="{{ url_for('auth_page', mode='reset_request', reset_email=account.email) }}">
-              Change
-            </a>
-          </div>
-
-          <div class="prtl-info-row">
-            <div class="prtl-info-icon prtl-info-icon--green">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <div class="prtl-info-body">
-              <div class="prtl-info-lbl">Member since</div>
-              <div class="prtl-info-val">{{ account.created_at[:10] if account.created_at else "—" }}</div>
-              <div class="prtl-info-note">Account creation date</div>
-            </div>
-          </div>
-
-          {% if active_sessions %}
-          <div class="prtl-info-row">
-            <div class="prtl-info-icon prtl-info-icon--amber">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            </div>
-            <div class="prtl-info-body">
-              <div class="prtl-info-lbl">Active session</div>
-              {% for s in active_sessions %}
-              <div class="prtl-info-val">{{ s.label }}</div>
-              <div class="prtl-info-note">{{ s.ip }} · Last seen {{ s.last_seen or "—" }}</div>
-              {% endfor %}
-            </div>
-            <form method="post" action="{{ url_for('user_portal_revoke_sessions') }}">
-              <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-              <button class="prtl-btn prtl-btn--danger-ghost prtl-btn--sm" type="submit">Revoke</button>
-            </form>
-          </div>
-          {% endif %}
-        </div>
-      </section>
-
-      <!-- ── PREFERENCES TAB ── -->
-      <section class="prtl-tab" data-tab="preferences" aria-label="Preferences">
-        <div class="prtl-tab-head">
-          <h1 class="prtl-tab-title">Preferences</h1>
-          <p class="prtl-tab-sub">Notification settings and route monitoring controls.</p>
-        </div>
-
-        <form method="post" action="{{ url_for('user_portal_update_preferences') }}" class="prtl-form">
-          <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-          <div class="prtl-pref-stack">
-            <label class="prtl-pref-row">
-              <div class="prtl-pref-left">
-                <div class="prtl-pref-icon prtl-pref-icon--blue">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                </div>
-                <div>
-                  <div class="prtl-pref-title">Price drop alerts</div>
-                  <div class="prtl-pref-desc">Notify me when tracked routes become cheaper</div>
-                </div>
-              </div>
-              <span class="prtl-toggle">
-                <input type="checkbox" name="price_alerts_enabled" role="switch"
-                       {% if account.price_alerts_enabled %}checked{% endif %} />
-                <span class="prtl-toggle-track"><span class="prtl-toggle-thumb"></span></span>
-              </span>
-            </label>
-
-            <label class="prtl-pref-row">
-              <div class="prtl-pref-left">
-                <div class="prtl-pref-icon prtl-pref-icon--purple">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-                </div>
-                <div>
-                  <div class="prtl-pref-title">Route tracking</div>
-                  <div class="prtl-pref-desc">Keep selected routes monitored automatically</div>
-                </div>
-              </div>
-              <span class="prtl-toggle">
-                <input type="checkbox" name="route_tracking_enabled" role="switch"
-                       {% if account.route_tracking_enabled %}checked{% endif %} />
-                <span class="prtl-toggle-track"><span class="prtl-toggle-thumb"></span></span>
-              </span>
-            </label>
-          </div>
-
-          <div class="prtl-form-foot">
-            <button class="prtl-btn prtl-btn--primary" type="submit">Save preferences</button>
-          </div>
-        </form>
-
-        {% if top_routes %}
-        <div class="prtl-divider"></div>
-        <div class="prtl-tab-head">
-          <h2 class="prtl-tab-title prtl-tab-title--sm">Quick routes</h2>
-          <p class="prtl-tab-sub">Launch your most-searched routes instantly.</p>
-        </div>
-        <div class="prtl-routes-grid">
-          {% for route in top_routes %}
-          {% set route_parts = route.split('→') %}
-          <a class="prtl-route-card"
-             href="{{ url_for('index') }}?origin={{ route_parts[0]|trim }}&destination={{ (route_parts[1]|trim) if route_parts|length > 1 else '' }}">
-            <div class="prtl-route-row">
-              <span class="prtl-route-code">{{ route_parts[0]|trim }}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              <span class="prtl-route-code">{{ (route_parts[1]|trim) if route_parts|length > 1 else '?' }}</span>
-            </div>
-            <span class="prtl-route-lbl">Search now</span>
-          </a>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </section>
-
-      <!-- ── BOOKINGS TAB ── -->
-      <section class="prtl-tab" data-tab="bookings" aria-label="Bookings">
-        <div class="prtl-tab-head">
-          <h1 class="prtl-tab-title">Linked Bookings</h1>
-          <p class="prtl-tab-sub">Booking references tied to this account.</p>
-        </div>
-
-        {% if account.linked_booking_references %}
-        <div class="prtl-booking-list">
-          {% for ref in account.linked_booking_references %}
-          <div class="prtl-booking-row">
-            <div class="prtl-booking-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-            </div>
-            <div class="prtl-booking-body">
-              <div class="prtl-booking-ref">{{ ref }}</div>
-              <div class="prtl-booking-note">Booking reference</div>
-            </div>
-            <a class="prtl-btn prtl-btn--ghost prtl-btn--sm"
-               href="{{ url_for('manage_booking') }}?booking_reference={{ ref }}">
-              View
-            </a>
-          </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="prtl-empty">
-          <div class="prtl-empty-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-          </div>
-          <p class="prtl-empty-title">No bookings linked yet</p>
-          <p class="prtl-empty-sub">Bookings made while signed in appear here automatically.</p>
-          <a class="prtl-btn prtl-btn--primary" href="{{ url_for('manage_booking') }}">Manage a booking</a>
-        </div>
-        {% endif %}
-      </section>
-
-      <!-- ── SEARCHES TAB ── -->
-      <section class="prtl-tab" data-tab="searches" aria-label="Saved searches">
-        <div class="prtl-tab-head">
-          <h1 class="prtl-tab-title">Saved Searches</h1>
-          <p class="prtl-tab-sub">Replay or edit past searches instantly.</p>
-          {% if saved_searches %}
-          <form method="post" action="{{ url_for('user_portal_clear_searches') }}" style="margin-top:14px">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
-            <button class="prtl-btn prtl-btn--danger-ghost prtl-btn--sm" type="submit">Clear all searches</button>
-          </form>
-          {% endif %}
-        </div>
-
-        {% if saved_search_cards %}
-        <div class="prtl-search-list">
-          {% for item in saved_search_cards %}
-          <article class="prtl-search-card">
-            <div class="prtl-search-top">
-              <span class="prtl-search-mode-badge">{{ item.mode_label }}</span>
-              <span class="prtl-search-date">{{ item.date_label }}</span>
-            </div>
-            <h3 class="prtl-search-title">{{ item.summary }}</h3>
-            <p class="prtl-search-meta">{{ item.route }}{% if item.cabin %} · {{ item.cabin }}{% endif %}{% if item.budget %} · {{ item.budget }}{% endif %}</p>
-            <div class="prtl-search-actions">
-              <form method="post" action="{{ url_for('search_edit') }}" style="display:contents">
-                {% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}
-                <button class="prtl-btn prtl-btn--ghost prtl-btn--sm" type="submit">Edit</button>
-              </form>
-              <form method="post" action="{{ url_for('search_shell') }}" style="display:contents">
-                {% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}
-                <button class="prtl-btn prtl-btn--primary prtl-btn--sm" type="submit">Search again</button>
-              </form>
-            </div>
-          </article>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="prtl-empty">
-          <div class="prtl-empty-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <p class="prtl-empty-title">No saved searches</p>
-          <p class="prtl-empty-sub">Run a search while signed in and it'll appear here for quick replay.</p>
-          <a class="prtl-btn prtl-btn--primary" href="{{ url_for('index') }}">Search flights</a>
-        </div>
-        {% endif %}
-      </section>
-
-    </main>
-  </div><!-- /.prtl-root -->
-
-  <!-- Mobile bottom nav -->
-  <nav class="prtl-bnav" aria-label="Portal navigation">
-    <button class="prtl-bnav-item is-active" type="button" data-tab="profile">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
-      <span>Profile</span>
-    </button>
-    <button class="prtl-bnav-item" type="button" data-tab="security">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <span>Security</span>
-    </button>
-    <button class="prtl-bnav-item" type="button" data-tab="preferences">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
-      <span>Prefs</span>
-    </button>
-    <button class="prtl-bnav-item" type="button" data-tab="bookings">
-      <div class="prtl-bnav-badge-wrap">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-        {% if account.linked_booking_references %}<span class="prtl-bnav-dot"></span>{% endif %}
-      </div>
-      <span>Bookings</span>
-    </button>
-    <button class="prtl-bnav-item" type="button" data-tab="searches">
-      <div class="prtl-bnav-badge-wrap">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        {% if saved_searches %}<span class="prtl-bnav-dot"></span>{% endif %}
-      </div>
-      <span>Searches</span>
-    </button>
-  </nav>
-
-  {% else %}
-  <!-- Not signed in -->
-  <div class="prtl-gate">
-    <div class="prtl-gate-card">
-      <div class="prtl-gate-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-4 5-6 8-6s6.2 2 8 6"/></svg>
-      </div>
-      <h1 class="prtl-gate-title">Sign in to your account</h1>
-      <p class="prtl-gate-sub">{{ page_notice or "Access your profile, saved searches, bookings, and personalized alerts." }}</p>
-      <div class="prtl-gate-btns">
-        <a class="prtl-btn prtl-btn--primary" href="{{ url_for('auth_page', mode='signup') }}">Create account</a>
-        <a class="prtl-btn prtl-btn--ghost" href="{{ url_for('auth_page', mode='login') }}">Sign in</a>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <script>
-  (function () {
-    var navItems = Array.from(document.querySelectorAll('.prtl-nav-item[data-tab], .prtl-bnav-item[data-tab]'));
-    var panels   = Array.from(document.querySelectorAll('.prtl-tab[data-tab]'));
-    if (!navItems.length || !panels.length) return;
-
-    function activate(target) {
-      navItems.forEach(function (btn) {
-        btn.classList.toggle('is-active', btn.dataset.tab === target);
-        btn.setAttribute('aria-selected', btn.dataset.tab === target ? 'true' : 'false');
-      });
-      panels.forEach(function (p) {
-        p.classList.toggle('is-active', p.dataset.tab === target);
-      });
-      try { history.replaceState(null, '', '?tab=' + target); } catch (_) {}
-      /* Scroll main to top on mobile */
-      var main = document.getElementById('prtlMain');
-      if (main && window.innerWidth < 960) main.scrollTop = 0;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    navItems.forEach(function (btn) {
-      btn.addEventListener('click', function () { activate(btn.dataset.tab); });
-    });
-
-    var urlTab = new URLSearchParams(location.search).get('tab');
-    if (urlTab && panels.some(function (p) { return p.dataset.tab === urlTab; })) {
-      activate(urlTab);
-    }
-  })();
-  </script>
-  {% include "partials/theme_scripts.html" %}
+    <section class="account-panel" data-account-panel="settings" aria-label="Settings">
+      <header class="account-heading"><div><h1>Settings</h1><p>Choose how Skairova keeps in touch and protect your account.</p></div></header>
+      <form method="post" action="{{ url_for('user_portal_update_preferences') }}" class="settings-card"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><h2>Notifications</h2><label><span><b>Price drop alerts</b><small>Email me when a route I’m tracking becomes cheaper.</small></span><span class="setting-switch"><input type="checkbox" name="price_alerts_enabled" role="switch" {% if account.price_alerts_enabled %}checked{% endif %} /><i></i></span></label><label><span><b>Route tracking</b><small>Keep recent routes easy to revisit.</small></span><span class="setting-switch"><input type="checkbox" name="route_tracking_enabled" role="switch" {% if account.route_tracking_enabled %}checked{% endif %} /><i></i></span></label><footer><button class="button-primary" type="submit">Save preferences</button></footer></form>
+      <section class="security-section"><h2>Sign-in and security</h2><article><div><p>Email address</p><strong>{{ account.email }}</strong><span>Your primary sign-in email</span></div></article><article><div><p>Password</p><strong>{% if account.get('oauth_provider') %}Signed in with {{ account.oauth_provider|capitalize }}{% else %}••••••••••••{% endif %}</strong><span>{% if account.get('oauth_provider') %}Set a password to sign in with email too.{% else %}Use a password you don’t use elsewhere.{% endif %}</span></div><a class="text-action" href="{{ url_for('auth_page', mode='reset_request', reset_email=account.email) }}">{% if account.get('oauth_provider') %}Set password{% else %}Change password{% endif %}</a></article>{% if active_sessions %}<article><div><p>Current session</p>{% for s in active_sessions %}<strong>{{ s.label }}</strong><span>{{ s.ip }} · Last active {{ s.last_seen or 'recently' }}</span>{% endfor %}</div><form method="post" action="{{ url_for('user_portal_revoke_sessions') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit" class="text-action">Sign out other sessions</button></form></article>{% endif %}</section>
+    </section>
+  </section>
+</main>
+{% else %}
+<main class="account-gate"><section><p>SKAIROVA ACCOUNT</p><h1>Your trips, all in one place.</h1><span>{{ page_notice or "Sign in to manage your travel details, bookings, and saved searches." }}</span><div><a class="button-primary" href="{{ url_for('auth_page', mode='signup') }}">Create account</a><a href="{{ url_for('auth_page', mode='login') }}">Sign in</a></div></section></main>
+{% endif %}
+<script>
+(() => { const controls = [...document.querySelectorAll('[data-account-tab]')]; const panels = [...document.querySelectorAll('[data-account-panel]')]; if (!controls.length) return; const aliases = { bookings: 'trips', searches: 'saved' }; const show = (raw, scroll) => { const tab = aliases[raw] || raw; if (!panels.some((panel) => panel.dataset.accountPanel === tab)) return; controls.forEach((control) => control.classList.toggle('is-active', control.dataset.accountTab === tab)); panels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.accountPanel === tab)); try { history.replaceState(null, '', `?tab=${tab}`); } catch (_) {} if (scroll) document.getElementById('account-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; controls.forEach((control) => control.addEventListener('click', () => show(control.dataset.accountTab, true))); const requested = new URLSearchParams(location.search).get('tab'); if (requested) show(requested, false); })();
+</script>
+{% include "partials/theme_scripts.html" %}
 </body>
 </html>

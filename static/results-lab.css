@@ -20,25 +20,41 @@ body.lab-active .results-lab-body {
 .results-lab-body {
   --lab-brand: #4F6FFF;
   --lab-brand-ink: #ffffff;
-  --lab-ink: #0B0D12;
-  --lab-muted: #5F6673;
+  --lab-ink: #172033;
+  --lab-ink-strong: #101828;
+  --lab-secondary: #475467;
+  --lab-muted: #667085;
   --lab-tertiary: #98A2B3;
   --lab-bg: #F7F8FA;
   --lab-card-bg: #ffffff;
   --lab-border: #E4E7EC;
+  --lab-border-soft: #EDEFF2;
   --lab-positive: #128A4C;
   --lab-positive-bg: rgba(18, 138, 76, 0.09);
   --lab-warning: #A56408;
   --lab-warning-bg: rgba(165, 100, 8, 0.1);
   --lab-danger: #B42318;
   --lab-danger-bg: rgba(180, 35, 24, 0.08);
-  --lab-radius-card: 14px;
+  --lab-radius-card: 12px;
   --lab-radius-ctrl: 10px;
   --lab-shadow-hover: 0 4px 16px rgba(11, 13, 18, 0.08);
   --lab-focus: 0 0 0 3px rgba(79, 111, 255, 0.35);
-  --lab-neutral-bg: rgba(95, 102, 115, 0.1);
-  --lab-neutral-ink: #4A5160;
   --lab-brand-tint: color-mix(in srgb, var(--lab-brand) 5%, var(--lab-card-bg));
+  /* Disciplined spacing scale (spatial design pass) — every section gap,
+     card padding, and group rhythm below is drawn from this list rather
+     than one-off pixel values, so the page reads as one deliberate system
+     instead of many locally-tuned components. */
+  --lab-sp-1: 4px;
+  --lab-sp-2: 8px;
+  --lab-sp-3: 12px;
+  --lab-sp-4: 16px;
+  --lab-sp-5: 20px;
+  --lab-sp-6: 24px;
+  --lab-sp-7: 32px;
+  --lab-sp-8: 40px;
+  --lab-sp-9: 48px;
+  --lab-sp-10: 56px;
+  --lab-sp-11: 64px;
   font-family: var(--font-ui, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   color: var(--lab-ink);
   background: var(--lab-bg);
@@ -48,12 +64,15 @@ body.lab-active .results-lab-body {
 html:not([data-theme="light"]) .results-lab-body {
   --lab-brand: #8DA0FF;
   --lab-brand-ink: #0B0D12;
-  --lab-ink: #F3F5F8;
+  --lab-ink: #E7E9EE;
+  --lab-ink-strong: #F8F9FB;
+  --lab-secondary: #C2C8D2;
   --lab-muted: #9AA3AF;
   --lab-tertiary: #6B7482;
   --lab-bg: #0B0D12;
   --lab-card-bg: #14171F;
   --lab-border: #262B36;
+  --lab-border-soft: #1D212B;
   --lab-positive: #3ECB84;
   --lab-positive-bg: rgba(62, 203, 132, 0.12);
   --lab-warning: #E2A63B;
@@ -61,8 +80,6 @@ html:not([data-theme="light"]) .results-lab-body {
   --lab-danger: #F0685D;
   --lab-danger-bg: rgba(240, 104, 93, 0.12);
   --lab-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.35);
-  --lab-neutral-bg: rgba(154, 163, 175, 0.14);
-  --lab-neutral-ink: #B8C0CC;
 }
 
 .lab-spark {
@@ -96,9 +113,9 @@ html:not([data-theme="light"]) .results-lab-body {
 /* ---------- shell ---------- */
 
 .lab-shell {
-  max-width: 1280px;
+  max-width: 1300px;
   margin: 0 auto;
-  padding: 0 24px 64px;
+  padding: 0 var(--lab-sp-7) var(--lab-sp-11);
 }
 
 /* ---------- sticky search summary (spec 6.2) ---------- */
@@ -110,12 +127,18 @@ html:not([data-theme="light"]) .results-lab-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--lab-sp-4);
   min-height: 64px;
-  padding: 14px 24px;
-  margin: 0 -24px 8px;
+  padding: var(--lab-sp-4) var(--lab-sp-7);
+  margin: 0 calc(-1 * var(--lab-sp-7)) var(--lab-sp-5);
   background: var(--lab-bg);
   flex-wrap: wrap;
+}
+
+.lab-summary-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lab-sp-2);
 }
 
 .lab-summary-route {
@@ -123,9 +146,10 @@ html:not([data-theme="light"]) .results-lab-body {
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  font-weight: 680;
+  font-weight: 650;
   font-size: 27px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
+  color: var(--lab-ink-strong);
 }
 
 .lab-summary-arrow {
@@ -135,17 +159,18 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 
 .lab-summary-city {
-  font-weight: 500;
+  font-weight: 450;
   font-size: 13px;
-  color: var(--lab-muted);
+  color: var(--lab-secondary);
 }
 
 .lab-summary-meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--lab-muted);
-  font-size: 13px;
+  color: var(--lab-secondary);
+  font-size: 13.5px;
+  font-weight: 450;
   flex-wrap: wrap;
 }
 
@@ -160,11 +185,11 @@ html:not([data-theme="light"]) .results-lab-body {
   gap: 6px;
   padding: 9px 16px;
   border-radius: var(--lab-radius-ctrl);
-  border: 1px solid var(--lab-border);
+  border: 1px solid var(--lab-border-soft);
   background: transparent;
   color: var(--lab-ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -187,9 +212,9 @@ html:not([data-theme="light"]) .results-lab-body {
   display: flex;
   align-items: center;
   gap: 22px;
-  margin: 4px 0 18px;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 0 0 var(--lab-sp-5);
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--lab-tertiary);
 }
 .lab-progress-step {
@@ -198,6 +223,7 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 .lab-progress-step.is-current {
   color: var(--lab-ink);
+  font-weight: 600;
   border-bottom-color: var(--lab-brand);
 }
 .lab-progress-step.is-done {
@@ -264,7 +290,7 @@ html:not([data-theme="light"]) .results-lab-body {
   align-items: center;
   gap: 4px;
   height: 40px;
-  margin-bottom: 16px;
+  margin-bottom: var(--lab-sp-7);
 }
 .lab-datestrip-nav {
   flex: 0 0 22px;
@@ -279,17 +305,29 @@ html:not([data-theme="light"]) .results-lab-body {
 .lab-datestrip-nav:hover {
   color: var(--lab-brand);
 }
+/* A fixed, generous gap (spec: 24-32px) reads calmer than `space-between`
+   stretching five dates edge-to-edge across whatever width happens to be
+   available — the strip is allowed to not fill the row. Horizontal scroll
+   is the deliberate overflow behavior here (spec explicitly allows it for
+   this strip), unlike the rail/cards where it's non-negotiable never. */
 .lab-datestrip-cells {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
+  justify-content: center;
+  gap: 28px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.lab-datestrip-cells::-webkit-scrollbar {
+  display: none;
 }
 .lab-datestrip-cell {
   display: flex;
   align-items: baseline;
   gap: 5px;
+  flex-shrink: 0;
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: 0;
@@ -297,7 +335,7 @@ html:not([data-theme="light"]) .results-lab-body {
   cursor: pointer;
   font: inherit;
   color: var(--lab-tertiary);
-  padding: 0 0 5px;
+  padding: 0 var(--lab-sp-2) 5px;
 }
 button.lab-datestrip-cell:hover {
   color: var(--lab-ink);
@@ -318,7 +356,7 @@ button.lab-datestrip-cell:hover {
 }
 .lab-datestrip-cell.is-selected .lab-datestrip-day {
   color: var(--lab-brand);
-  font-weight: 700;
+  font-weight: 600;
 }
 .lab-datestrip-date {
   font-size: 13px;
@@ -326,90 +364,101 @@ button.lab-datestrip-cell:hover {
   white-space: nowrap;
 }
 
-/* ---------- comparison tabs (spec 8, 11) ---------- */
-/* One connected selection surface, not four separate white cards: a single
-   frame with a padded track, each option an inset segment. */
+/* ---------- sort dropdown (turn 7: replaces the 4-column ranking strip) ---------- */
+/* One compact control instead of a permanently-visible comparison surface —
+   Nonstop is deliberately absent here; it lives only as a rail/quick-chip
+   filter (spec #5). */
 
-.lab-tabs {
+.lab-sort {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-bottom: 20px;
-  padding: 4px;
-  border: 1px solid var(--lab-border);
-  border-radius: 14px;
-  background: var(--lab-bg);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-
-.lab-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 3px;
-  height: 56px;
-  min-width: 0;
-  padding: 0 16px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
-  box-sizing: border-box;
-}
-.lab-tab:hover {
+.lab-sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--lab-border-soft);
   background: var(--lab-card-bg);
+  color: var(--lab-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 150ms ease;
 }
-.lab-tab:focus-visible {
+.lab-sort-trigger:hover {
+  border-color: var(--lab-brand);
+}
+.lab-sort-trigger:focus-visible {
   outline: none;
   box-shadow: var(--lab-focus);
 }
-.lab-tab[aria-selected="true"] {
-  border-color: var(--lab-brand);
+.lab-sort-trigger svg {
+  color: var(--lab-tertiary);
+  transition: transform 150ms ease;
+}
+.lab-sort-trigger[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.lab-sort .lab-spark {
+  color: var(--lab-brand);
+  font-size: 12px;
+}
+
+.lab-sort-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--lab-border);
   background: var(--lab-card-bg);
-  box-shadow: 0 1px 6px rgba(11, 13, 18, 0.06);
+  box-shadow: var(--lab-shadow-hover);
 }
-.lab-tab[disabled] {
-  opacity: 0.4;
-  cursor: not-allowed;
+.lab-sort-menu[hidden] {
+  display: none;
 }
-.lab-tab-name {
+.lab-sort-option {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
-  max-width: 100%;
-  font-size: 13.5px;
-  font-weight: 700;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--lab-ink);
-}
-.lab-tab-name-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
   white-space: nowrap;
-  min-width: 0;
+  cursor: pointer;
 }
-.lab-tab[aria-selected="true"] .lab-tab-name {
+.lab-sort-option:hover {
+  background: color-mix(in srgb, var(--lab-brand) 6%, var(--lab-card-bg));
+}
+.lab-sort-option:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-sort-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--lab-brand) 8%, var(--lab-card-bg));
   color: var(--lab-brand);
-}
-.lab-tab--ai .lab-tab-name {
-  letter-spacing: -0.005em;
-}
-.lab-tab-value {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12.5px;
-  color: var(--lab-muted);
+  font-weight: 600;
 }
 
 /* ---------- ranking explainer (spec 12, 13) ---------- */
-/* Folded into the Skairova Best tab itself as a small "i" — no separate
-   row on the page for this. */
+/* A small "i" beside the sort trigger — no separate row on the page for
+   this. */
 
 .lab-tab-info {
   flex-shrink: 0;
@@ -425,22 +474,19 @@ button.lab-datestrip-cell:hover {
   font-weight: 700;
   font-style: italic;
   opacity: 0.9;
+  cursor: pointer;
 }
 .lab-tab-info:hover,
 .lab-tab-info:focus-visible {
   color: var(--lab-brand);
   outline: none;
 }
-.lab-tab[aria-selected="true"] .lab-tab-info {
-  color: var(--lab-brand);
-  opacity: 0.75;
-}
 
 .lab-rank-pop {
   position: absolute;
   z-index: 25;
   top: calc(100% + 8px);
-  left: 4px;
+  right: 4px;
   width: 300px;
   max-width: 80vw;
   padding: 12px 14px;
@@ -458,16 +504,22 @@ button.lab-datestrip-cell:hover {
    belong together instead of stacking as separate rows/cards. */
 
 .lab-toolbar {
-  margin-bottom: 18px;
+  margin-bottom: var(--lab-sp-5);
+}
+.lab-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lab-sp-3);
+  margin-bottom: var(--lab-sp-3);
 }
 .lab-toolbar-count {
   font-size: 14.5px;
   font-weight: 600;
   color: var(--lab-ink);
-  margin-bottom: 10px;
 }
 .lab-toolbar-count strong {
-  font-weight: 700;
+  font-weight: 650;
 }
 .lab-toolbar-row {
   display: flex;
@@ -476,25 +528,30 @@ button.lab-datestrip-cell:hover {
   gap: 12px;
   flex-wrap: wrap;
 }
-.lab-toolbar-chips,
+.lab-toolbar-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--lab-sp-2);
+  flex-wrap: wrap;
+}
 .lab-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--lab-sp-3);
   flex-wrap: wrap;
 }
 .lab-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 40px;
+  height: 36px;
   padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid var(--lab-border);
+  border-radius: 9px;
+  border: 1px solid var(--lab-border-soft);
   background: var(--lab-card-bg);
   color: var(--lab-ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -515,14 +572,14 @@ button.lab-datestrip-cell:hover {
 .lab-layout {
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
-  gap: 24px;
+  gap: var(--lab-sp-7);
   align-items: start;
 }
 
 .lab-rail {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: var(--lab-sp-7);
   padding: 0;
   border: none;
   background: none;
@@ -530,19 +587,34 @@ button.lab-datestrip-cell:hover {
   top: 96px;
   max-height: calc(100vh - 116px);
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+/* Setting only overflow-y leaves overflow-x computed as auto too (CSS
+   Overflow spec: a scrolling value on one axis promotes "visible" on the
+   other to "auto"), so any child even 1px wider than the rail silently
+   opens a horizontal scrollbar. Belt-and-suspenders: force every rail
+   descendant to allow shrinking/wrapping instead of pushing width out. */
+.lab-rail * {
+  min-width: 0;
 }
 
 .lab-rail-title {
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 17px;
+  font-weight: 600;
   letter-spacing: -0.01em;
+  /* The rail's flex `gap` is a uniform 32px inter-group rhythm (spec
+     rhythm list), but "Refine" to the first block below it wants a
+     tighter 16px — pull the shared gap back down just for this one
+     transition rather than breaking the gap out into per-child margins. */
+  margin-bottom: calc(var(--lab-sp-4) - var(--lab-sp-7));
 }
 
 .lab-rail-group-title {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--lab-ink);
-  margin-bottom: 9px;
+  margin-bottom: var(--lab-sp-3);
 }
 
 .lab-rail-group {
@@ -554,15 +626,24 @@ button.lab-datestrip-cell:hover {
 .lab-ai-filter {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--lab-sp-3);
 }
 .lab-ai-filter-label {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--lab-ink);
+  /* Label sits tight against its own support line — the 12px flex gap
+     above is for hint→input and input→applied-chips, not this pair. */
+  margin-bottom: -8px;
+}
+.lab-ai-filter-hint {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--lab-muted);
 }
 .lab-ai-filter-row {
   display: flex;
@@ -572,14 +653,14 @@ button.lab-datestrip-cell:hover {
 .lab-ai-filter-input {
   flex: 1;
   min-width: 0;
-  height: 38px;
-  padding: 0 12px;
+  height: 42px;
+  padding: 0 13px;
   border-radius: 10px;
   border: 1px solid var(--lab-border);
   background: var(--lab-card-bg);
   color: var(--lab-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
 }
 .lab-ai-filter-input::placeholder {
   color: var(--lab-muted);
@@ -591,14 +672,14 @@ button.lab-datestrip-cell:hover {
 }
 .lab-ai-filter-go {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: 41px;
+  height: 41px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 9px;
   border: none;
-  background: var(--lab-brand);
+  background: color-mix(in srgb, var(--lab-brand) 85%, var(--lab-ink));
   color: var(--lab-brand-ink);
   cursor: pointer;
 }
@@ -677,9 +758,12 @@ button.lab-datestrip-cell:hover {
   align-items: center;
   gap: 8px;
   font-size: 13.5px;
+  font-weight: 400;
   padding: 5px 0;
   cursor: pointer;
   color: var(--lab-ink);
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .lab-check input {
   width: 16px;
@@ -722,6 +806,7 @@ button.lab-datestrip-cell:hover {
   flex-direction: column;
   max-height: 180px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .lab-rail-actions {
@@ -733,11 +818,11 @@ button.lab-datestrip-cell:hover {
   align-self: flex-start;
   padding: 8px 14px;
   border-radius: var(--lab-radius-ctrl);
-  border: 1px solid var(--lab-border);
+  border: 1px solid var(--lab-border-soft);
   background: transparent;
   color: var(--lab-ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550;
   cursor: pointer;
 }
 .lab-clear-filters:hover {
@@ -756,27 +841,27 @@ button.lab-datestrip-cell:hover {
   min-width: 0;
 }
 
+/* Quiet text action, not a bordered pill (spec #22) — Select flight is
+   the only control on the page that should read as a strong CTA. */
 .lab-track-price {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--lab-border);
-  background: transparent;
-  color: var(--lab-brand);
+  height: 36px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--lab-secondary);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 .lab-track-price:hover {
-  border-color: var(--lab-brand);
+  color: var(--lab-ink);
 }
 .lab-track-price[aria-pressed="true"] {
-  background: rgba(79, 111, 255, 0.1);
-  border-color: var(--lab-brand);
+  color: var(--lab-brand);
 }
 .lab-updating {
   display: none;
@@ -792,7 +877,7 @@ button.lab-datestrip-cell:hover {
 .lab-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--lab-sp-3);
 }
 
 .lab-empty {
@@ -818,20 +903,21 @@ button.lab-datestrip-cell:hover {
   background: var(--lab-brand);
   color: var(--lab-brand-ink);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 /* ---------- flight result card (spec 10 — the important part) ---------- */
-/* Target collapsed height ~190-230px: tight padding, one dense main row,
-   journey-adjacent meta (baggage/stops) instead of a footer "table row",
-   and a footer that carries only the details disclosure. */
+/* Target collapsed height ~110-130px (~130-155px for the Skairova Best
+   card, which also carries a badge + reason line): premium not cramped
+   padding, three stacked rows (airline, journey, bottom action row), each
+   with its own deliberate breathing room rather than uniform compression. */
 
 .lab-card {
   border: 1px solid var(--lab-border);
   border-radius: var(--lab-radius-card);
   background: var(--lab-card-bg);
-  padding: 14px 20px;
+  padding: var(--lab-sp-4) var(--lab-sp-5);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .lab-card:hover {
@@ -842,46 +928,41 @@ button.lab-datestrip-cell:hover {
 /* Top-ranked result gets a quiet brand tint — never repeated on every card
    (spec #32: "not give every card purple borders"). */
 .lab-card--top {
-  border-color: color-mix(in srgb, var(--lab-brand) 45%, var(--lab-border));
-  background: color-mix(in srgb, var(--lab-brand) 3%, var(--lab-card-bg));
+  border-color: color-mix(in srgb, var(--lab-brand) 26%, var(--lab-border));
+  background: var(--lab-card-bg);
 }
 .lab-card--top:hover {
-  border-color: var(--lab-brand);
+  border-color: color-mix(in srgb, var(--lab-brand) 40%, var(--lab-border));
 }
 
 .lab-card-badges {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  margin-bottom: 4px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  text-align: right;
 }
 .lab-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 630;
   letter-spacing: 0.01em;
 }
+/* Skairova Best is a quiet product designation, not a coupon — typographic
+   treatment only, no pill/surface, no heavy weight (spec #9, #15). */
 .lab-badge--match {
-  background: rgba(79, 111, 255, 0.13);
+  padding: 0;
+  background: none;
   color: var(--lab-brand);
-}
-.lab-badge--positive {
-  background: var(--lab-positive-bg);
-  color: var(--lab-positive);
-}
-.lab-badge--neutral {
-  background: var(--lab-neutral-bg);
-  color: var(--lab-neutral-ink);
-}
-.lab-badge--warn {
-  background: var(--lab-warning-bg);
-  color: var(--lab-warning);
+  font-size: 11.5px;
+  font-weight: 620;
 }
 .lab-badge-why {
   border: none;
@@ -900,15 +981,31 @@ button.lab-datestrip-cell:hover {
 /* Trade-off (spec #29): the calculated price/schedule/stops delta vs
    Skairova Best, inline alongside any contextual badge on the same row
    so the user never has to do the subtraction themselves. */
-.lab-card-tradeoff {
-  font-size: 12px;
+/* Quiet contextual line for non-top cards (spec #16): label + trade-off
+   merged as plain text, never another pill competing with Skairova Best. */
+.lab-meta-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 550;
   color: var(--lab-muted);
 }
-.lab-card-tradeoff strong {
-  font-weight: 700;
+.lab-meta-line strong {
+  font-weight: 650;
 }
-.lab-card-tradeoff.is-savings strong {
+.lab-meta-line--positive {
   color: var(--lab-positive);
+}
+.lab-meta-line--warn {
+  color: var(--lab-warning);
+}
+.lab-meta-dot {
+  opacity: 0.55;
+  font-weight: 400;
 }
 
 /* ---------- "why" panel (spec 30) — checklist, not a plain tooltip ---------- */
@@ -916,7 +1013,7 @@ button.lab-datestrip-cell:hover {
   position: absolute;
   z-index: 20;
   top: calc(100% + 6px);
-  left: 0;
+  right: 0;
   width: 280px;
   max-width: 84vw;
   padding: 12px 14px;
@@ -929,7 +1026,7 @@ button.lab-datestrip-cell:hover {
   box-shadow: var(--lab-shadow-hover);
 }
 .lab-why-pop-title {
-  font-weight: 700;
+  font-weight: 650;
   font-size: 12.5px;
   margin-bottom: 8px;
 }
@@ -952,32 +1049,38 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-positive);
 }
 
-.lab-card-main {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.85fr) minmax(340px, 2.1fr) minmax(150px, 0.85fr);
-  gap: 20px;
-  align-items: center;
+/* Density rebuild: three stacked rows, each read left-to-right in one pass,
+   instead of a tall content column beside a separate price rail. Airline
+   row (name + terse designation/tradeoff) → full-width journey row →
+   baggage + price + CTA sharing one bottom row. Target ~95-120px collapsed
+   (~125-145px for the Skairova Best card, which also carries a badge). */
+.lab-card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--lab-sp-3);
+  margin-bottom: var(--lab-sp-2);
 }
 
 .lab-carrier {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
 }
 .lab-carrier-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   object-fit: contain;
   border: 1px solid var(--lab-border);
   background: #fff;
   flex-shrink: 0;
 }
 .lab-carrier-logo-ph {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   background: var(--lab-border);
   flex-shrink: 0;
 }
@@ -986,7 +1089,7 @@ button.lab-datestrip-cell:hover {
 }
 .lab-carrier-name {
   display: block;
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -994,7 +1097,7 @@ button.lab-datestrip-cell:hover {
 }
 .lab-carrier-mix {
   display: block;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--lab-muted);
   line-height: 1.3;
   /* Real carrier-mix copy varies in length ("Operated by X" vs longer
@@ -1033,15 +1136,25 @@ button.lab-datestrip-cell:hover {
   text-align: right;
 }
 .lab-leg-time {
-  font-size: 25px;
-  font-weight: 650;
+  font-size: 18px;
+  font-weight: 640;
   letter-spacing: -0.015em;
-  line-height: 1.15;
+  line-height: 1.1;
+  color: var(--lab-ink-strong);
+}
+/* Arrival-day offset (spec #15) — real delta between the two ISO
+   timestamps, never clipped or dropped at any width. */
+.lab-leg-offset {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--lab-warning);
+  vertical-align: super;
+  margin-left: 2px;
 }
 .lab-leg-iata {
-  font-size: 14px;
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--lab-muted);
+  color: var(--lab-secondary);
   display: flex;
   align-items: baseline;
   gap: 5px;
@@ -1050,30 +1163,29 @@ button.lab-datestrip-cell:hover {
   justify-content: flex-end;
 }
 .lab-leg-day {
-  font-size: 10.5px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 450;
   color: var(--lab-muted);
-  opacity: 0.8;
 }
 .lab-leg-mid {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 96px;
+  min-width: 88px;
   padding: 0 6px;
 }
 .lab-leg-duration {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 480;
   color: var(--lab-muted);
 }
 .lab-leg-line {
   position: relative;
   width: 100%;
-  height: 2px;
+  height: 1.5px;
   border-radius: 1px;
-  background: var(--lab-border);
+  background: color-mix(in srgb, var(--lab-border) 65%, var(--lab-tertiary));
   margin: 3px 0;
 }
 .lab-leg-line::before,
@@ -1084,14 +1196,14 @@ button.lab-datestrip-cell:hover {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--lab-brand) 55%, var(--lab-border));
+  background: var(--lab-brand);
   transform: translateY(-50%);
 }
 .lab-leg-line::before { left: -1.5px; }
 .lab-leg-line::after { right: -1.5px; }
 .lab-leg-stops {
-  font-size: 11.5px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 550;
   color: var(--lab-muted);
 }
 .lab-leg-stops.is-nonstop {
@@ -1101,15 +1213,39 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-warning);
 }
 
-/* Journey-adjacent attributes (spec #27): baggage/stop status live right
-   under the itinerary line, not in a detached footer row. */
+/* ---------- top-card reason line (spec #27) ---------- */
+/* Its own breathing room on both sides — secondary in weight/color so it
+   never competes with the journey line above it, but not squeezed against
+   either neighbor either. */
+.lab-card-summary {
+  margin: var(--lab-sp-2) 0 0;
+  font-size: 12.5px;
+  font-weight: 450;
+  color: var(--lab-secondary);
+  line-height: 1.4;
+}
+
+/* ---------- shared bottom row: baggage/details + price + CTA ---------- */
+.lab-card-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lab-sp-4);
+  margin-top: var(--lab-sp-2);
+}
+.lab-card-bottom-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  font-size: 11.5px;
+}
 .lab-journey-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 3px;
-  font-size: 12px;
 }
 .lab-meta-item {
   display: inline-flex;
@@ -1122,100 +1258,54 @@ button.lab-datestrip-cell:hover {
 .lab-meta-item--muted { color: var(--lab-muted); }
 .lab-meta-item svg {
   flex-shrink: 0;
-  width: 13px;
-  height: 13px;
-}
-
-/* ---------- top-card AI reasoning (spec 20, 32, 44) ---------- */
-/* Only the top card carries this — the AI explanation lives inside the
-   result it explains instead of a separate panel above the list. */
-.lab-card-summary {
-  font-size: 13px;
-  color: var(--lab-muted);
-  line-height: 1.4;
-  margin: 0 0 8px;
-  max-width: 62ch;
-}
-.lab-card-why-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 8px;
-  border: none;
-  background: none;
-  color: var(--lab-brand);
-  font-size: 12.5px;
-  font-weight: 650;
-  cursor: pointer;
-  padding: 0;
-}
-.lab-card-why-toggle svg {
-  width: 9px;
-  height: 9px;
-  transition: transform 160ms ease;
-}
-.lab-card-why-toggle[aria-expanded="true"] svg {
-  transform: rotate(180deg);
-}
-.lab-card-why-list {
-  list-style: none;
-  margin: -4px 0 10px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 12.5px;
-  color: var(--lab-ink);
-}
-.lab-card-why-list[hidden] {
-  display: none;
-}
-.lab-card-why-list li {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-}
-.lab-card-why-list li svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--lab-positive);
+  width: 12px;
+  height: 12px;
 }
 
 .lab-pricing {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
-  min-width: 132px;
+  align-items: center;
+  gap: var(--lab-sp-3);
+  flex-shrink: 0;
 }
-/* Each line of the price block (amount / trip+traveler qualifier / any
-   secondary note / taxes) must be its own row unconditionally — this was
-   previously only flex-column inside the mobile media query, so at desktop
-   widths these spans just inline-wrapped together (spec #19: "a vertical
-   unit", not incidentally-wrapped text). */
 .lab-pricing-info {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-}
-.lab-price-caption {
-  font-size: 11.5px;
-  color: var(--lab-muted);
+  gap: 6px;
+  text-align: right;
 }
 .lab-price-amt {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 19px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
   line-height: 1.1;
+  color: var(--lab-ink-strong);
+}
+/* One wrapped line instead of a stacked block — the qualifier, any
+   secondary note (e.g. a return leg's delta pricing), taxes, and the price
+   cue ("Lowest price" / "+$N vs cheapest") all still render, just as
+   middot-separated fragments instead of separate rows (spec: bottom row
+   stays compact). */
+.lab-price-notes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: 5px;
+  max-width: 420px;
 }
 .lab-price-note {
-  display: block;
-  font-size: 11.5px;
+  font-size: 10.5px;
   color: var(--lab-muted);
 }
+.lab-price-note + .lab-price-note::before,
+.lab-price-cue::before {
+  content: "\00b7";
+  margin-right: 5px;
+  opacity: 0.6;
+}
 .lab-price-cue {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 650;
   color: var(--lab-muted);
 }
@@ -1223,18 +1313,17 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-positive);
 }
 .lab-select-btn {
-  margin-top: 6px;
-  padding: 0 24px;
-  min-width: 130px;
-  height: 44px;
-  line-height: 44px;
-  border-radius: var(--lab-radius-ctrl);
+  padding: 0 16px;
+  min-width: 96px;
+  height: 39px;
+  line-height: 39px;
+  border-radius: 9px;
   border: none;
   background: var(--lab-brand);
   color: var(--lab-brand-ink);
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -1254,26 +1343,20 @@ button.lab-datestrip-cell:hover {
   cursor: not-allowed;
 }
 
-.lab-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--lab-border);
-}
-
 .lab-details-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   border: none;
   background: none;
-  color: var(--lab-brand);
-  font-size: 12.5px;
-  font-weight: 600;
+  color: var(--lab-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 2px;
+  padding: 0;
+}
+.lab-details-toggle:hover {
+  color: var(--lab-ink);
 }
 .lab-details-toggle svg {
   width: 10px;
@@ -1388,11 +1471,6 @@ button.lab-datestrip-cell:hover {
     margin: 0 -16px 16px;
     padding: 12px 16px;
   }
-  .lab-tabs {
-    grid-template-columns: repeat(4, minmax(120px, 1fr));
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
   .lab-layout {
     grid-template-columns: 1fr;
   }
@@ -1433,19 +1511,20 @@ button.lab-datestrip-cell:hover {
     border: none;
     background: var(--lab-brand);
     color: var(--lab-brand-ink);
-    font-weight: 700;
+    font-weight: 600;
     font-size: 14px;
     cursor: pointer;
   }
-  .lab-rank-pop {
-    left: 0;
-    right: auto;
-  }
 }
 
-@media (max-width: 720px) {
+/* ---------- mobile (spec: ≤767px) — recomposed, not just shrunk ---------- */
+/* Mobile is deliberately allowed to be TALLER than desktop here (spec
+   #39): once the badge/tradeoff row and the price+CTA row both wrap to
+   their own line, cramming them back to desktop's tight rhythm reads as
+   crowded rather than calm. Give every wrapped group real room instead. */
+@media (max-width: 767px) {
   .lab-datestrip-cells {
-    gap: 2px;
+    gap: 16px;
   }
   .lab-datestrip-cell {
     gap: 3px;
@@ -1456,46 +1535,52 @@ button.lab-datestrip-cell:hover {
   .lab-datestrip-date {
     font-size: 12px;
   }
-  .lab-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+
+  .lab-card {
+    padding: var(--lab-sp-4) var(--lab-sp-4);
   }
-  .lab-tab {
-    padding: 0 8px;
+
+  /* Bottom row no longer fits baggage/details + price + CTA on one line at
+     this width — wrap it to two: meta on its own line, then price+CTA
+     spread across the second (spec: bottom row can wrap, just never
+     overlap or scroll). */
+  .lab-card-bottom-row {
+    flex-wrap: wrap;
+    row-gap: var(--lab-sp-2);
+    margin-top: var(--lab-sp-2);
   }
-  .lab-card-main {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  .lab-carrier {
-    order: 1;
-  }
-  .lab-itinerary {
-    order: 2;
+  .lab-card-bottom-meta {
+    flex-basis: 100%;
   }
   .lab-pricing {
-    order: 3;
-    align-items: stretch;
-    text-align: left;
-    flex-direction: row;
+    flex: 1 1 100%;
     justify-content: space-between;
-    align-items: center;
-    min-width: 0;
   }
-  .lab-pricing-info {
-    display: flex;
+  /* Airline row: a long contextual badge/tradeoff string (e.g. "Best
+     Afternoon flight · Same price") competing with the airline name for a
+     single narrow line was squeezing carrier names down to 1-2 characters
+     before ellipsis. Drop the badge to its own line instead — the airline
+     name stays fully legible, badge/tradeoff text stays fully legible,
+     the card is just one line taller on small screens. */
+  .lab-card-top-row {
+    flex-wrap: wrap;
+    row-gap: var(--lab-sp-1);
+    margin-bottom: var(--lab-sp-2);
+  }
+  .lab-card-badges,
+  .lab-meta-line {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
+/* Below ~440px, "Mon" + "Aug 17" side by side no longer fits five-across —
+   stack day above date per cell instead of shrinking text further. */
+@media (max-width: 440px) {
+  .lab-datestrip-cell {
     flex-direction: column;
-    align-items: flex-start;
-  }
-  .lab-select-btn {
-    margin-top: 0;
-  }
-  .lab-card-footer {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .lab-leg-time {
-    font-size: 18px;
+    gap: 1px;
   }
 }
 
@@ -1510,12 +1595,12 @@ button.lab-datestrip-cell:hover {
 /* ---------- [hidden] overrides ---------- */
 /* The HTML `hidden` attribute only maps to `display:none` via the browser's
    default stylesheet, which loses to any author rule that also sets
-   `display` on the same element (e.g. `.lab-tabs{display:grid}` beats the
-   UA's `[hidden]{display:none}` on specificity). Every element the JS
+   `display` on the same element (e.g. `.lab-sort-menu{display:flex}` beats
+   the UA's `[hidden]{display:none}` on specificity). Every element the JS
    toggles via `.hidden = true/false` needs an explicit override here or it
    silently stays visible — this bit the Review step, which sets
-   tabsWrap/quickRow/layoutEl hidden but they kept rendering underneath. */
-.lab-tabs[hidden],
+   resultsHeaderEl/quickRow/layoutEl hidden but they kept rendering
+   underneath. */
 .lab-toolbar[hidden],
 .lab-layout[hidden],
 .lab-rail[hidden],
