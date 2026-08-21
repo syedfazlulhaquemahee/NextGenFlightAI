@@ -12140,7 +12140,7 @@ def user_portal_clear_searches():
 
     account["saved_searches"] = []
     _account_save(account_email, account)
-    return redirect(url_for("user_portal"))
+    return redirect(url_for("user_portal") + "?tab=saved")
 
 
 @app.route("/portal/logout", methods=["POST"])
@@ -12163,7 +12163,7 @@ def user_portal_update_preferences():
     account["price_alerts_enabled"] = str(request.form.get("price_alerts_enabled") or "").strip().lower() in {"1", "true", "on", "yes"}
     account["route_tracking_enabled"] = str(request.form.get("route_tracking_enabled") or "").strip().lower() in {"1", "true", "on", "yes"}
     _account_save(account_email, account)
-    return redirect(url_for("user_portal"))
+    return redirect(url_for("user_portal") + "?tab=settings")
 
 
 @app.route("/portal/profile", methods=["POST"])
@@ -12185,6 +12185,21 @@ def user_portal_update_profile():
     valid_genders = {"", "male", "female", "non_binary", "prefer_not_to_say"}
     gender_raw = str(request.form.get("gender") or "").strip().lower()
     account["gender"] = gender_raw if gender_raw in valid_genders else ""
+    account["frequent_flyer_program"] = str(request.form.get("frequent_flyer_program") or "").strip()[:64]
+    account["frequent_flyer_number"] = str(request.form.get("frequent_flyer_number") or "").strip()[:32]
+    account["known_traveler_number"] = str(request.form.get("known_traveler_number") or "").strip()[:32]
+    account["emergency_contact_name"] = str(request.form.get("emergency_contact_name") or "").strip()[:80]
+    account["emergency_contact_phone"] = str(request.form.get("emergency_contact_phone") or "").strip()[:32]
+    account["emergency_contact_relationship"] = str(request.form.get("emergency_contact_relationship") or "").strip()[:32]
+    account["preferred_airport"] = str(request.form.get("preferred_airport") or "").strip().upper()[:8]
+    account["preferred_airline"] = str(request.form.get("preferred_airline") or "").strip()[:64]
+    valid_cabins = {"", "economy", "premium_economy", "business", "first"}
+    cabin_raw = str(request.form.get("cabin_preference") or "").strip().lower()
+    account["cabin_preference"] = cabin_raw if cabin_raw in valid_cabins else ""
+    valid_seats = {"", "window", "aisle", "no_preference"}
+    seat_raw = str(request.form.get("seat_preference") or "").strip().lower()
+    account["seat_preference"] = seat_raw if seat_raw in valid_seats else ""
+    account["meal_preference"] = str(request.form.get("meal_preference") or "").strip()[:64]
     _account_save(account_email, account)
     return redirect(url_for("user_portal") + "?tab=profile&saved=1")
 
@@ -12201,7 +12216,7 @@ def user_portal_revoke_sessions():
     account["last_login_at"] = datetime.utcnow().isoformat(timespec="seconds")
     _account_save(account_email, account)
     _set_session_account_email(account_email, session_nonce=str(account.get("session_nonce") or ""))
-    return redirect(url_for("user_portal"))
+    return redirect(url_for("user_portal") + "?tab=settings")
 
 
 @app.route("/terms", methods=["GET"])
@@ -14290,6 +14305,86 @@ def destination_prices():
         "return_date": return_date,
         "prices": prices,
     })
+
+
+@app.route("/api/results/date-prices", methods=["POST"])
+def results_date_prices():
+    """Return the lowest available fare for the nearby dates on Lab results.
+
+    These are live supplier snapshots, cached by the existing cheapest-fare
+    cache. A date with no quote is omitted instead of receiving a made-up
+    amount. The small limit keeps the adjacent-date UI from becoming an
+    unbounded fare-scanning endpoint.
+    """
+    payload = request.get_json(silent=True) or {}
+    raw_dates = payload.get("dates") or []
+    if not isinstance(raw_dates, list):
+        return jsonify({"prices": {}}), 400
+
+    requested_dates: list[str] = []
+    for raw_date in raw_dates[:5]:
+        candidate = str(raw_date or "").strip()
+        if _is_valid_iso_date(candidate) and candidate not in requested_dates:
+            requested_dates.append(candidate)
+    if not requested_dates:
+        return jsonify({"prices": {}})
+
+    trip_type = _coerce_trip_type(payload.get("tripType"), fallback="roundtrip")
+    try:
+        trip_length_days = int(payload.get("tripLengthDays"))
+    except (TypeError, ValueError):
+        trip_length_days = 0
+    trip_length_days = max(0, min(trip_length_days, 365))
+
+    base_params = {
+        "origin": str(payload.get("origin") or "").strip().upper(),
+        "destination": str(payload.get("destination") or "").strip().upper(),
+        "trip_type": trip_type,
+        "passengers": payload.get("passengers", 1),
+        "cabin": payload.get("cabin", "ECONOMY"),
+        "nonstop": bool(payload.get("nonstop")),
+        "sort": "cheapest",
+        "combination_mode": "auto",
+    }
+
+    def lookup_for_date(depart_date: str) -> tuple[str, dict[str, Any] | None]:
+        params = dict(base_params)
+        params["depart_date"] = depart_date
+        params["return_date"] = (
+            (_to_date(depart_date) + timedelta(days=trip_length_days)).isoformat()
+            if trip_type == "roundtrip"
+            else None
+        )
+        params, error = _validate_standard_search_params(params)
+        if error:
+            return depart_date, None
+        try:
+            snapshot = _cheapest_offer_snapshot(params)
+        except Exception as exc:
+            print("RESULTS DATE PRICE LOOKUP ERROR:", depart_date, repr(exc))
+            return depart_date, None
+        price = _safe_float((snapshot or {}).get("scan_price_total"))
+        if price <= 0:
+            return depart_date, None
+        return depart_date, {
+            "price": round(price, 2),
+            "currency": str((snapshot or {}).get("scan_currency") or "USD"),
+        }
+
+    prices: dict[str, dict[str, Any]] = {}
+    workers = min(3, len(requested_dates))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(lookup_for_date, depart_date) for depart_date in requested_dates]
+        for future in as_completed(futures):
+            try:
+                depart_date, result = future.result()
+            except Exception as exc:
+                print("RESULTS DATE PRICE FUTURE ERROR:", repr(exc))
+                continue
+            if result:
+                prices[depart_date] = result
+
+    return jsonify({"prices": prices})
 
 
 def _smart_destination_date_candidates(is_domestic: bool) -> list[tuple[date, date]]:

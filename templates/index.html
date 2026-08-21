@@ -8,11 +8,11 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260601-inter-base') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='home-page.css', v='20260729-mobile-hero-sky') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260818-rewards-mobile-cta') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='home-sections.css', v='20260821-recent-searches-2') }}" />
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-shadcn-range') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-modal-disclaimer') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260820-neutral-hotel-input') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260821-recent-searches-3') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='flight-stays.css', v='20260817-member-prices') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260818-ios-ai-input-lock') }}" />
 </head>
@@ -542,8 +542,9 @@
     </section>
 
     <section class="home-recent-searches" id="recentSearchesSection" aria-label="Recent searches" hidden>
-      <div class="home-section-head">
-        <h2 class="home-section-title">Recent searches</h2>
+      <div class="home-section-head home-recent-head">
+        <div><h2 class="home-section-title">Recent searches</h2><p class="home-recent-caption">Pick up where you left off.</p></div>
+        <button class="home-recent-clear" id="recentSearchesClear" type="button" hidden>Clear</button>
       </div>
       <div class="home-recent-viewport">
         <div class="home-recent-scroll" id="recentSearchesList" role="list"></div>
@@ -1914,7 +1915,7 @@
   <script src="{{ url_for('static', filename='calendar.js', v='20260722-cally') }}"></script>
   <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260813-shadcn-range') }}"></script>
   <script src="{{ url_for('static', filename='geo-location.js', v='20260818-location-retry') }}"></script>
-  <script src="{{ url_for('static', filename='home-sections.js', v='20260817-member-prices') }}"></script>
+  <script src="{{ url_for('static', filename='home-sections.js', v='20260821-recent-searches-3') }}"></script>
   <script src="{{ url_for('static', filename='flight-stays.js', v='20260818-location-retry') }}"></script>
   {% if edit_search_fields %}
     <script id="editSearchFieldsPayload" type="application/json">{{ edit_search_fields|tojson }}</script>

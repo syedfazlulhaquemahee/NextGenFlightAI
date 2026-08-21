@@ -533,6 +533,7 @@
       departDisplayInput: startDisplay,
       returnHiddenInput: endInput,
       returnDisplayInput: endDisplay,
+      tripTypeInput: options.tripTypeInput || null,
       minDate: options.minDate || todayIso(),
       maxDate: options.maxDate || "",
       departPrompt: options.departPrompt || "Choose your check-in date",
@@ -590,7 +591,10 @@
     document.querySelectorAll("[data-nx-calendar-range-start]").forEach(function (startInput) {
       var key = startInput.getAttribute("data-nx-calendar-range-start");
       var endInput = document.querySelector('[data-nx-calendar-range-end="' + key + '"]');
-      initNativeDateRange(startInput, endInput);
+      var tripTypeId = startInput.getAttribute("data-nx-calendar-trip-type");
+      initNativeDateRange(startInput, endInput, {
+        tripTypeInput: tripTypeId ? document.getElementById(tripTypeId) : null,
+      });
     });
 
     document.querySelectorAll('input[type="date"][data-nx-calendar]').forEach(function (input) {

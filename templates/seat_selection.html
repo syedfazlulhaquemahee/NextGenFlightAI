@@ -114,6 +114,5 @@
   {% set _skair_page = {"page_type": "seat_selection", "airline_name": offer_summary.airline_name or "", "route_summary": offer_summary.route_summary or "", "cabin_label": offer_summary.cabin_label or "Economy", "traveler_count": offer_summary.traveler_count or 1, "currency": offer_summary.currency or "USD", "total_amount": offer_summary.total_amount or ""} %}
   <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
   {% endif %}
-  {% include "partials/ai_chatbot.html" %}
 </body>
 </html>

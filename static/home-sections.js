@@ -15,14 +15,9 @@
   var MAX_RECENT = 6;
   var ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-  var AI_ICON_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>' +
-    "</svg>";
-  var ROUTE_ICON_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M2 16.5 22 8l-5.5 13-2.7-6.3L8 18.2z"/><path d="M13.8 14.7 22 8"/>' +
-    "</svg>";
+  var AI_ICON_SVG = "/static/icons/sparkles.svg";
+  var ROUTE_ICON_SVG = "/static/icons/plane-takeoff.svg";
+  var REPLAY_ICON_SVG = "/static/icons/arrow-right.svg";
 
   function readRecent() {
     try {
@@ -69,7 +64,7 @@
 
   function describeEntry(entry) {
     if (entry.mode === "ai") {
-      return { title: entry.ai_text, sub: "AI search", icon: AI_ICON_SVG };
+      return { title: entry.ai_text, sub: "AI search", kind: "AI search", icon: AI_ICON_SVG };
     }
     var route = (entry.origin || "?") + " → " + (entry.destination || "?");
     var dep = formatDateShort(entry.depart_date);
@@ -77,19 +72,24 @@
     var dateStr = entry.trip_type === "oneway" || !ret ? dep : dep + "–" + ret;
     var paxNum = parseInt(entry.passengers, 10) || 1;
     var pax = paxNum + (paxNum === 1 ? " traveler" : " travelers");
-    return { title: route, sub: [dateStr, pax].filter(Boolean).join(" · "), icon: ROUTE_ICON_SVG };
+    var cabin = (entry.cabin || "").toLowerCase();
+    cabin = cabin ? cabin.charAt(0).toUpperCase() + cabin.slice(1) : "";
+    return { title: route, sub: [dateStr, pax, cabin].filter(Boolean).join(" · "), kind: "Flight", icon: ROUTE_ICON_SVG };
   }
 
   function renderRecent() {
     var section = document.getElementById("recentSearchesSection");
     var list = document.getElementById("recentSearchesList");
     if (!section || !list) return;
+    var clear = document.getElementById("recentSearchesClear");
     var entries = readRecent();
     if (!entries.length) {
       section.hidden = true;
+      if (clear) clear.hidden = true;
       return;
     }
     section.hidden = false;
+    if (clear) clear.hidden = false;
     list.innerHTML = "";
     entries.forEach(function (entry) {
       var info = describeEntry(entry);
@@ -101,21 +101,38 @@
 
       var icon = document.createElement("span");
       icon.className = "home-recent-icon";
-      icon.innerHTML = info.icon;
+      var iconImage = document.createElement("img");
+      iconImage.src = info.icon;
+      iconImage.alt = "";
+      iconImage.setAttribute("aria-hidden", "true");
+      icon.appendChild(iconImage);
 
       var text = document.createElement("span");
       text.className = "home-recent-text";
+      var kind = document.createElement("span");
+      kind.className = "home-recent-kind";
+      kind.textContent = info.kind;
       var title = document.createElement("span");
       title.className = "home-recent-title";
       title.textContent = info.title;
       var sub = document.createElement("span");
       sub.className = "home-recent-sub";
       sub.textContent = info.sub;
+      text.appendChild(kind);
       text.appendChild(title);
       text.appendChild(sub);
 
+      var replay = document.createElement("span");
+      replay.className = "home-recent-replay";
+      replay.setAttribute("aria-hidden", "true");
+      var replayImage = document.createElement("img");
+      replayImage.src = REPLAY_ICON_SVG;
+      replayImage.alt = "";
+      replay.appendChild(replayImage);
+
       btn.appendChild(icon);
       btn.appendChild(text);
+      btn.appendChild(replay);
       btn.addEventListener("click", function () { replaySearch(entry); });
       list.appendChild(btn);
     });
@@ -230,6 +247,15 @@
       },
       true
     );
+  }
+
+  function bindRecentClear() {
+    var clear = document.getElementById("recentSearchesClear");
+    if (!clear) return;
+    clear.addEventListener("click", function () {
+      try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+      renderRecent();
+    });
   }
 
   function readJsonScript(id) {
@@ -538,6 +564,7 @@
     destinationsByCode[d.code] = d;
   });
 
+  bindRecentClear();
   recordSubmissions();
   renderRecent();
   initPopularFlights();

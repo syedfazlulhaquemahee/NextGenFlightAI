@@ -836,3 +836,99 @@ html[data-theme="light"] body.manage-booking-page .topbar.platform-header {
   -webkit-backdrop-filter: none !important;
   color: var(--hdr-ink) !important;
 }
+
+/* ───────────────────────── account menu / light ─────────────────────────
+   A compact account popover: clear identity, a short action list, and a
+   quiet sign-out treatment. This replaces the oversized legacy menu on
+   tablet and mobile without changing its actions or behavior. */
+html[data-theme="light"] .topbar.platform-header .portal-menu-dropdown {
+  top: calc(100% + 10px) !important;
+  right: -6px !important;
+  min-width: min(276px, calc(100vw - 24px)) !important;
+  padding: 7px !important;
+  border: 1px solid rgba(255, 255, 255, .72) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .64), rgba(239, 244, 255, .46)) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, .14), 0 2px 7px rgba(15, 23, 42, .05), inset 0 1px 0 rgba(255, 255, 255, .66) !important;
+  backdrop-filter: blur(22px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(145%) !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-header {
+  gap: 11px !important;
+  padding: 10px 10px 11px !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #7c72ff, #9c82f7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 4px 10px rgba(99, 102, 241, .18) !important;
+  font-size: 12px !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-name {
+  color: #101827 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.015em !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-email {
+  margin-top: 2px !important;
+  color: #536277 !important;
+  font-size: 11.5px !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-divider {
+  height: 1px !important;
+  margin: 4px 3px !important;
+  background: #e7ebf1 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item {
+  min-height: 42px !important;
+  gap: 11px !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  color: #182235 !important;
+  font-size: 13.5px !important;
+  font-weight: 620 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item svg {
+  width: 17px !important;
+  height: 17px !important;
+  color: #35435a !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item:hover,
+html[data-theme="light"] .topbar.platform-header .portal-menu-item:focus-visible {
+  outline: 0 !important;
+  background: #f2f5fa !important;
+  color: #101827 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger {
+  color: #9e3030 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger:hover,
+html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger:focus-visible {
+  background: #fff4f3 !important;
+  color: #8f3434 !important;
+}
+
+html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger svg {
+  color: #a84040 !important;
+}
+
+@media (max-width: 480px) {
+  html[data-theme="light"] .topbar.platform-header .portal-menu-dropdown {
+    right: -8px !important;
+    min-width: min(266px, calc(100vw - 20px)) !important;
+  }
+}

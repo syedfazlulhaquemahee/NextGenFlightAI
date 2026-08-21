@@ -520,12 +520,26 @@
     const focusBar   = wrap.querySelector(".ai-chat-focus-bar");
     const focusLabel = wrap.querySelector(".ai-chat-focus-label");
     const focusClear = wrap.querySelector(".ai-chat-focus-clear");
+    const newChatBtn = wrap.querySelector(".ai-chat-new");
+    const modelTrigger = wrap.querySelector(".ai-chat-model-trigger");
+    const modelMenu = wrap.querySelector(".ai-chat-model-menu");
+    const modelName = wrap.querySelector(".ai-chat-model-name");
+    const modelOptions = Array.from(wrap.querySelectorAll(".ai-chat-model-option"));
+    const reasoningOptions = Array.from(wrap.querySelectorAll(".ai-chat-reasoning-option"));
+    const headerReasoning = wrap.querySelector("[data-ai-header-reasoning]");
+    const detailName = wrap.querySelector("[data-ai-model-detail-name]");
+    const detailProvider = wrap.querySelector("[data-ai-model-detail-provider]");
+    const detailDescription = wrap.querySelector("[data-ai-model-detail-description]");
+    const reasoningCurrent = wrap.querySelector("[data-ai-reasoning-current]");
+    const reasoningCopy = wrap.querySelector("[data-ai-reasoning-copy]");
     if (!trigger || !panel || !msgs || !input || !sendBtn) return;
 
     let isOpen     = false;
     let isWaiting  = false;
     const history  = [];
     let hasInteracted = false;
+    let selectedModel = "Skairova";
+    let responseStyle = "Balanced";
 
     /* Wire module-level callbacks */
     _updateFocusUI = function(flight, mode) {
@@ -648,6 +662,7 @@
 
     function close() {
       isOpen = false;
+      closeModelMenu();
       wrap.classList.remove("ai-chat-is-open");
       panel.classList.remove("is-open");
       panel.classList.add("is-closing");
@@ -657,6 +672,77 @@
 
     trigger.addEventListener("click", () => isOpen ? close() : open());
     wrap.querySelector(".ai-chat-header-close")?.addEventListener("click", close);
+
+    function closeModelMenu() {
+      if (!modelMenu || modelMenu.hidden) return;
+      modelMenu.hidden = true;
+      modelTrigger?.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleModelMenu() {
+      if (!modelMenu) return;
+      const nextOpen = modelMenu.hidden;
+      modelMenu.hidden = !nextOpen;
+      modelTrigger?.setAttribute("aria-expanded", String(nextOpen));
+    }
+
+    modelTrigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleModelMenu();
+    });
+
+    modelOptions.forEach(option => {
+      option.addEventListener("click", () => {
+        selectedModel = option.dataset.aiModel || "Skairova";
+        if (modelName) modelName.textContent = selectedModel;
+        if (detailName) detailName.textContent = selectedModel;
+        if (detailProvider) detailProvider.textContent = option.dataset.aiProvider || "Skairova";
+        if (detailDescription) detailDescription.textContent = option.dataset.aiDescription || "";
+        modelOptions.forEach(item => {
+          const active = item === option;
+          item.classList.toggle("is-selected", active);
+          item.setAttribute("aria-selected", String(active));
+        });
+        closeModelMenu();
+      });
+    });
+
+    reasoningOptions.forEach(option => {
+      option.addEventListener("click", () => {
+        responseStyle = option.dataset.aiReasoning || "Balanced";
+        reasoningOptions.forEach(item => item.classList.toggle("is-selected", item === option));
+        if (headerReasoning) headerReasoning.textContent = responseStyle;
+        if (reasoningCurrent) reasoningCurrent.textContent = responseStyle;
+        if (reasoningCopy) {
+          reasoningCopy.textContent = {
+            Brief: "Answers quickly and keeps the response concise.",
+            Balanced: "Balances clear answers with helpful detail.",
+            Detailed: "Plans at length and checks important trip details."
+          }[responseStyle] || "Balances clear answers with helpful detail.";
+        }
+      });
+    });
+
+    document.addEventListener("click", event => {
+      if (modelMenu && !modelMenu.hidden && !modelMenu.contains(event.target) && !modelTrigger?.contains(event.target)) closeModelMenu();
+    });
+
+    newChatBtn?.addEventListener("click", () => {
+      if (isWaiting) return;
+      history.length = 0;
+      hasInteracted = false;
+      _chatHasInteracted = false;
+      msgs.querySelectorAll(".ai-msg, .ai-system-msg").forEach((message, index) => {
+        if (index > 0 || message.classList.contains("ai-system-msg")) message.remove();
+      });
+      if (qrWrap) {
+        qrWrap.replaceChildren();
+        qrWrap.style.display = "";
+      }
+      _qrPopulated = false;
+      populateQuickReplies();
+      input.focus();
+    });
 
     /* Messages */
     function scrollToBottom() { msgs.scrollTop = msgs.scrollHeight; }
@@ -731,6 +817,7 @@
 
       /* Always snapshot fresh context including live flights + focused flight */
       const ctx = collectContext();
+      ctx.assistant = { model: selectedModel, response_style: responseStyle };
 
       fetch("/api/ai/chat", {
         method: "POST",

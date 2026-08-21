@@ -252,10 +252,6 @@
 
   function tradeoffFragment(tradeoff) {
     if (!tradeoff) return null;
-    var isSavings = tradeoff.priceDelta < -0.5;
-    var head = Math.abs(tradeoff.priceDelta) > 0.5
-      ? (isSavings ? "Save " + money(-tradeoff.priceDelta) : "+" + money(tradeoff.priceDelta))
-      : "Same price";
     var clause = null;
     if (tradeoff.stopsDelta > 0) {
       clause = "adds " + tradeoff.stopsDelta + " stop" + (tradeoff.stopsDelta > 1 ? "s" : "");
@@ -266,9 +262,10 @@
     } else if (Math.abs(tradeoff.durDelta) >= 20) {
       clause = (tradeoff.durDelta > 0 ? "+" : "-") + hm(Math.abs(tradeoff.durDelta)) + " total";
     }
+    if (!clause) return null;
     return {
-      isSavings: isSavings,
-      html: "<strong>" + esc(head) + "</strong>" + (clause ? " &middot; " + esc(clause) : ""),
+      isSavings: false,
+      html: "<strong>" + esc(clause) + "</strong>",
     };
   }
 
@@ -442,24 +439,25 @@
         : '<span class="lab-price-cue is-low">Lowest price</span>';
       badge = fl.badge; reasoning = fl.badgeReasoning;
       key = fl.id; airlineName = fl.airlineName; logoUrl = fl.airlineLogoUrl; mix = fl.airlineMix;
+      var ctaClass = kind === "review" ? "lab-select-btn lab-select-btn--final" : "lab-select-btn";
+      var ctaLabel = kind === "review" ? "Book flight" : "Select flight";
       ctaHtml = fl.checkoutUrl
-        ? '<a class="lab-select-btn" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '">Select flight</a>'
-        : '<span class="lab-select-btn" aria-disabled="true">Unavailable</span>';
+        ? '<a class="' + ctaClass + '" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '">' + ctaLabel + '</a>'
+        : '<span class="' + ctaClass + '" aria-disabled="true">Unavailable</span>';
     }
 
     var showLegLabel = legs.length > 1;
     var isTop = !!(stageItem && bestRef && stageItem.key === bestRef.key);
     var tradeoff = (!isTop && stageItem && bestRef) ? computeTradeoff(stageItem, bestRef) : null;
 
-    /* Density rebuild (spec: airline row → full-width journey row →
-       baggage+price+CTA bottom row). Every row reads left-to-right in one
-       pass instead of a tall content column beside a separate price rail —
-       that's what let the old layout run 195-224px per card. Reasoning
-       (real backend badgeReasoning) is always reachable through the same
-       compact "i" popover metaRow already builds for non-top cards; there
-       is no separate expandable disclosure taking its own row anymore. */
+    /* Expedia-pattern rebuild: one horizontal band — airline column,
+       journey column, price/CTA column — instead of stacked full-width
+       rows. Any contextual badge/tradeoff sits in its own thin strip above
+       the band (where a "Best value" ribbon would sit), not squeezed into
+       the airline row. */
     var cardMeta = metaRow(isTop, badge, reasoning, stageItem || {}, tradeoff);
-    var summaryHtml = isTop ? '<div class="lab-card-summary">' + esc(bestSummaryLine(stageItem)) + "</div>" : "";
+    var summaryHtml = isTop ? '<span class="lab-card-summary">' + esc(bestSummaryLine(stageItem)) + "</span>" : "";
+    var tagRow = (cardMeta || summaryHtml) ? '<div class="lab-card-tag-row">' + cardMeta + summaryHtml + "</div>" : "";
 
     var priceNotes = ['<span class="lab-price-note">' + esc(priceQualifier) + "</span>"];
     if (secondaryNote) priceNotes.push('<span class="lab-price-note">' + esc(secondaryNote) + "</span>");
@@ -468,28 +466,25 @@
 
     return (
       '<article class="lab-card' + (isTop ? " lab-card--top" : "") + '" data-key="' + esc(key) + '">' +
-        '<div class="lab-card-top-row">' +
+        tagRow +
+        '<div class="lab-card-main">' +
           carrierBlock(airlineName, logoUrl, mix) +
-          cardMeta +
-        "</div>" +
-        '<div class="lab-itinerary">' +
-          legs.map(function (l) { return legRow(l, showLegLabel); }).join("") +
-        "</div>" +
-        summaryHtml +
-        '<div class="lab-card-bottom-row">' +
-          '<div class="lab-card-bottom-meta">' +
+          '<div class="lab-card-journey">' +
+            legs.map(function (l) { return legRow(l, showLegLabel); }).join("") +
             journeyMeta([]) +
-            '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
-            "</button>" +
           "</div>" +
-          '<div class="lab-pricing">' +
+          '<div class="lab-card-price">' +
             '<div class="lab-pricing-info">' +
               '<span class="lab-price-amt">' + priceAmt + "</span>" +
               '<div class="lab-price-notes">' + priceNotes.join("") + "</div>" +
             "</div>" +
             ctaHtml +
           "</div>" +
+        "</div>" +
+        '<div class="lab-card-footer">' +
+          '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
+          "</button>" +
         "</div>" +
         '<div class="lab-details" hidden data-lab-details>' + detailsPanel(legs) + "</div>" +
       "</article>"
@@ -514,20 +509,14 @@
 
   var activeTab = "best";
 
-  function isoTime(iso) {
-    var t = iso ? new Date(iso).getTime() : NaN;
-    return isNaN(t) ? Infinity : t;
-  }
-
-  /* Nonstop lives only as a filter now (spec #5) — nothing here filters by
-     stops; every mode is purely an ordering over the already-filtered set. */
+  /* Classic three-way split (spec: Expedia's Best/Cheapest/Quickest tabs).
+     Stops/departure-time/etc. live only as rail filters — nothing here
+     sorts by them; every mode is purely an ordering over the already-
+     filtered set. */
   function sortedVisible(items) {
     var visible = items.filter(passesFilters);
     if (activeTab === "cheapest") visible.sort(function (a, b) { return a.price - b.price || a.duration - b.duration; });
     else if (activeTab === "fastest") visible.sort(function (a, b) { return a.duration - b.duration || a.price - b.price; });
-    else if (activeTab === "stops") visible.sort(function (a, b) { return a.stops - b.stops || a.price - b.price; });
-    else if (activeTab === "departure") visible.sort(function (a, b) { return isoTime(a.departIso) - isoTime(b.departIso); });
-    else if (activeTab === "arrival") visible.sort(function (a, b) { return isoTime(a.arriveIso) - isoTime(b.arriveIso); });
     // "best" keeps original (server-recommended) order — items arrays are
     // already built in that order for every stage.
     return visible;
@@ -687,6 +676,7 @@
     var items = itemsForStage();
     var bestRef = items.length ? items[0] : null;
     rebuildRailBounds(items);
+    updateTabSummaries(items);
 
     var visible = sortedVisible(items);
     updateStopPriceLabels(items);
@@ -724,86 +714,84 @@
     });
   }
 
-  /* ---------------- sort dropdown ---------------- */
+  /* ---------------- sort tabs (Best / Cheapest / Quickest) ---------------- */
+  /* Each tab shows the price+duration of the item that mode would surface
+     first — real numbers from the current stage's own item set, computed
+     fresh on every render, never a static label. */
 
-  var sortLabels = {
-    best: "Skairova Best",
-    cheapest: "Lowest price",
-    fastest: "Fastest",
-    stops: "Fewest stops",
-    departure: "Departure time",
-    arrival: "Arrival time"
+  var tabValueEls = {
+    best: document.getElementById("labTabValueBest"),
+    cheapest: document.getElementById("labTabValueCheapest"),
+    fastest: document.getElementById("labTabValueFastest"),
   };
-  var sortTrigger = document.getElementById("labSortTrigger");
-  var sortMenu = document.getElementById("labSortMenu");
-  var sortLabelEl = document.getElementById("labSortLabel");
+
+  function updateTabSummaries(items) {
+    if (!items.length) return;
+    var byPrice = items.slice().sort(function (a, b) { return a.price - b.price; });
+    var byDuration = items.slice().sort(function (a, b) { return a.duration - b.duration; });
+    var summaries = {
+      best: items[0],
+      cheapest: byPrice[0],
+      fastest: byDuration[0],
+    };
+    Object.keys(summaries).forEach(function (mode) {
+      var el = tabValueEls[mode];
+      if (!el) return;
+      var it = summaries[mode];
+      el.textContent = money(it.price) + " · " + hm(it.duration);
+    });
+  }
 
   function syncSortControl() {
-    if (sortLabelEl) sortLabelEl.textContent = sortLabels[activeTab] || sortLabels.best;
-    Array.from(root.querySelectorAll(".lab-sort-option")).forEach(function (opt) {
-      opt.setAttribute("aria-selected", String(opt.dataset.labSort === activeTab));
+    Array.from(root.querySelectorAll(".lab-sort-tab")).forEach(function (tab) {
+      tab.setAttribute("aria-selected", String(tab.dataset.labTab === activeTab));
     });
   }
-  function closeSortMenu() {
-    if (!sortMenu || sortMenu.hidden) return;
-    sortMenu.hidden = true;
-    if (sortTrigger) sortTrigger.setAttribute("aria-expanded", "false");
-  }
-  function openSortMenu() {
-    if (!sortMenu) return;
-    sortMenu.hidden = false;
-    if (sortTrigger) sortTrigger.setAttribute("aria-expanded", "true");
-  }
-  if (sortTrigger && sortMenu) {
-    sortTrigger.addEventListener("click", function (e) {
-      e.stopPropagation();
-      if (sortMenu.hidden) openSortMenu(); else closeSortMenu();
+  Array.from(root.querySelectorAll(".lab-sort-tab")).forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      activeTab = tab.dataset.labTab;
+      syncSortControl();
+      renderStage();
     });
-    Array.from(sortMenu.querySelectorAll(".lab-sort-option")).forEach(function (opt) {
-      opt.addEventListener("click", function () {
-        activeTab = opt.dataset.labSort;
-        syncSortControl();
-        closeSortMenu();
-        renderStage();
-      });
-    });
-    document.addEventListener("click", function (e) {
-      if (!sortMenu.hidden && !sortMenu.contains(e.target) && e.target !== sortTrigger) closeSortMenu();
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") closeSortMenu();
-    });
-  }
+  });
 
   /* ---------------- quick chips + rail filters ---------------- */
 
   function syncQuickChips() {
-    nonstopQuick.setAttribute("aria-pressed", String(filterState.stops[0] && !filterState.stops[1] && !filterState.stops[2]));
-    stop1Quick.setAttribute("aria-pressed", String(filterState.stops[0] && filterState.stops[1] && !filterState.stops[2]));
+    if (nonstopQuick) {
+      nonstopQuick.setAttribute("aria-pressed", String(filterState.stops[0] && !filterState.stops[1] && !filterState.stops[2]));
+    }
+    if (stop1Quick) {
+      stop1Quick.setAttribute("aria-pressed", String(filterState.stops[0] && filterState.stops[1] && !filterState.stops[2]));
+    }
   }
 
-  nonstopQuick.addEventListener("click", function () {
-    var active = nonstopQuick.getAttribute("aria-pressed") === "true";
-    filterState.stops[0] = !active;
-    filterState.stops[1] = false;
-    filterState.stops[2] = false;
-    stopInputs[0].checked = filterState.stops[0];
-    stopInputs[1].checked = false;
-    stopInputs[2].checked = false;
-    syncQuickChips();
-    renderStage();
-  });
-  stop1Quick.addEventListener("click", function () {
-    var active = stop1Quick.getAttribute("aria-pressed") === "true";
-    filterState.stops[0] = !active;
-    filterState.stops[1] = !active;
-    filterState.stops[2] = false;
-    stopInputs[0].checked = filterState.stops[0];
-    stopInputs[1].checked = filterState.stops[1];
-    stopInputs[2].checked = false;
-    syncQuickChips();
-    renderStage();
-  });
+  if (nonstopQuick) {
+    nonstopQuick.addEventListener("click", function () {
+      var active = nonstopQuick.getAttribute("aria-pressed") === "true";
+      filterState.stops[0] = !active;
+      filterState.stops[1] = false;
+      filterState.stops[2] = false;
+      stopInputs[0].checked = filterState.stops[0];
+      stopInputs[1].checked = false;
+      stopInputs[2].checked = false;
+      syncQuickChips();
+      renderStage();
+    });
+  }
+  if (stop1Quick) {
+    stop1Quick.addEventListener("click", function () {
+      var active = stop1Quick.getAttribute("aria-pressed") === "true";
+      filterState.stops[0] = !active;
+      filterState.stops[1] = !active;
+      filterState.stops[2] = false;
+      stopInputs[0].checked = filterState.stops[0];
+      stopInputs[1].checked = filterState.stops[1];
+      stopInputs[2].checked = false;
+      syncQuickChips();
+      renderStage();
+    });
+  }
   [0, 1, 2].forEach(function (b) {
     stopInputs[b].addEventListener("change", function () {
       filterState.stops[b] = stopInputs[b].checked;
@@ -861,6 +849,7 @@
   function openRail(section) {
     railEl.classList.add("is-open");
     backdrop.classList.add("is-open");
+    document.body.classList.add("lab-filter-open");
     document.body.style.overflow = "hidden";
     if (section && section !== "more") {
       var target = railEl.querySelector('[data-lab-rail-section="' + section + '"]');
@@ -870,6 +859,7 @@
   function closeRail() {
     railEl.classList.remove("is-open");
     backdrop.classList.remove("is-open");
+    document.body.classList.remove("lab-filter-open");
     document.body.style.overflow = "";
   }
   Array.from(root.querySelectorAll("[data-lab-open-rail]")).forEach(function (btn) {
@@ -962,11 +952,10 @@
   });
 
   /* ---------------- flexible date strip ----------------
-     Real calendar dates only — no adjacent-date pricing exists anywhere in
-     this app, so no price ever renders on a tile (spec #5: "do not
-     fabricate prices"). Picking a different date is still genuinely
-     functional: it resubmits the existing /search POST with that date,
-     reusing the same backend the classic page already uses. */
+     Each date shows the lowest live fare for that exact date and trip
+     length. The selected date can use the flights already on the page;
+     nearby dates are fetched through the same cached offer lookup used by
+     the rest of the app. Nothing is invented when a lookup has no result. */
 
   var dateStripEl = document.getElementById("labDateStrip");
   if (dateStripEl && searchForm && searchForm.departDateRaw) {
@@ -1001,6 +990,13 @@
 
       var windowStart = addDays(selectedDeparture, -2);
       var todayFloor = startOfToday();
+      var datePrices = Object.create(null);
+      var selectedKey = toYMD(selectedDeparture);
+      var selectedLowest = allFlights.reduce(function (lowest, flight) {
+        var price = Number(flight && flight.price);
+        return price > 0 && (lowest === null || price < lowest) ? price : lowest;
+      }, null);
+      if (selectedLowest !== null) datePrices[selectedKey] = { price: selectedLowest };
 
       function submitSearchFor(departDate) {
         var form = document.createElement("form");
@@ -1028,6 +1024,64 @@
         form.submit();
       }
 
+      function visibleDateKeys() {
+        var keys = [];
+        for (var i = 0; i < 5; i++) {
+          var cellDate = addDays(windowStart, i);
+          if (cellDate >= todayFloor) keys.push(toYMD(cellDate));
+        }
+        return keys;
+      }
+
+      function loadVisiblePrices() {
+        if (!searchForm.datePriceUrl) return;
+        var keys = visibleDateKeys().filter(function (key) { return !datePrices[key]; });
+        if (!keys.length) return;
+        keys.forEach(function (key) { datePrices[key] = { loading: true }; });
+        renderCells();
+        fetch(searchForm.datePriceUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dates: keys,
+            origin: searchForm.originRaw,
+            destination: searchForm.destinationRaw,
+            tripType: searchForm.tripTypeRaw,
+            passengers: searchForm.passengersRaw,
+            cabin: searchForm.cabinRaw,
+            nonstop: Boolean(searchForm.nonstopRaw),
+            tripLengthDays: tripLengthDays
+          })
+        }).then(function (response) {
+          if (!response.ok) throw new Error("Could not load fares");
+          return response.json();
+        }).then(function (result) {
+          var prices = result && result.prices ? result.prices : {};
+          keys.forEach(function (key) {
+            var value = prices[key];
+            datePrices[key] = value && Number(value.price) > 0
+              ? { price: Number(value.price), currency: value.currency || "USD" }
+              : { unavailable: true };
+          });
+          renderCells();
+        }).catch(function () {
+          keys.forEach(function (key) { datePrices[key] = { unavailable: true }; });
+          renderCells();
+        });
+      }
+
+      function priceMarkup(cellDate, isPast) {
+        if (isPast) return '<span class="lab-datestrip-price" aria-hidden="true"></span>';
+        var priceInfo = datePrices[toYMD(cellDate)];
+        if (priceInfo && Number(priceInfo.price) > 0) {
+          return '<span class="lab-datestrip-price" aria-label="Lowest available fare ' + esc(money(priceInfo.price)) + '">from ' + esc(money(priceInfo.price)) + "</span>";
+        }
+        if (priceInfo && priceInfo.unavailable) {
+          return '<span class="lab-datestrip-price is-unavailable">Unavailable</span>';
+        }
+        return '<span class="lab-datestrip-price is-loading">Checking…</span>';
+      }
+
       function renderCells() {
         var frag = document.createDocumentFragment();
         for (var i = 0; i < 5; i++) {
@@ -1041,7 +1095,8 @@
           cell.className = "lab-datestrip-cell" + (isSelected ? " is-selected" : "") + (isPast ? " is-past" : "");
           cell.innerHTML =
             '<span class="lab-datestrip-day">' + esc(weekday) + "</span>" +
-            '<span class="lab-datestrip-date">' + esc(monthDay) + "</span>";
+            '<span class="lab-datestrip-date">' + esc(monthDay) + "</span>" +
+            priceMarkup(cellDate, isPast);
           if (!isSelected && !isPast) {
             cell.addEventListener("click", function () {
               submitSearchFor(new Date(this._cellDate.getTime()));
@@ -1057,30 +1112,17 @@
       prevBtn.addEventListener("click", function () {
         windowStart = addDays(windowStart, -1);
         renderCells();
+        loadVisiblePrices();
       });
       nextBtn.addEventListener("click", function () {
         windowStart = addDays(windowStart, 1);
         renderCells();
+        loadVisiblePrices();
       });
 
       renderCells();
+      loadVisiblePrices();
     })();
-  }
-
-  /* ---------------- price intelligence ----------------
-     No forecast/history backend exists for this app, so this never claims
-     a price judgment ("Good price", "prices may rise", etc.) — only the
-     honest "Track price" affordance the spec explicitly allows as the
-     no-data fallback. Purely a client-side toggle; nothing is persisted,
-     so it never implies a notification that won't actually arrive. */
-  var trackBtn = document.getElementById("labTrackPrice");
-  var trackBtnLabel = document.getElementById("labTrackPriceLabel");
-  if (trackBtn) {
-    trackBtn.addEventListener("click", function () {
-      var tracking = trackBtn.getAttribute("aria-pressed") === "true";
-      trackBtn.setAttribute("aria-pressed", String(!tracking));
-      if (trackBtnLabel) trackBtnLabel.textContent = tracking ? "Track price" : "Tracking";
-    });
   }
 
   /* ---------------- ranking explainer popover (spec #12, #13) ----------------
@@ -1135,60 +1177,108 @@
   function parseAiFilterText(text) {
     var q = " " + text.toLowerCase().trim() + " ";
     var applied = [];
+    function add(key, label) {
+      if (!applied.some(function (filter) { return filter.key === key; })) applied.push({ key: key, label: label });
+    }
 
-    if (/\b(nonstop|non-stop|no stops|direct only|only direct)\b/.test(q)) {
+    if (/\b(nonstop|non-stop|no stops|no layovers?|direct(?:\s+flight)?s?|direct only|only direct)\b/.test(q)) {
       filterState.stops[0] = true; filterState.stops[1] = false; filterState.stops[2] = false;
-      applied.push({ key: "stops", label: "Nonstop" });
+      add("stops", "Nonstop");
     } else {
-      var stopMax = /\b(\d)\s*stop[s]?\s*(or fewer|or less|max|maximum)\b/.exec(q) || /\bat most (\d)\s*stop/.exec(q);
+      var stopMax = /\b(?:up to |at most |no more than |maximum of )?(\d)\s*stop[s]?(?:\s*(?:or fewer|or less|max|maximum))?\b/.exec(q);
       if (stopMax) {
         var n = parseInt(stopMax[1], 10);
         filterState.stops[0] = true;
         if (n >= 1) filterState.stops[1] = true;
         if (n >= 2) filterState.stops[2] = true;
-        applied.push({ key: "stops", label: n + " stop" + (n === 1 ? "" : "s") + " or fewer" });
+        add("stops", n + " stop" + (n === 1 ? "" : "s") + " or fewer");
       }
     }
 
-    var under = /\b(?:under|below|less than|cheaper than)\s*\$?(\d[\d,]*)/.exec(q);
+    var range = /\b(?:between|from)\s*\$?(\d[\d,]*)\s*(?:and|to|-)\s*\$?(\d[\d,]*)/.exec(q);
+    if (range) {
+      var low = parseInt(range[1].replace(/,/g, ""), 10);
+      var high = parseInt(range[2].replace(/,/g, ""), 10);
+      filterState.minPrice = Math.min(low, high);
+      filterState.maxPrice = Math.max(low, high);
+      add("minPrice", "From " + money(filterState.minPrice));
+      add("maxPrice", "Up to " + money(filterState.maxPrice));
+    }
+    /* The final look-ahead keeps phrases such as "max 1 stop" or
+       "under 6 hours" from accidentally being treated as a dollar cap. */
+    var under = /\b(?:under|below|less than|cheaper than|up to|budget(?:\s+of)?|maximum|max)\s*(?:price|fare|budget)?\s*\$?(\d[\d,]*)(?!\s*(?:stops?|hours?|hrs?|minutes?|mins?))/.exec(q);
     if (under) {
       var maxP = parseInt(under[1].replace(/,/g, ""), 10);
       filterState.maxPrice = maxP;
       if (priceSlider) priceSlider.value = String(Math.min(maxP, parseInt(priceSlider.max || maxP, 10)));
       if (priceLabel) priceLabel.textContent = "Up to " + money(maxP);
-      applied.push({ key: "maxPrice", label: "Under " + money(maxP) });
+      add("maxPrice", "Up to " + money(maxP));
     }
-    var over = /\b(?:over|above|more than)\s*\$?(\d[\d,]*)/.exec(q);
+    var over = /\b(?:over|above|more than|at least|minimum|min)\s*(?:price|fare|budget)?\s*\$?(\d[\d,]*)(?!\s*(?:stops?|hours?|hrs?|minutes?|mins?))/.exec(q);
     if (over) {
       var minP = parseInt(over[1].replace(/,/g, ""), 10);
       filterState.minPrice = minP;
-      applied.push({ key: "minPrice", label: "Over " + money(minP) });
+      add("minPrice", "From " + money(minP));
+    }
+
+    var duration = /\b(?:under|below|less than|shorter than|within|no more than|at most|max(?:imum)?)\s*(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|hr|h)\b/.exec(q);
+    if (duration) {
+      var maxDuration = Math.round(parseFloat(duration[1]) * 60);
+      filterState.maxDuration = maxDuration;
+      add("maxDuration", "Up to " + hm(maxDuration));
     }
 
     var after = /\bafter\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?/.exec(q);
     if (after) {
       var h = after[2] ? hourFrom(after[1], after[2]) : parseInt(after[1], 10);
       filterState.departAfterHour = h;
-      applied.push({ key: "departAfterHour", label: "After " + esc(after[1]) + (after[2] ? after[2].toUpperCase() : "") });
+      add("departAfterHour", "After " + esc(after[1]) + (after[2] ? " " + after[2].toUpperCase() : ""));
     } else if (/\b(no early morning|not early morning|skip early morning)\b/.test(q)) {
       filterState.departAfterHour = 8;
-      applied.push({ key: "departAfterHour", label: "After 8 AM" });
+      add("departAfterHour", "After 8 AM");
     }
     var before = /\bbefore\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?/.exec(q);
     if (before) {
       var h2 = before[2] ? hourFrom(before[1], before[2]) : parseInt(before[1], 10);
       filterState.departBeforeHour = h2;
-      applied.push({ key: "departBeforeHour", label: "Before " + esc(before[1]) + (before[2] ? before[2].toUpperCase() : "") });
+      add("departBeforeHour", "Before " + esc(before[1]) + (before[2] ? " " + before[2].toUpperCase() : ""));
+    }
+
+    var namedBucket = /\b(?:early )?morning\b/.test(q) ? "morning" :
+      /\b(?:late )?afternoon\b|\bafter lunch\b/.test(q) ? "afternoon" :
+      /\b(?:early |late )?evening\b/.test(q) ? "evening" :
+      /\b(?:night|red[ -]?eye)\b/.test(q) ? "night" : null;
+    if (namedBucket && !/\b(?:no|not|avoid|skip)\s+(?:a\s+)?(?:red[ -]?eye|night|early morning)\b/.test(q)) {
+      filterState.depart.morning = false;
+      filterState.depart.afternoon = false;
+      filterState.depart.evening = false;
+      filterState.depart.night = false;
+      filterState.depart[namedBucket] = true;
+      add("depart:" + namedBucket, namedBucket.charAt(0).toUpperCase() + namedBucket.slice(1) + " departures");
+    } else if (/\b(?:no|not|avoid|skip)\s+(?:a\s+)?(?:red[ -]?eye|night)\b/.test(q)) {
+      filterState.departAfterHour = 5;
+      filterState.departBeforeHour = 22;
+      add("departAfterHour", "After 5 AM");
+      add("departBeforeHour", "Before 10 PM");
     }
 
     var stageAirlines = Object.keys(filterState.airlines);
     stageAirlines.forEach(function (name) {
       var needle = name.toLowerCase();
-      if (q.indexOf(needle) !== -1) {
+      var shortName = needle.split(/\s+/).filter(function (part) { return part.length > 3 && part !== "airline" && part !== "partner"; });
+      if (q.indexOf(needle) !== -1 || shortName.some(function (part) { return new RegExp("\\b" + part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(q); })) {
         filterState.airlines[name] = true;
-        applied.push({ key: "airline:" + name, label: name });
+        add("airline:" + name, name);
       }
     });
+
+    if (/\b(?:cheapest|lowest price|lowest fare|best price)\b/.test(q)) {
+      activeTab = "cheapest";
+      add("sort:cheapest", "Cheapest first");
+    } else if (/\b(?:fastest|quickest|shortest trip)\b/.test(q)) {
+      activeTab = "fastest";
+      add("sort:fastest", "Quickest first");
+    }
 
     return applied;
   }
@@ -1220,8 +1310,18 @@
     if (key === "stops") { filterState.stops[0] = false; filterState.stops[1] = false; filterState.stops[2] = false; syncQuickChips(); [0, 1, 2].forEach(function (b) { stopInputs[b].checked = filterState.stops[b]; }); }
     else if (key === "maxPrice") { filterState.maxPrice = Infinity; }
     else if (key === "minPrice") { filterState.minPrice = 0; }
+    else if (key === "maxDuration") { filterState.maxDuration = Infinity; }
     else if (key === "departAfterHour") filterState.departAfterHour = null;
     else if (key === "departBeforeHour") filterState.departBeforeHour = null;
+    else if (key.indexOf("sort:") === 0) {
+      activeTab = "best";
+      syncSortControl();
+    }
+    else if (key.indexOf("depart:") === 0) {
+      var bucket = key.slice(7);
+      filterState.depart[bucket] = false;
+      if (departInputs[bucket]) departInputs[bucket].checked = false;
+    }
     else if (key.indexOf("airline:") === 0) {
       var name = key.slice(8);
       filterState.airlines[name] = false;
@@ -1250,7 +1350,21 @@
     var text = aiFilterInput.value.trim();
     if (!text) return;
     var applied = parseAiFilterText(text);
+    if (!applied.length) {
+      if (aiFilterApplied) {
+        aiFilterApplied.hidden = false;
+        aiFilterApplied.innerHTML = '<div class="lab-ai-filter-empty">Try a price, stops, airline, or time — for example “nonstop under $400”.</div>';
+      }
+      return;
+    }
     appliedNlFilters = applied;
+    [0, 1, 2].forEach(function (bucket) {
+      if (stopInputs[bucket]) stopInputs[bucket].checked = filterState.stops[bucket];
+    });
+    ["morning", "afternoon", "evening", "night"].forEach(function (bucket) {
+      if (departInputs[bucket]) departInputs[bucket].checked = filterState.depart[bucket];
+    });
+    syncQuickChips();
     renderAppliedNlChips();
     renderStage();
   }
@@ -1264,18 +1378,227 @@
   /* ---------------- edit search ---------------- */
 
   var editBtn = document.getElementById("labEditSearch");
-  if (editBtn) {
-    editBtn.addEventListener("click", function () {
-      document.body.classList.remove("lab-active");
-      try {
-        document.cookie = "resultsView=classic;path=/;max-age=" + 60 * 60 * 24 * 180 + ";SameSite=Lax";
-      } catch (e) {}
-      var labToggle = document.getElementById("labViewToggle");
-      if (labToggle) labToggle.setAttribute("aria-pressed", "false");
-      window.scrollTo({ top: 0, behavior: "auto" });
-      var routeSeg = document.querySelector('[data-srb-seg="route"]');
-      if (routeSeg) setTimeout(function () { routeSeg.click(); }, 50);
+  var editorEl = document.getElementById("labSearchEditor");
+  var editorForm = document.getElementById("labSearchEditorForm");
+  if (editBtn && editorEl && editorForm) {
+    var originInput = document.getElementById("labEditorOrigin");
+    var destinationInput = document.getElementById("labEditorDestination");
+    var originOptions = document.getElementById("labEditorOriginOptions");
+    var destinationOptions = document.getElementById("labEditorDestinationOptions");
+    var swapBtn = document.getElementById("labEditorSwap");
+    var tripTypeInput = document.getElementById("labEditorTripType");
+    var returnInput = document.getElementById("labEditorReturn");
+    var departInput = document.getElementById("labEditorDepart");
+    var editorError = document.getElementById("labSearchEditorError");
+    var lastFocused = null;
+    var airportAbort = null;
+    var airportTimer = null;
+    var calendarInitAttempts = 0;
+
+    function closeAirportOptions() {
+      [originOptions, destinationOptions].forEach(function (box) {
+        if (box) { box.hidden = true; box.textContent = ""; }
+      });
+      [originInput, destinationInput].forEach(function (input) {
+        if (input) input.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function closeEditor() {
+      if (airportAbort) airportAbort.abort();
+      if (airportTimer) window.clearTimeout(airportTimer);
+      closeAirportOptions();
+      editorEl.hidden = true;
+      document.body.classList.remove("lab-editor-open");
+      if (lastFocused) lastFocused.focus();
+    }
+
+    function openEditor() {
+      lastFocused = document.activeElement;
+      if (editorError) editorError.hidden = true;
+      editorEl.hidden = false;
+      document.body.classList.add("lab-editor-open");
+      ensureLabDateCalendar();
+      window.setTimeout(function () { if (originInput) originInput.focus(); }, 0);
+    }
+
+    function setTripType(type) {
+      var roundtrip = type === "roundtrip";
+      if (tripTypeInput) {
+        tripTypeInput.value = roundtrip ? "roundtrip" : "oneway";
+        tripTypeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      editorEl.querySelectorAll("[data-lab-editor-trip]").forEach(function (button) {
+        button.setAttribute("aria-selected", String(button.getAttribute("data-lab-editor-trip") === (roundtrip ? "roundtrip" : "oneway")));
+      });
+      if (returnInput) {
+        returnInput.disabled = !roundtrip;
+        returnInput.required = roundtrip;
+      }
+    }
+
+    function labDateLabel(isoDate) {
+      var parts = String(isoDate || "").split("-");
+      if (parts.length !== 3) return "";
+      var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+    }
+
+    function syncLabDateLabels() {
+      var departDisplay = document.getElementById("labEditorDepartDisplay");
+      var returnDisplay = document.getElementById("labEditorReturnDisplay");
+      var departLabel = labDateLabel(departInput && departInput.value);
+      var returnLabel = labDateLabel(returnInput && returnInput.value);
+      if (departDisplay) departDisplay.value = returnLabel ? departLabel + " – " + returnLabel : departLabel;
+      if (returnDisplay) returnDisplay.value = returnLabel;
+    }
+
+    function bindLabDateLabels() {
+      if (!departInput || departInput.dataset.labDateLabelsBound === "true") return;
+      departInput.dataset.labDateLabelsBound = "true";
+      [departInput, returnInput].forEach(function (input) {
+        if (!input) return;
+        input.addEventListener("input", syncLabDateLabels);
+        input.addEventListener("change", syncLabDateLabels);
+      });
+      ["labEditorDepartDisplay", "labEditorReturnDisplay"].forEach(function (id) {
+        var displayInput = document.getElementById(id);
+        if (!displayInput) return;
+        displayInput.addEventListener("input", syncLabDateLabels);
+        displayInput.addEventListener("change", syncLabDateLabels);
+      });
+      syncLabDateLabels();
+    }
+
+    function ensureLabDateCalendar() {
+      if (!departInput || !returnInput) return;
+      if (typeof window.initNativeDateRange !== "function") {
+        if (calendarInitAttempts++ < 24) window.setTimeout(ensureLabDateCalendar, 50);
+        return;
+      }
+      window.initNativeDateRange(departInput, returnInput, {
+        tripTypeInput: tripTypeInput,
+        departPrompt: "Choose your departure date",
+        returnPrompt: "Choose your return date"
+      });
+      bindLabDateLabels();
+    }
+
+    function fitInlineSelect(select) {
+      var option = select && select.options[select.selectedIndex];
+      if (!option) return;
+      var measure = document.createElement("span");
+      var style = window.getComputedStyle(select);
+      measure.textContent = option.text.trim();
+      measure.style.cssText = "position:fixed;visibility:hidden;white-space:nowrap;left:-9999px;top:-9999px;font:" + style.font + ";letter-spacing:" + style.letterSpacing + ";";
+      document.body.appendChild(measure);
+      var width = Math.ceil(measure.getBoundingClientRect().width) + 2;
+      measure.remove();
+      select.style.width = Math.max(42, width) + "px";
+    }
+
+    function selectAirport(input, box, item) {
+      input.value = String(item.code || "").toUpperCase();
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      box.hidden = true;
+      box.textContent = "";
+      input.setAttribute("aria-expanded", "false");
+    }
+
+    function renderAirportOptions(input, box, items) {
+      box.textContent = "";
+      (items || []).slice(0, 6).forEach(function (item) {
+        var option = document.createElement("button");
+        option.type = "button";
+        option.className = "lab-editor-airport-option";
+        option.setAttribute("role", "option");
+        var code = document.createElement("span");
+        code.className = "lab-editor-airport-code";
+        code.textContent = String(item.code || "").toUpperCase();
+        var label = document.createElement("span");
+        label.className = "lab-editor-airport-label";
+        label.textContent = String(item.label || item.code || "").replace(String(item.code || "") + " — ", "");
+        option.appendChild(code);
+        option.appendChild(label);
+        option.addEventListener("click", function () { selectAirport(input, box, item); });
+        box.appendChild(option);
+      });
+      box.hidden = !box.childElementCount;
+      input.setAttribute("aria-expanded", String(!box.hidden));
+    }
+
+    function attachAirportSuggestions(input, box) {
+      if (!input || !box) return;
+      input.addEventListener("input", function () {
+        var query = input.value.trim();
+        if (airportTimer) window.clearTimeout(airportTimer);
+        if (airportAbort) airportAbort.abort();
+        if (query.length < 3 || !searchForm.airportSuggestUrl) {
+          box.hidden = true;
+          box.textContent = "";
+          input.setAttribute("aria-expanded", "false");
+          return;
+        }
+        airportTimer = window.setTimeout(function () {
+          airportAbort = new AbortController();
+          fetch(searchForm.airportSuggestUrl + "?q=" + encodeURIComponent(query), { signal: airportAbort.signal })
+            .then(function (response) { return response.ok ? response.json() : []; })
+            .then(function (items) {
+              if (document.activeElement === input) renderAirportOptions(input, box, items);
+            })
+            .catch(function (error) {
+              if (error && error.name !== "AbortError") closeAirportOptions();
+            });
+        }, 160);
+      });
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") { closeAirportOptions(); input.blur(); }
+      });
+    }
+
+    editBtn.addEventListener("click", openEditor);
+    editorEl.querySelectorAll("[data-lab-editor-close]").forEach(function (button) {
+      button.addEventListener("click", closeEditor);
     });
+    editorEl.querySelectorAll("[data-lab-editor-trip]").forEach(function (button) {
+      button.addEventListener("click", function () { setTripType(button.getAttribute("data-lab-editor-trip")); });
+    });
+    if (swapBtn) swapBtn.addEventListener("click", function () {
+      var origin = originInput.value;
+      originInput.value = destinationInput.value;
+      destinationInput.value = origin;
+      originInput.focus();
+    });
+    editorEl.querySelectorAll(".lab-editor-inline-select select").forEach(function (select) {
+      fitInlineSelect(select);
+      select.addEventListener("change", function () { fitInlineSelect(select); });
+    });
+    attachAirportSuggestions(originInput, originOptions);
+    attachAirportSuggestions(destinationInput, destinationOptions);
+    document.addEventListener("click", function (event) {
+      if (!editorEl.hidden && !event.target.closest(".lab-editor-field")) closeAirportOptions();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !editorEl.hidden) closeEditor();
+    });
+    editorForm.addEventListener("submit", function (event) {
+      var origin = originInput.value.trim();
+      var destination = destinationInput.value.trim();
+      var isRoundTrip = tripTypeInput && tripTypeInput.value === "roundtrip";
+      var departDate = departInput.value;
+      var returnDate = isRoundTrip ? returnInput.value : "";
+      var message = !origin || !destination ? "Add both an origin and a destination." :
+        (!departDate ? "Choose a departure date." :
+          (isRoundTrip && !returnDate ? "Choose a return date." :
+            (isRoundTrip && returnDate < departDate ? "Your return date must be after your departure date." : "")));
+      if (message) {
+        event.preventDefault();
+        if (editorError) { editorError.textContent = message; editorError.hidden = false; }
+        return;
+      }
+    });
+    setTripType((tripTypeInput && tripTypeInput.value) || "roundtrip");
+    ensureLabDateCalendar();
   }
 
   /* ---------------- initial paint ---------------- */

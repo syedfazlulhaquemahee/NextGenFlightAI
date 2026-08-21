@@ -1238,6 +1238,5 @@
   {% set _skair_page = {"page_type": "confirmation", "booking_reference": order_summary.booking_reference or "", "airline_name": order_summary.airline_name or "", "route_summary": (order_summary.slices[0].route if order_summary.slices else "") or "", "destination": (order_summary.slices[-1].destination_code if order_summary.slices else "") or "", "currency": order_summary.currency or "USD", "total_amount": order_summary.total_amount or "", "passenger_names": order_summary.passenger_names or [], "slices": order_summary.slices or []} %}
   <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
   {% endif %}
-  {% include "partials/ai_chatbot.html" %}
 </body>
 </html>

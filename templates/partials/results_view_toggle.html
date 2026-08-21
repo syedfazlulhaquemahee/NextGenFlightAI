@@ -27,12 +27,17 @@
     cursor: pointer;
     box-shadow: 0 6px 20px rgba(79, 111, 255, 0.35);
   }
-  .lab-view-toggle:hover { filter: brightness(1.05); }
+  .lab-view-toggle:hover,
+  .lab-view-toggle:active,
+  .lab-view-toggle:focus-visible { background: #4F6FFF; color: #fff; filter: none; }
   .lab-view-toggle .lab-view-toggle-to-classic { display: none; }
   body.lab-active .lab-view-toggle {
     background: #14171f;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   }
+  body.lab-active .lab-view-toggle:hover,
+  body.lab-active .lab-view-toggle:active,
+  body.lab-active .lab-view-toggle:focus-visible { background: #14171f; color: #fff; }
   body.lab-active .lab-view-toggle .lab-view-toggle-to-lab { display: none; }
   body.lab-active .lab-view-toggle .lab-view-toggle-to-classic { display: inline; }
   @media (max-width: 640px) {

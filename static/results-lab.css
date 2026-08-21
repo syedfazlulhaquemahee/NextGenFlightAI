@@ -37,6 +37,7 @@ body.lab-active .results-lab-body {
   --lab-danger-bg: rgba(180, 35, 24, 0.08);
   --lab-radius-card: 12px;
   --lab-radius-ctrl: 10px;
+  --lab-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05), 0 3px 8px rgba(16, 24, 40, 0.035);
   --lab-shadow-hover: 0 4px 16px rgba(11, 13, 18, 0.08);
   --lab-focus: 0 0 0 3px rgba(79, 111, 255, 0.35);
   --lab-brand-tint: color-mix(in srgb, var(--lab-brand) 5%, var(--lab-card-bg));
@@ -79,6 +80,7 @@ html:not([data-theme="light"]) .results-lab-body {
   --lab-warning-bg: rgba(226, 166, 59, 0.12);
   --lab-danger: #F0685D;
   --lab-danger-bg: rgba(240, 104, 93, 0.12);
+  --lab-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.22), 0 4px 10px rgba(0, 0, 0, 0.16);
   --lab-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
@@ -111,14 +113,42 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 
 /* ---------- shell ---------- */
-
+/* Content-frame pass: one shared shell every section below aligns to
+   (route header, progress, dates, toolbar, rail, cards) — no section gets
+   its own independent width. On large monitors the shell caps at 1200px
+   and growth goes into outer whitespace instead of longer journey lines
+   and wider cards; below that it tracks the viewport with a shrinking but
+   still generous gutter per breakpoint. */
 .lab-shell {
-  max-width: 1300px;
+  max-width: 1200px;
+  width: calc(100% - 64px);
   margin: 0 auto;
-  padding: 0 var(--lab-sp-7) var(--lab-sp-11);
+  padding-bottom: var(--lab-sp-11);
+}
+@media (max-width: 1439px) {
+  .lab-shell { width: calc(100% - 72px); }
+}
+@media (max-width: 1279px) {
+  .lab-shell { width: calc(100% - 48px); }
+}
+@media (max-width: 1179px) {
+  .lab-shell { width: calc(100% - 40px); }
+}
+@media (max-width: 1023px) {
+  .lab-shell { width: calc(100% - 32px); }
+}
+@media (max-width: 767px) {
+  .lab-shell { width: 100%; padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 360px) {
+  .lab-shell { padding-left: 14px; padding-right: 14px; }
 }
 
 /* ---------- sticky search summary (spec 6.2) ---------- */
+/* Same shell width as everything else — previously this bled edge-to-edge
+   via negative margins, but its background already matches the page
+   background, so the bleed bought nothing except a boundary that didn't
+   match the rest of the page's shared frame. */
 
 .lab-summary {
   position: sticky;
@@ -129,8 +159,8 @@ html:not([data-theme="light"]) .results-lab-body {
   justify-content: space-between;
   gap: var(--lab-sp-4);
   min-height: 64px;
-  padding: var(--lab-sp-4) var(--lab-sp-7);
-  margin: 0 calc(-1 * var(--lab-sp-7)) var(--lab-sp-5);
+  padding: var(--lab-sp-4) 0;
+  margin: 0 0 var(--lab-sp-5);
   background: var(--lab-bg);
   flex-wrap: wrap;
 }
@@ -139,53 +169,76 @@ html:not([data-theme="light"]) .results-lab-body {
   display: flex;
   flex-direction: column;
   gap: var(--lab-sp-2);
+  flex: 1 1 100%;
+  min-width: 0;
+  padding-right: 36px;
 }
 
 .lab-summary-route {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  font-weight: 650;
-  font-size: 27px;
-  letter-spacing: -0.015em;
+  flex-wrap: nowrap;
+  width: 100%;
+  white-space: nowrap;
+  font-weight: 670;
+  font-size: clamp(18px, 3.4vw, 29px);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
   color: var(--lab-ink-strong);
 }
 
-.lab-summary-arrow {
+.lab-summary-route-icon {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
   color: var(--lab-muted);
-  font-weight: 500;
-  font-size: 15px;
 }
 
-.lab-summary-city {
-  font-weight: 450;
-  font-size: 13px;
-  color: var(--lab-secondary);
-}
-
-.lab-summary-meta {
+.lab-summary-details {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
   color: var(--lab-secondary);
-  font-size: 13.5px;
-  font-weight: 450;
-  flex-wrap: wrap;
+  font-size: clamp(11px, 2vw, 13.5px);
+  font-weight: 500;
+}
+.lab-summary-details::-webkit-scrollbar { display: none; }
+.lab-summary-details .lab-dot::before {
+  content: "\00b7";
 }
 
-.lab-summary-meta .lab-dot::before {
-  content: "\00b7";
-  margin: 0 2px;
+.lab-summary-codes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lab-secondary);
+  font-size: inherit;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+.lab-summary-codes svg {
+  width: 15px;
+  height: 15px;
+  color: var(--lab-muted);
 }
 
 .lab-summary-edit {
+  position: absolute;
+  top: var(--lab-sp-4);
+  right: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
-  border-radius: var(--lab-radius-ctrl);
-  border: 1px solid var(--lab-border-soft);
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--lab-ink);
   font-size: 13px;
@@ -194,8 +247,11 @@ html:not([data-theme="light"]) .results-lab-body {
   white-space: nowrap;
   text-decoration: none;
 }
+.lab-summary-edit svg {
+  width: 20px;
+  height: 20px;
+}
 .lab-summary-edit:hover {
-  border-color: var(--lab-brand);
   color: var(--lab-brand);
 }
 .lab-summary-edit:focus-visible {
@@ -203,34 +259,433 @@ html:not([data-theme="light"]) .results-lab-body {
   box-shadow: var(--lab-focus);
 }
 
-/* ---------- booking progress (spec 6.3) ---------- */
-/* Plain spaced text, no stepper-library circles/connector lines — the
-   active step reads via weight + a thin underline, done steps via a
-   small check mark, nothing else changes shape. */
+/* ---------- Lab search editor ---------- */
+/* A dedicated, deliberately compact editor for the experimental results
+   page. It is not related to the multi-panel editor used by classic results:
+   one calm surface, four essential choices, one action. */
+.lab-search-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: grid;
+  place-items: start center;
+  overflow-y: auto;
+  padding: min(10vh, 88px) 24px 32px;
+}
+.lab-search-editor[hidden] {
+  display: none;
+}
+.lab-search-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.lab-search-editor-panel {
+  position: relative;
+  width: min(100%, 760px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lab-sp-5);
+  padding: 28px;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: 0 28px 72px rgba(12, 19, 34, 0.22), 0 8px 20px rgba(27, 46, 84, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.78), inset 0 -1px 0 rgba(133, 153, 198, 0.18);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(8px) saturate(150%);
+}
+.lab-search-editor-panel::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  display: none;
+  content: "";
+  pointer-events: none;
+}
+.lab-search-editor-panel > * { position: relative; z-index: 1; }
+.lab-search-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--lab-sp-4);
+}
+.lab-search-editor-eyebrow {
+  margin: 0 0 3px;
+  color: var(--lab-brand);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lab-search-editor-head h2 {
+  margin: 0;
+  color: var(--lab-ink-strong);
+  font-size: 22px;
+  font-weight: 680;
+  letter-spacing: -0.025em;
+}
+.lab-search-editor-close {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lab-secondary);
+  cursor: pointer;
+}
+.lab-search-editor-close:hover { background: var(--lab-bg); color: var(--lab-ink); }
+.lab-search-editor-close:focus-visible,
+.lab-editor-swap:focus-visible,
+.lab-search-editor-trip button:focus-visible,
+.lab-editor-submit:focus-visible {
+  outline: none;
+  box-shadow: var(--lab-focus);
+}
+.lab-search-editor-close svg { width: 18px; height: 18px; }
 
+.lab-search-editor-trip-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.lab-search-editor-trip {
+  display: flex;
+  gap: 18px;
+  border-bottom: 1px solid var(--lab-border-soft);
+}
+.lab-search-editor-trip button {
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--lab-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lab-search-editor-trip button[aria-selected="true"] {
+  border-bottom-color: var(--lab-brand);
+  color: var(--lab-ink-strong);
+}
+.lab-editor-inline-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+}
+.lab-editor-inline-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0;
+  color: var(--lab-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lab-editor-inline-select > svg,
+.lab-editor-inline-select > img { width: 16px; height: 16px; flex: 0 0 auto; }
+.lab-editor-inline-select > .lab-editor-inline-chevron { width: 13px; height: 13px; margin-left: 0; }
+.lab-editor-inline-select select {
+  max-width: none;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--lab-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.lab-editor-inline-select select:focus { color: var(--lab-ink-strong); }
+.results-lab-body .lab-editor-inline-select select:focus,
+.results-lab-body .lab-editor-inline-select select:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+.lab-search-editor-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--lab-sp-4);
+}
+.lab-search-editor-fields > .lab-editor-field:nth-child(1) { grid-column: 1; }
+.lab-search-editor-fields > .lab-editor-swap { grid-column: 2; justify-self: center; }
+.lab-search-editor-fields > .lab-editor-field:nth-child(3) { grid-column: 3; }
+.lab-search-editor-fields > .lab-editor-date-range-field { grid-column: 4; }
+.lab-editor-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--lab-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.lab-editor-field input,
+.lab-editor-field select {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #9EABBE;
+  border-radius: 10px;
+  outline: 0;
+  background: transparent;
+  -webkit-backdrop-filter: blur(5px) saturate(140%);
+  backdrop-filter: blur(5px) saturate(140%);
+  color: var(--lab-ink-strong);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.lab-search-editor-fields > .lab-editor-field > input:not([type="hidden"]),
+.lab-search-editor-fields > .lab-editor-date-range-field > .ndp-native-display {
+  height: 48px !important;
+  box-sizing: border-box;
+}
+.lab-editor-field select { cursor: pointer; }
+.lab-editor-field input:focus,
+.lab-editor-field select:focus {
+  border-color: var(--lab-brand);
+  box-shadow: 0 0 0 3px rgba(79, 111, 255, 0.14);
+}
+.lab-editor-date-range-field .lab-editor-date-input {
+  height: 48px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.lab-editor-date-range-field #labEditorReturnDisplay {
+  display: none !important;
+}
+.lab-editor-swap {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: end;
+  margin-bottom: 7px;
+  padding: 0;
+  border: 1px solid #9EABBE;
+  border-radius: 50%;
+  background: transparent;
+  -webkit-backdrop-filter: blur(5px) saturate(140%);
+  backdrop-filter: blur(5px) saturate(140%);
+  color: var(--lab-secondary);
+  cursor: pointer;
+}
+.lab-editor-swap:hover { border-color: var(--lab-brand); color: var(--lab-brand); }
+.lab-editor-swap svg { width: 16px; height: 16px; }
+.lab-editor-airports {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--lab-border);
+  border-radius: 10px;
+  background: var(--lab-card-bg);
+  box-shadow: var(--lab-shadow-hover);
+}
+.lab-editor-airport-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--lab-ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.lab-editor-airport-option:hover,
+.lab-editor-airport-option:focus-visible { background: var(--lab-brand-tint); outline: 0; }
+.lab-editor-airport-code { color: var(--lab-ink-strong); font-size: 12px; font-weight: 750; letter-spacing: 0.06em; }
+.lab-editor-airport-label { overflow: hidden; color: var(--lab-secondary); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.lab-search-editor-footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--lab-sp-3);
+  padding-top: var(--lab-sp-1);
+}
+.lab-editor-nonstop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lab-secondary);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.lab-editor-nonstop input { width: 15px; height: 15px; accent-color: var(--lab-brand); }
+.lab-search-editor-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--lab-danger);
+  font-size: 12px;
+  font-weight: 550;
+}
+.lab-editor-submit {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+  font-size: 14px;
+  font-weight: 680;
+  cursor: pointer;
+}
+.lab-editor-submit:hover { background: var(--lab-brand); }
+body.lab-editor-open { overflow: hidden; }
+
+@media (max-width: 640px) {
+  .lab-search-editor {
+    align-items: end;
+    padding: 0;
+  }
+  .lab-search-editor-panel {
+    width: 100%;
+    max-height: min(92dvh, 760px);
+    overflow-y: auto;
+    gap: 18px;
+    padding: 24px 16px max(24px, env(safe-area-inset-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .lab-search-editor-head h2 { font-size: 20px; }
+  .lab-editor-swap { width: 32px; height: 32px; }
+  .lab-search-editor-fields { grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr); gap: 6px; }
+  .lab-search-editor-fields > .lab-editor-field:nth-child(1) { grid-column: 1; }
+  .lab-search-editor-fields > .lab-editor-swap { grid-column: 2; }
+  .lab-search-editor-fields > .lab-editor-field:nth-child(3) { grid-column: 3; }
+  .lab-editor-date-range-field { grid-column: 1 / -1; margin-top: var(--lab-sp-2); }
+  .lab-editor-field input,
+  .lab-editor-field select { height: 46px; padding: 0 10px; font-size: 14px; }
+  .lab-search-editor-footer { grid-template-columns: 1fr; }
+  .lab-editor-submit { width: 100%; order: -1; }
+  .lab-search-editor-trip-row { align-items: center; }
+  .lab-search-editor-trip { gap: 14px; }
+  .lab-search-editor-trip-row { flex-wrap: wrap; }
+  .lab-editor-inline-controls { width: 100%; justify-content: flex-end; margin-top: -4px; }
+  .lab-editor-inline-select select { max-width: none; font-size: 12px; }
+}
+
+/* ---------- booking progress ---------- */
 .lab-progress {
+  margin: 0 0 var(--lab-sp-5);
+}
+.lab-progress-list {
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin: 0 0 var(--lab-sp-5);
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--lab-tertiary);
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .lab-progress-step {
-  padding-bottom: 5px;
-  border-bottom: 2px solid transparent;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--lab-tertiary);
+}
+.lab-progress-step:not(:last-child)::after {
+  margin-left: 13px;
+  content: "→";
+  color: var(--lab-border);
+  font-size: 14px;
+}
+.lab-progress-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 1px solid var(--lab-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lab-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.lab-progress-marker svg {
+  display: none;
+  width: 12px;
+  height: 12px;
+}
+.lab-progress-copy {
+  color: var(--lab-muted);
+  font-size: 13px;
+  font-weight: 550;
 }
 .lab-progress-step.is-current {
-  color: var(--lab-ink);
-  font-weight: 600;
-  border-bottom-color: var(--lab-brand);
+  color: var(--lab-brand);
+}
+.lab-progress-step.is-current .lab-progress-marker {
+  border-color: var(--lab-brand);
+  background: var(--lab-brand);
+  color: var(--lab-brand-ink);
+}
+.lab-progress-step.is-current .lab-progress-copy {
+  color: var(--lab-ink-strong);
+  font-weight: 650;
 }
 .lab-progress-step.is-done {
-  color: var(--lab-muted);
+  color: var(--lab-positive);
 }
-.lab-progress-step.is-done::before {
-  content: "✓ ";
+.lab-progress-step.is-done .lab-progress-marker {
+  border-color: var(--lab-positive);
+  background: var(--lab-positive);
+  color: var(--lab-brand-ink);
+}
+.lab-progress-step.is-done .lab-progress-number {
+  display: none;
+}
+.lab-progress-step.is-done .lab-progress-marker svg {
+  display: block;
+}
+.lab-progress-step.is-done .lab-progress-copy {
+  color: var(--lab-ink);
+}
+@media (max-width: 640px) {
+  .lab-progress-list { gap: 12px; }
+  .lab-progress-step:not(:last-child)::after { margin-left: 6px; }
+  .lab-progress-copy { font-size: 12px; }
 }
 
 /* ---------- pinned chosen-departure summary (shown during Return/Review) ---------- */
@@ -281,15 +736,14 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 
 /* ---------- flexible date strip ---------- */
-/* Compact date cells, never a price (no adjacent-date pricing data exists
-   anywhere in this app) — clicking a non-selected date genuinely resubmits
-   the search rather than sitting there decoratively. */
+/* Nearby dates pair the calendar label with the lowest currently available
+   fare for that exact trip length. Selecting a future date runs that search. */
 
 .lab-datestrip {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 40px;
+  min-height: 58px;
   margin-bottom: var(--lab-sp-7);
 }
 .lab-datestrip-nav {
@@ -325,8 +779,9 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 .lab-datestrip-cell {
   display: flex;
-  align-items: baseline;
-  gap: 5px;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
   flex-shrink: 0;
   border: none;
   border-bottom: 2px solid transparent;
@@ -335,7 +790,7 @@ html:not([data-theme="light"]) .results-lab-body {
   cursor: pointer;
   font: inherit;
   color: var(--lab-tertiary);
-  padding: 0 var(--lab-sp-2) 5px;
+  padding: 0 var(--lab-sp-2) 6px;
 }
 button.lab-datestrip-cell:hover {
   color: var(--lab-ink);
@@ -363,6 +818,22 @@ button.lab-datestrip-cell:hover {
   font-weight: 600;
   white-space: nowrap;
 }
+.lab-datestrip-price {
+  min-height: 13px;
+  color: var(--lab-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.lab-datestrip-cell.is-selected .lab-datestrip-price {
+  color: var(--lab-brand);
+}
+.lab-datestrip-price.is-loading,
+.lab-datestrip-price.is-unavailable {
+  color: var(--lab-tertiary);
+  font-weight: 500;
+}
 
 /* ---------- sort dropdown (turn 7: replaces the 4-column ranking strip) ---------- */
 /* One compact control instead of a permanently-visible comparison surface —
@@ -371,89 +842,70 @@ button.lab-datestrip-cell:hover {
 
 .lab-sort {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--lab-sp-3);
 }
-.lab-sort-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
+.lab-mobile-filter-trigger {
+  display: none;
+}
+/* Segmented tab track — the classic OTA pattern: a light track holding
+   three tabs, the active one lifted as a card-colored pill with each
+   tab's own live price+duration underneath its label, not just a name. */
+.lab-sort-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--lab-bg);
   border: 1px solid var(--lab-border-soft);
-  background: var(--lab-card-bg);
-  color: var(--lab-ink);
-  font-size: 13px;
-  font-weight: 600;
+}
+.lab-sort-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 92px;
+  padding: 6px 14px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
-  transition: border-color 150ms ease;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
-.lab-sort-trigger:hover {
-  border-color: var(--lab-brand);
+.lab-sort-tab:hover {
+  background: color-mix(in srgb, var(--lab-brand) 4%, var(--lab-card-bg));
 }
-.lab-sort-trigger:focus-visible {
+.lab-sort-tab:focus-visible {
   outline: none;
   box-shadow: var(--lab-focus);
 }
-.lab-sort-trigger svg {
-  color: var(--lab-tertiary);
-  transition: transform 150ms ease;
+.lab-sort-tab[aria-selected="true"] {
+  background: var(--lab-card-bg);
+  border-color: var(--lab-border);
+  box-shadow: 0 1px 2px rgba(11, 13, 18, 0.06);
 }
-.lab-sort-trigger[aria-expanded="true"] svg {
-  transform: rotate(180deg);
+.lab-sort-tab-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lab-ink);
+}
+.lab-sort-tab[aria-selected="true"] .lab-sort-tab-label {
+  color: var(--lab-brand);
+}
+.lab-sort-tab-value {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lab-muted);
+  white-space: nowrap;
 }
 .lab-sort .lab-spark {
   color: var(--lab-brand);
   font-size: 12px;
-}
-
-.lab-sort-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 6px);
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 190px;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--lab-border);
-  background: var(--lab-card-bg);
-  box-shadow: var(--lab-shadow-hover);
-}
-.lab-sort-menu[hidden] {
-  display: none;
-}
-.lab-sort-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--lab-ink);
-  font-size: 13px;
-  font-weight: 500;
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.lab-sort-option:hover {
-  background: color-mix(in srgb, var(--lab-brand) 6%, var(--lab-card-bg));
-}
-.lab-sort-option:focus-visible {
-  outline: none;
-  box-shadow: var(--lab-focus);
-}
-.lab-sort-option[aria-selected="true"] {
-  background: color-mix(in srgb, var(--lab-brand) 8%, var(--lab-card-bg));
-  color: var(--lab-brand);
-  font-weight: 600;
 }
 
 /* ---------- ranking explainer (spec 12, 13) ---------- */
@@ -499,9 +951,7 @@ button.lab-datestrip-cell:hover {
   box-shadow: var(--lab-shadow-hover);
 }
 
-/* ---------- result toolbar (spec 14, 35) ---------- */
-/* One toolbar: count, quick filters, track price and "more filters" all
-   belong together instead of stacking as separate rows/cards. */
+/* ---------- result toolbar ---------- */
 
 .lab-toolbar {
   margin-bottom: var(--lab-sp-5);
@@ -571,8 +1021,8 @@ button.lab-datestrip-cell:hover {
 
 .lab-layout {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
-  gap: var(--lab-sp-7);
+  grid-template-columns: 224px minmax(0, 1fr);
+  column-gap: 28px;
   align-items: start;
 }
 
@@ -580,7 +1030,9 @@ button.lab-datestrip-cell:hover {
   display: flex;
   flex-direction: column;
   gap: var(--lab-sp-7);
-  padding: 0;
+  /* Reserve room for the rail scrollbar so it never overlays controls or
+     clips the right edge of price labels / AI chips. */
+  padding: 0 10px 0 0;
   border: none;
   background: none;
   position: sticky;
@@ -588,7 +1040,23 @@ button.lab-datestrip-cell:hover {
   max-height: calc(100vh - 116px);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--lab-tertiary) 58%, transparent) transparent;
   min-width: 0;
+}
+.lab-rail::-webkit-scrollbar,
+.lab-checklist::-webkit-scrollbar {
+  width: 3px;
+}
+.lab-rail::-webkit-scrollbar-track,
+.lab-checklist::-webkit-scrollbar-track {
+  background: transparent;
+}
+.lab-rail::-webkit-scrollbar-thumb,
+.lab-checklist::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--lab-tertiary) 46%, transparent);
+  border-radius: 999px;
 }
 /* Setting only overflow-y leaves overflow-x computed as auto too (CSS
    Overflow spec: a scrolling value on one axis promotes "visible" on the
@@ -682,9 +1150,6 @@ button.lab-datestrip-cell:hover {
   background: color-mix(in srgb, var(--lab-brand) 85%, var(--lab-ink));
   color: var(--lab-brand-ink);
   cursor: pointer;
-}
-.lab-ai-filter-go:hover {
-  filter: brightness(1.06);
 }
 .lab-ai-filter-go:focus-visible {
   outline: none;
@@ -807,6 +1272,10 @@ button.lab-datestrip-cell:hover {
   max-height: 180px;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--lab-tertiary) 58%, transparent) transparent;
 }
 
 .lab-rail-actions {
@@ -825,10 +1294,6 @@ button.lab-datestrip-cell:hover {
   font-weight: 550;
   cursor: pointer;
 }
-.lab-clear-filters:hover {
-  border-color: var(--lab-brand);
-  color: var(--lab-brand);
-}
 .lab-apply-filters {
   /* Desktop filters already update live (spec 9.1); the explicit "Show
      results" action only earns its place in the mobile sheet below. */
@@ -840,29 +1305,22 @@ button.lab-datestrip-cell:hover {
 .lab-column {
   min-width: 0;
 }
+@media (min-width: 1025px) {
+  .lab-column {
+    width: 100%;
+    max-width: 840px;
+  }
+  .lab-summary-edit {
+    right: clamp(0px, calc(100% - 1092px), 108px);
+  }
+  .lab-datestrip-nav:last-child {
+    margin-right: clamp(0px, calc(100% - 1092px), 108px);
+  }
+  .lab-pinned {
+    margin-right: clamp(0px, calc(100% - 1092px), 108px);
+  }
+}
 
-/* Quiet text action, not a bordered pill (spec #22) — Select flight is
-   the only control on the page that should read as a strong CTA. */
-.lab-track-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 6px;
-  border: none;
-  background: none;
-  color: var(--lab-secondary);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.lab-track-price:hover {
-  color: var(--lab-ink);
-}
-.lab-track-price[aria-pressed="true"] {
-  color: var(--lab-brand);
-}
 .lab-updating {
   display: none;
   align-items: center;
@@ -914,21 +1372,23 @@ button.lab-datestrip-cell:hover {
    with its own deliberate breathing room rather than uniform compression. */
 
 .lab-card {
-  border: 1px solid var(--lab-border);
+  border: 1px solid color-mix(in srgb, var(--lab-border) 72%, var(--lab-secondary));
   border-radius: var(--lab-radius-card);
   background: var(--lab-card-bg);
-  padding: var(--lab-sp-4) var(--lab-sp-5);
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  padding: 10px var(--lab-sp-5);
+  box-shadow: var(--lab-shadow-card);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 .lab-card:hover {
   border-color: color-mix(in srgb, var(--lab-brand) 40%, var(--lab-border));
   box-shadow: var(--lab-shadow-hover);
+  transform: translateY(-1px);
 }
 
 /* Top-ranked result gets a quiet brand tint — never repeated on every card
    (spec #32: "not give every card purple borders"). */
 .lab-card--top {
-  border-color: color-mix(in srgb, var(--lab-brand) 26%, var(--lab-border));
+  border-color: color-mix(in srgb, var(--lab-brand) 34%, var(--lab-border));
   background: var(--lab-card-bg);
 }
 .lab-card--top:hover {
@@ -939,11 +1399,9 @@ button.lab-datestrip-cell:hover {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
   flex-shrink: 0;
-  text-align: right;
 }
 .lab-badge {
   display: inline-flex;
@@ -986,10 +1444,8 @@ button.lab-datestrip-cell:hover {
 .lab-meta-line {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 5px;
   flex-shrink: 0;
-  text-align: right;
   font-size: 11.5px;
   font-weight: 550;
   color: var(--lab-muted);
@@ -1013,7 +1469,7 @@ button.lab-datestrip-cell:hover {
   position: absolute;
   z-index: 20;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   width: 280px;
   max-width: 84vw;
   padding: 12px 14px;
@@ -1049,38 +1505,49 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-positive);
 }
 
-/* Density rebuild: three stacked rows, each read left-to-right in one pass,
-   instead of a tall content column beside a separate price rail. Airline
-   row (name + terse designation/tradeoff) → full-width journey row →
-   baggage + price + CTA sharing one bottom row. Target ~95-120px collapsed
-   (~125-145px for the Skairova Best card, which also carries a badge). */
-.lab-card-top-row {
+/* Expedia-pattern rebuild: one horizontal band per card — a fixed airline
+   column, a flexible journey column, a fixed price/CTA column — instead
+   of stacked full-width rows. Any contextual badge/tradeoff renders in
+   its own thin strip above the band, where a "Best value" ribbon would
+   sit on a conventional OTA result row. */
+.lab-card-tag-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--lab-sp-3);
-  margin-bottom: var(--lab-sp-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--lab-sp-2);
+  margin-bottom: 6px;
 }
 
+.lab-card-main {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 190px;
+  column-gap: var(--lab-sp-5);
+  align-items: center;
+}
+
+/* Stacked (logo above name) rather than side-by-side — a fixed 150px
+   column is too narrow to keep most real airline names on one line next
+   to a logo without ellipsis-truncating them. */
 .lab-carrier {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 .lab-carrier-logo {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
   object-fit: contain;
-  border: 1px solid var(--lab-border);
-  background: #fff;
+  border: 0;
+  background: transparent;
   flex-shrink: 0;
 }
 .lab-carrier-logo-ph {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: var(--lab-border);
   flex-shrink: 0;
 }
@@ -1091,15 +1558,15 @@ button.lab-datestrip-cell:hover {
   display: block;
   font-size: 13.5px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .lab-carrier-mix {
   display: block;
   font-size: 11px;
   color: var(--lab-muted);
   line-height: 1.3;
+  margin-top: 2px;
   /* Real carrier-mix copy varies in length ("Operated by X" vs longer
      airline-specific phrasing) — wrap it rather than truncating real
      information with an ellipsis. */
@@ -1107,10 +1574,10 @@ button.lab-datestrip-cell:hover {
   overflow-wrap: break-word;
 }
 
-.lab-itinerary {
+.lab-card-journey {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 .lab-leg {
@@ -1213,45 +1680,34 @@ button.lab-datestrip-cell:hover {
   color: var(--lab-warning);
 }
 
-/* ---------- top-card reason line (spec #27) ---------- */
-/* Its own breathing room on both sides — secondary in weight/color so it
-   never competes with the journey line above it, but not squeezed against
-   either neighbor either. */
+/* Reads inline in the tag row, right after any badge — a middot glues
+   them together when both are present. */
 .lab-card-summary {
-  margin: var(--lab-sp-2) 0 0;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 450;
   color: var(--lab-secondary);
   line-height: 1.4;
 }
+.lab-card-badges + .lab-card-summary::before,
+.lab-meta-line + .lab-card-summary::before {
+  content: "\00b7";
+  margin-right: var(--lab-sp-2);
+  opacity: 0.55;
+}
 
-/* ---------- shared bottom row: baggage/details + price + CTA ---------- */
-.lab-card-bottom-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--lab-sp-4);
-  margin-top: var(--lab-sp-2);
-}
-.lab-card-bottom-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  min-width: 0;
-  font-size: 11.5px;
-}
 .lab-journey-meta {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 2px;
 }
 .lab-meta-item {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--lab-muted);
+  font-size: 11.5px;
 }
 .lab-meta-item--yes { color: var(--lab-positive); font-weight: 600; }
 .lab-meta-item--warn { color: var(--lab-warning); font-weight: 600; }
@@ -1262,23 +1718,26 @@ button.lab-datestrip-cell:hover {
   height: 12px;
 }
 
-.lab-pricing {
+/* ---------- price/CTA column ---------- */
+.lab-card-price {
   display: flex;
-  align-items: center;
-  gap: var(--lab-sp-3);
-  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 .lab-pricing-info {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 2px;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--lab-brand) 45%, var(--lab-border));
   text-align: right;
 }
 .lab-price-amt {
-  font-size: 19px;
-  font-weight: 660;
-  letter-spacing: -0.01em;
+  font-size: 22px;
+  font-weight: 720;
+  letter-spacing: -0.025em;
   line-height: 1.1;
   color: var(--lab-ink-strong);
 }
@@ -1295,8 +1754,12 @@ button.lab-datestrip-cell:hover {
   max-width: 420px;
 }
 .lab-price-note {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--lab-muted);
+}
+.lab-price-note:first-child {
+  color: var(--lab-secondary);
+  font-weight: 600;
 }
 .lab-price-note + .lab-price-note::before,
 .lab-price-cue::before {
@@ -1315,8 +1778,8 @@ button.lab-datestrip-cell:hover {
 .lab-select-btn {
   padding: 0 16px;
   min-width: 96px;
-  height: 39px;
-  line-height: 39px;
+  height: 34px;
+  line-height: 1;
   border-radius: 9px;
   border: none;
   background: var(--lab-brand);
@@ -1327,11 +1790,35 @@ button.lab-datestrip-cell:hover {
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
-.lab-select-btn:hover {
-  filter: brightness(1.06);
+.results-lab-body a.lab-select-btn {
+  color: var(--lab-brand-ink) !important;
+}
+/* Results CTAs deliberately stay color-stable on hover/press.  The global
+   application button styles are more specific in a few themes, so lock both
+   the background and label here rather than relying on the base declaration. */
+.results-lab-body .lab-select-btn:not([aria-disabled]),
+.results-lab-body .lab-select-btn:not([aria-disabled]):hover,
+.results-lab-body .lab-select-btn:not([aria-disabled]):active,
+.results-lab-body .lab-select-btn:not([aria-disabled]):focus-visible {
+  background: var(--lab-brand) !important;
+  color: var(--lab-brand-ink) !important;
+  filter: none !important;
+}
+.lab-select-btn--final {
+  width: auto;
+  min-width: 112px;
+}
+.results-lab-body a.lab-select-btn--final,
+.results-lab-body a.lab-select-btn--final:visited,
+.results-lab-body a.lab-select-btn--final:hover,
+.results-lab-body a.lab-select-btn--final:focus-visible,
+.results-lab-body a.lab-select-btn--final:active {
+  color: var(--lab-brand-ink) !important;
 }
 .lab-select-btn:focus-visible {
   outline: none;
@@ -1343,6 +1830,36 @@ button.lab-datestrip-cell:hover {
   cursor: not-allowed;
 }
 
+.results-lab-body .lab-ai-filter-go,
+.results-lab-body .lab-ai-filter-go:hover,
+.results-lab-body .lab-ai-filter-go:active,
+.results-lab-body .lab-ai-filter-go:focus-visible {
+  background: color-mix(in srgb, var(--lab-brand) 85%, var(--lab-ink)) !important;
+  color: var(--lab-brand-ink) !important;
+  filter: none !important;
+}
+.results-lab-body .lab-clear-filters,
+.results-lab-body .lab-clear-filters:hover,
+.results-lab-body .lab-clear-filters:active,
+.results-lab-body .lab-clear-filters:focus-visible {
+  border-color: var(--lab-border-soft) !important;
+  background: transparent !important;
+  color: var(--lab-ink) !important;
+}
+.results-lab-body .lab-apply-filters,
+.results-lab-body .lab-apply-filters:hover,
+.results-lab-body .lab-apply-filters:active,
+.results-lab-body .lab-apply-filters:focus-visible {
+  background: var(--lab-brand) !important;
+  color: var(--lab-brand-ink) !important;
+  filter: none !important;
+}
+
+.lab-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
 .lab-details-toggle {
   display: inline-flex;
   align-items: center;
@@ -1465,28 +1982,77 @@ button.lab-datestrip-cell:hover {
 
 @media (max-width: 1024px) {
   .lab-shell {
-    padding: 0 16px 48px;
-  }
-  .lab-summary {
-    margin: 0 -16px 16px;
-    padding: 12px 16px;
+    padding-bottom: 48px;
   }
   .lab-layout {
     grid-template-columns: 1fr;
   }
+  .lab-mobile-filter-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--lab-ink);
+    cursor: pointer;
+  }
+  .lab-mobile-filter-trigger span {
+    width: 19px;
+    height: 19px;
+    background: currentColor;
+    /* Lucide's List Filter SVG, downloaded from lucide.dev's GitHub source. */
+    -webkit-mask: url("/static/icons/list-filter.svg") center / contain no-repeat;
+    mask: url("/static/icons/list-filter.svg") center / contain no-repeat;
+  }
+  .lab-mobile-filter-trigger:focus-visible {
+    color: var(--lab-brand);
+  }
+  .lab-mobile-filter-trigger:focus-visible {
+    outline: none;
+    box-shadow: var(--lab-focus);
+  }
   .lab-rail {
     position: fixed;
-    inset: auto 0 0 0;
+    left: 50%;
+    right: auto;
+    bottom: 0;
     top: 12%;
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    padding: 20px 20px calc(18px + env(safe-area-inset-bottom));
+    gap: var(--lab-sp-6);
     z-index: 60;
+    background: var(--lab-card-bg);
+    border: 1px solid var(--lab-border);
+    border-bottom: 0;
     border-radius: 18px 18px 0 0;
     max-height: 88vh;
-    transform: translateY(100%);
+    overflow-y: auto;
+    transform: translate(-50%, 100%);
     transition: transform 220ms ease;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
   }
   .lab-rail.is-open {
-    transform: translateY(0);
+    transform: translate(-50%, 0);
+  }
+  .lab-rail-title {
+    margin-bottom: calc(var(--lab-sp-2) * -1);
+  }
+  .lab-rail-actions {
+    position: sticky;
+    bottom: calc(-18px - env(safe-area-inset-bottom));
+    z-index: 1;
+    margin: 0 -20px calc(-18px - env(safe-area-inset-bottom));
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--lab-border-soft);
+    box-shadow: 0 -8px 18px color-mix(in srgb, var(--lab-card-bg) 88%, transparent);
   }
   .lab-sheet-backdrop {
     position: fixed;
@@ -1496,12 +2062,6 @@ button.lab-datestrip-cell:hover {
   }
   .lab-sheet-backdrop.is-open {
     display: block;
-  }
-  .lab-rail-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--lab-card-bg);
-    padding-top: 10px;
   }
   .lab-rail-actions .lab-apply-filters {
     display: block;
@@ -1515,6 +2075,11 @@ button.lab-datestrip-cell:hover {
     font-size: 14px;
     cursor: pointer;
   }
+  body.lab-filter-open .lab-view-toggle,
+  body.lab-filter-open .ai-chat-trigger {
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 /* ---------- mobile (spec: ≤767px) — recomposed, not just shrunk ---------- */
@@ -1523,6 +2088,31 @@ button.lab-datestrip-cell:hover {
    their own line, cramming them back to desktop's tight rhythm reads as
    crowded rather than calm. Give every wrapped group real room instead. */
 @media (max-width: 767px) {
+  /* Three tabs each carrying a live price+duration don't fit a narrow
+     toolbar row on one line — rather than truncating the numbers, give
+     the strip its own full-width row and let it scroll horizontally,
+     the same deliberate-scroll treatment already used for the date
+     strip. Count stays on its own line above. */
+  .lab-toolbar-top {
+    flex-wrap: wrap;
+  }
+  .lab-sort {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .lab-sort-tabs {
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+  .lab-sort-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .lab-sort-tab {
+    flex-shrink: 0;
+  }
+
   .lab-datestrip-cells {
     gap: 16px;
   }
@@ -1535,43 +2125,41 @@ button.lab-datestrip-cell:hover {
   .lab-datestrip-date {
     font-size: 12px;
   }
+  .lab-datestrip-price {
+    font-size: 10px;
+  }
 
   .lab-card {
     padding: var(--lab-sp-4) var(--lab-sp-4);
   }
 
-  /* Bottom row no longer fits baggage/details + price + CTA on one line at
-     this width — wrap it to two: meta on its own line, then price+CTA
-     spread across the second (spec: bottom row can wrap, just never
-     overlap or scroll). */
-  .lab-card-bottom-row {
-    flex-wrap: wrap;
-    row-gap: var(--lab-sp-2);
-    margin-top: var(--lab-sp-2);
+  /* The fixed 3-column band (airline | journey | price) has no room to
+     stay a single row below tablet width — stack it instead, closest to
+     how the same OTA pattern collapses on its own mobile site: airline
+     row, journey, then a full-width price/CTA block at the bottom. */
+  .lab-card-main {
+    grid-template-columns: 1fr;
+    row-gap: var(--lab-sp-3);
   }
-  .lab-card-bottom-meta {
-    flex-basis: 100%;
+  .lab-carrier {
+    flex-direction: row;
+    align-items: center;
   }
-  .lab-pricing {
-    flex: 1 1 100%;
-    justify-content: space-between;
+  .lab-card-price {
+    align-items: stretch;
   }
-  /* Airline row: a long contextual badge/tradeoff string (e.g. "Best
-     Afternoon flight · Same price") competing with the airline name for a
-     single narrow line was squeezing carrier names down to 1-2 characters
-     before ellipsis. Drop the badge to its own line instead — the airline
-     name stays fully legible, badge/tradeoff text stays fully legible,
-     the card is just one line taller on small screens. */
-  .lab-card-top-row {
-    flex-wrap: wrap;
-    row-gap: var(--lab-sp-1);
-    margin-bottom: var(--lab-sp-2);
-  }
-  .lab-card-badges,
-  .lab-meta-line {
-    flex-basis: 100%;
-    justify-content: flex-start;
+  .lab-pricing-info {
+    align-items: flex-start;
+    padding-left: 0;
+    border-left: 0;
     text-align: left;
+  }
+  .lab-price-notes {
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .lab-select-btn {
+    width: 100%;
   }
 }
 
@@ -1595,7 +2183,7 @@ button.lab-datestrip-cell:hover {
 /* ---------- [hidden] overrides ---------- */
 /* The HTML `hidden` attribute only maps to `display:none` via the browser's
    default stylesheet, which loses to any author rule that also sets
-   `display` on the same element (e.g. `.lab-sort-menu{display:flex}` beats
+   `display` on the same element (e.g. `.lab-sort-tabs{display:flex}` beats
    the UA's `[hidden]{display:none}` on specificity). Every element the JS
    toggles via `.hidden = true/false` needs an explicit override here or it
    silently stays visible — this bit the Review step, which sets
@@ -1620,6 +2208,30 @@ button.lab-datestrip-cell:hover {
 .results-lab-body :focus-visible {
   outline: none;
   box-shadow: var(--lab-focus);
+}
+/* The AI query input already communicates focus through its border; the
+   global purple ring makes that compact control read like a selected pill. */
+.results-lab-body .lab-ai-filter-input:focus,
+.results-lab-body .lab-ai-filter-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* The shared Lab focus ring is purple. The search editor keeps fields calm:
+   a darker border is enough feedback and avoids turning a field into a pill. */
+.results-lab-body .lab-search-editor .lab-editor-field input:focus,
+.results-lab-body .lab-search-editor .lab-editor-field input:focus-visible,
+.results-lab-body .lab-search-editor .lab-editor-field select:focus,
+.results-lab-body .lab-search-editor .lab-editor-field select:focus-visible,
+.results-lab-body .lab-search-editor .lab-editor-swap:focus,
+.results-lab-body .lab-search-editor .lab-editor-swap:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  border-color: #738299 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
 }
 
 .lab-skeleton-card {

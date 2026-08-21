@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   {% include "partials/theme_init.html" %}
   <title>Account · Skairova</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='user-portal.css', v='20260819-uniform-mobile-glass-nav') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='user-portal.css', v='20260821-premium-profile-1') }}" />
   {% include "partials/theme_head.html" %}
 </head>
 <body class="portal-page account-page">
@@ -17,48 +14,271 @@
 {% if account %}
 {% set trip_images = {'BCN':'img/destinations/barcelona.jpg','CDG':'img/destinations/paris.jpg','ORY':'img/destinations/paris.jpg','LHR':'img/destinations/london.jpg','LGW':'img/destinations/london.jpg','FCO':'img/destinations/rome.jpg','NRT':'img/destinations/tokyo.jpg','HND':'img/destinations/tokyo.jpg','LAX':'img/destinations/losangeles.jpg','MIA':'img/destinations/miami.jpg','MCO':'img/destinations/orlando.jpg','SFO':'img/destinations/sanfrancisco.jpg','ORD':'img/destinations/chicago.jpg','DXB':'img/destinations/dubai.jpg','IST':'img/destinations/istanbul.jpg','BKK':'img/destinations/bangkok.jpg','SYD':'img/destinations/sydney.jpg','MEL':'img/destinations/melbourne.jpg','YYZ':'img/destinations/toronto.jpg','LAS':'img/destinations/lasvegas.jpg','DPS':'img/destinations/bali.jpg','JTR':'img/destinations/santorini.jpg','MLE':'img/destinations/maldives.jpg'} %}
 {% set trip_cities = {'BCN':'Barcelona','CDG':'Paris','ORY':'Paris','LHR':'London','LGW':'London','FCO':'Rome','NRT':'Tokyo','HND':'Tokyo','LAX':'Los Angeles','MIA':'Miami','MCO':'Orlando','SFO':'San Francisco','ORD':'Chicago','DXB':'Dubai','IST':'Istanbul','BKK':'Bangkok','SYD':'Sydney','MEL':'Melbourne','YYZ':'Toronto','LAS':'Las Vegas','DPS':'Bali','JTR':'Santorini','MLE':'Maldives'} %}
-{% set account_icons = {'profile':'icons/user-round.svg','plane':'icons/plane.svg','saved':'icons/heart.svg','settings':'icons/settings.svg','document':'icons/file-text.svg','bell':'icons/bell.svg','sparkle':'icons/sparkles.svg','mail':'icons/mail.svg','phone':'icons/phone.svg'} %}
-{% macro account_icon(name, class_name='') -%}
-<img class="account-icon {{ class_name }}" src="{{ url_for('static', filename=account_icons.get(name, 'icons/info.svg')) }}" alt="" aria-hidden="true" />
+
+{% macro icon(name, cls='') -%}
+<span class="nx-icon {{ cls }}" style="--nx-icon-src:url('{{ url_for('static', filename='icons/' + name + '.svg') }}')" aria-hidden="true"></span>
 {%- endmacro %}
-<main class="account-shell" id="account-content">
-  <aside class="account-sidebar" aria-label="Account navigation">
-    <div class="account-person"><span class="account-avatar" aria-hidden="true">{{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}</span><div><strong>{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</strong><span>{{ account.email }}</span></div></div>
-    <nav class="account-nav" aria-label="Account sections"><p>Account</p><button type="button" class="is-active" data-account-tab="profile">{{ account_icon('profile') }}Profile</button><button type="button" data-account-tab="trips">{{ account_icon('plane') }}Trips</button><button type="button" data-account-tab="saved">{{ account_icon('saved') }}Saved searches</button><div class="account-nav-divider"></div><p>Preferences</p><button type="button" data-account-tab="settings">{{ account_icon('settings') }}Settings</button></nav>
-    <form class="account-signout" method="post" action="{{ url_for('user_portal_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit">Sign out</button></form>
-  </aside>
-  <section class="account-content">
+
+{% macro trip_card(ref, trip) %}
+{% set destination_code = trip.get('route', '').split(' → ')|last %}
+{% set destination = trip_cities.get(destination_code, destination_code) %}
+<article class="trip-card" style="--trip-image: url('{{ url_for('static', filename=trip_images.get(destination_code, 'img/flights-hero.jpg')) }}');">
+  <div class="trip-card-image" aria-hidden="true"><span>Upcoming</span><h3>{{ destination }}</h3></div>
+  <div class="trip-card-body">
+    <p class="trip-route">{{ trip.get('route') }}</p>
+    <p class="trip-date">{{ trip.get('date_label') or 'Dates available in trip details' }}</p>
+    <div><span>Ref {{ ref }}</span><a href="{{ url_for('manage_booking') }}?booking_reference={{ ref }}">View trip {{ icon('chevron-right', 'nx-icon--sm') }}</a></div>
+  </div>
+</article>
+{% endmacro %}
+
+{% macro info_row(tab, label, value, placeholder) %}
+<button type="button" class="account-profile-row" data-account-tab="{{ tab }}">
+  <span><b>{{ label }}</b><small>{{ value or placeholder }}</small></span>
+  {{ icon('chevron-right') }}
+</button>
+{% endmacro %}
+
+{% set trip_refs = namespace(list=[]) %}
+{% for ref in account.linked_booking_references %}{% set trip = account.get('trip_summaries', {}).get(ref, {}) %}{% if trip.get('route') %}{% set trip_refs.list = trip_refs.list + [(ref, trip)] %}{% endif %}{% endfor %}
+{% set has_trips = trip_refs.list|length > 0 %}
+{% set has_lookup_only = (not has_trips) and account.linked_booking_references %}
+{% set full_name = ((account.first_name or '') + ' ' + (account.last_name or ''))|trim %}
+{% set cabin_labels = {'economy': 'Economy', 'premium_economy': 'Premium Economy', 'business': 'Business', 'first': 'First'} %}
+{% set seat_labels = {'window': 'Window', 'aisle': 'Aisle', 'no_preference': 'No preference'} %}
+
+<main class="account-shell">
+  <nav class="account-topbar" aria-label="Account sections">
+    <div class="account-nav" id="accountNav">
+      <span class="account-nav-indicator" id="accountNavIndicator" aria-hidden="true"></span>
+      <button type="button" class="is-active" data-account-tab="overview" aria-label="Overview">{{ icon('layout-dashboard') }}<em>Overview</em></button>
+      <button type="button" data-account-tab="trips" aria-label="Trips">{{ icon('plane-takeoff') }}<em>Trips</em></button>
+      <button type="button" data-account-tab="saved" aria-label="Saved searches">{{ icon('heart') }}<em>Saved</em></button>
+      <button type="button" data-account-tab="profile" aria-label="Profile">{{ icon('user-round') }}<em>Profile</em></button>
+      <button type="button" data-account-tab="settings" aria-label="Settings">{{ icon('settings') }}<em>Settings</em></button>
+    </div>
+  </nav>
+
+  <section class="account-content" id="account-content">
     {% if account_notice %}<div class="account-notice account-notice--success" role="status">{{ account_notice }}</div>{% endif %}
     {% if account_error %}<div class="account-notice account-notice--error" role="alert">{{ account_error }}</div>{% endif %}
+    {% if request.args.get('tab') == 'profile' and request.args.get('saved') %}<div class="account-notice account-notice--success" role="status">Your details were updated.</div>{% endif %}
 
-    <section class="account-panel is-active" data-account-panel="profile" aria-label="Profile">
-      {% if request.args.get('tab') == 'profile' and request.args.get('saved') %}<div class="account-notice account-notice--success" role="status">Your profile was updated.</div>{% endif %}
-      <header class="account-heading"><div><h1>Profile</h1><p>Manage your personal details and traveler information.</p></div><button type="button" class="text-action" data-account-tab="profile-edit">Edit profile</button></header>
-      <section class="account-card account-card--identity"><div class="account-identity-copy"><span class="account-kicker">{{ account_icon('sparkle') }} Skairova traveler</span><div class="account-avatar account-avatar--large" aria-hidden="true">{{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}</div><div><h2>{{ account.first_name or "Traveler" }}{% if account.last_name %} {{ account.last_name }}{% endif %}</h2><p>{{ account.email }}</p><span>Ready for your next journey{% if account.created_at %} · Member since {{ account.created_at[:4] }}{% endif %}</span></div></div><div class="account-identity-art" aria-hidden="true"><svg viewBox="0 0 240 150" fill="none"><path d="M15 111c40-56 70-71 110-62 32 7 58-4 99-39" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6"/><circle cx="15" cy="111" r="5" fill="currentColor"/><circle cx="224" cy="10" r="5" fill="currentColor"/><path d="m127 39 15 5-15 5-5 15-5-15-15-5 15-5 5-15 5 15Z" fill="currentColor"/><path d="m184 87 21-8-13 18 5 18-8 3-8-17-17-5 2-8 18 2Z" fill="currentColor"/></svg></div></section>
-      <section class="account-section"><div class="account-section-heading"><div><h2>Contact details</h2><p>Used for important updates about your trips.</p></div><button type="button" class="text-action" data-account-tab="profile-edit">Edit</button></div><dl class="account-detail-list"><div><dt>{{ account_icon('mail') }}<span>Email address</span></dt><dd>{{ account.email }}</dd></div><div><dt>{{ account_icon('phone') }}<span>Phone number</span></dt><dd>{{ account.phone_number or 'Not added' }}</dd></div></dl></section>
-      <section class="account-section"><div class="account-section-heading"><div><h2>More traveler details</h2><p>Save the details you use most often to speed up booking.</p></div></div><div class="account-action-list"><button type="button" data-account-tab="profile-edit">{{ account_icon('profile') }}<span><b>Traveler information</b><small>Legal name, date of birth, and nationality</small></span><i aria-hidden="true">›</i></button><button type="button" data-account-tab="profile-edit">{{ account_icon('document') }}<span><b>Travel documents</b><small>{% if account.passport_number %}Document saved{% else %}Add a passport or ID number{% endif %}</small></span><i aria-hidden="true">›</i></button><button type="button" data-account-tab="settings">{{ account_icon('bell') }}<span><b>Notifications</b><small>Price alerts and route updates</small></span><i aria-hidden="true">›</i></button></div></section>
+    <section class="account-panel is-active" data-account-panel="overview" aria-label="Overview">
+      <section class="profile-hero">
+        <span class="account-avatar account-avatar--large" aria-hidden="true">{{ account.first_name[:1]|upper if account.first_name else "?" }}{{ account.last_name[:1]|upper if account.last_name else "" }}</span>
+        <div class="profile-hero-copy">
+          <h1>{{ full_name or "Traveler" }}</h1>
+          <p>{{ account.email }}</p>
+          {% if account.created_at %}<span>Member since {{ account.created_at[:4] }}</span>{% endif %}
+        </div>
+        <div class="profile-hero-actions">
+          <button type="button" class="button-primary" data-account-tab="profile-edit">Edit profile</button>
+          <button type="button" class="button-secondary" data-account-tab="profile">Manage traveler details</button>
+        </div>
+      </section>
+
+      <div class="metric-row">
+        <div class="metric-pill">{{ icon('plane-takeoff') }}<div><strong>{{ trip_refs.list|length }}</strong><span>Trip{{ 's' if trip_refs.list|length != 1 else '' }}</span></div></div>
+        <div class="metric-pill">{{ icon('heart') }}<div><strong>{{ saved_search_cards|length }}</strong><span>Saved</span></div></div>
+        <div class="metric-pill">{{ icon('calendar-days') }}<div><strong>{{ account.created_at[:4] if account.created_at else '—' }}</strong><span>Since</span></div></div>
+      </div>
+
+      {% if has_trips %}
+      <section class="account-section">
+        <div class="account-section-heading"><h2>Upcoming trip</h2>{% if trip_refs.list|length > 1 %}<button type="button" class="text-action" data-account-tab="trips">View all</button>{% endif %}</div>
+        {% set next_ref, next_trip = trip_refs.list[0] %}
+        <div class="trip-grid trip-grid--single">{{ trip_card(next_ref, next_trip) }}</div>
+      </section>
+      {% elif has_lookup_only %}
+      <section class="account-section">
+        <div class="account-section-heading"><h2>Upcoming trip</h2></div>
+        <section class="trip-lookup"><div><h2>Find a booking</h2><p>Your saved booking references are ready. Open a booking to see its full itinerary and trip details.</p></div><a class="button-secondary" href="{{ url_for('manage_booking') }}">Manage a booking</a></section>
+      </section>
+      {% else %}
+      <section class="account-empty account-empty--onboard">
+        <div class="account-empty-icon" aria-hidden="true">{{ icon('plane-takeoff') }}</div>
+        <h2>No trips yet</h2>
+        <p>Book while signed in and your itinerary will show up here.</p>
+        <a class="button-primary" href="{{ url_for('index') }}">Search flights</a>
+      </section>
+      {% endif %}
+    </section>
+
+    <section class="account-panel" data-account-panel="profile" aria-label="Profile">
+      <header class="account-heading"><div><h1>Profile</h1><p>Manage your travel identity.</p></div></header>
+      <div class="account-profile-grid">
+        <section class="account-profile-card" aria-labelledby="personal-card-title">
+          <header><span class="account-profile-card-icon">{{ icon('user-round') }}</span><div><h2 id="personal-card-title">Personal info</h2><p>Your name and how we reach you.</p></div></header>
+          {{ info_row('profile-edit', 'Full name', full_name, 'Add your name') }}
+          {{ info_row('profile-edit', 'Email', account.email, 'Add an email') }}
+          {{ info_row('profile-edit', 'Phone', account.phone_number, 'Add a phone number') }}
+          {{ info_row('profile-edit', 'Date of birth', account.dob, 'Add your date of birth') }}
+        </section>
+
+        <section class="account-profile-card" aria-labelledby="traveler-card-title">
+          <header><span class="account-profile-card-icon">{{ icon('file-text') }}</span><div><h2 id="traveler-card-title">Traveler details</h2><p>Your saved traveler details.</p></div></header>
+          {{ info_row('profile-edit', 'Nationality', account.nationality, 'Add your nationality') }}
+          {{ info_row('profile-edit', 'Passport or ID', 'Document saved' if account.passport_number else '', 'Add a document number') }}
+          {{ info_row('profile-edit', 'Frequent flyer', (account.frequent_flyer_program + ' · ' + account.frequent_flyer_number) if account.frequent_flyer_program and account.frequent_flyer_number else '', 'Add a frequent flyer number') }}
+          {{ info_row('profile-edit', 'TSA PreCheck / Known Traveler', account.known_traveler_number, 'Add your KTN') }}
+          {{ info_row('profile-edit', 'Emergency contact', account.emergency_contact_name, 'Add an emergency contact') }}
+        </section>
+
+        <section class="account-profile-card" aria-labelledby="preferences-card-title">
+          <header><span class="account-profile-card-icon">{{ icon('armchair') }}</span><div><h2 id="preferences-card-title">Travel preferences</h2><p>Preferences for smoother booking.</p></div></header>
+          {{ info_row('profile-edit', 'Preferred airport', account.preferred_airport, 'Add a home airport') }}
+          {{ info_row('profile-edit', 'Preferred airline', account.preferred_airline, 'Add a preferred airline') }}
+          {{ info_row('profile-edit', 'Cabin class', cabin_labels.get(account.cabin_preference, ''), 'Set a cabin preference') }}
+          {{ info_row('profile-edit', 'Seat', seat_labels.get(account.seat_preference, ''), 'Set a seat preference') }}
+          {{ info_row('profile-edit', 'Meal', account.meal_preference, 'Set a meal preference') }}
+        </section>
+
+        <section class="account-profile-card" aria-labelledby="payments-card-title">
+          <header><span class="account-profile-card-icon">{{ icon('credit-card') }}</span><div><h2 id="payments-card-title">Payments &amp; rewards</h2><p>Payment methods for checkout.</p></div></header>
+          <div class="account-profile-empty">
+            <p>No saved payment methods yet.</p>
+            <span>You'll enter payment details securely at checkout — nothing is stored here in advance.</span>
+          </div>
+        </section>
+      </div>
+      <form class="account-mobile-signout" method="post" action="{{ url_for('user_portal_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit">Sign out</button></form>
     </section>
 
     <section class="account-panel" data-account-panel="profile-edit" aria-label="Edit profile">
       <header class="account-heading"><div><h1>Edit profile</h1><p>Use your legal name exactly as it appears on travel documents.</p></div><button type="button" class="text-action" data-account-tab="profile">Cancel</button></header>
-      <form method="post" action="{{ url_for('user_portal_update_profile') }}" class="account-form"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><section><h2>Personal details</h2><div class="account-fields"><label>First name<input type="text" name="first_name" value="{{ account.first_name or '' }}" maxlength="80" autocomplete="given-name" placeholder="First name" /></label><label>Last name<input type="text" name="last_name" value="{{ account.last_name or '' }}" maxlength="80" autocomplete="family-name" placeholder="Last name" /></label><label>Date of birth<input type="date" name="dob" data-nx-calendar="past" value="{{ account.dob or '' }}" autocomplete="bday" /></label><label>Gender<select name="gender"><option value="" {% if not account.gender %}selected{% endif %}>Prefer not to say</option><option value="male" {% if account.gender == 'male' %}selected{% endif %}>Male</option><option value="female" {% if account.gender == 'female' %}selected{% endif %}>Female</option><option value="non_binary" {% if account.gender == 'non_binary' %}selected{% endif %}>Non-binary</option><option value="prefer_not_to_say" {% if account.gender == 'prefer_not_to_say' %}selected{% endif %}>Other</option></select></label></div></section><section><h2>Contact and travel documents</h2><p>These details are private and are only used to pre-fill your travel information.</p><div class="account-fields"><label>Phone number<input type="tel" name="phone_number" value="{{ account.phone_number or '' }}" maxlength="32" autocomplete="tel" placeholder="+1 555 000 0000" /></label><label>Nationality<input type="text" name="nationality" value="{{ account.nationality or '' }}" maxlength="64" autocomplete="country-name" placeholder="e.g. American" /></label><label class="account-field-wide">Passport or ID number <small>Optional</small><input type="text" name="passport_number" value="{{ account.passport_number or '' }}" maxlength="32" autocomplete="off" placeholder="Add a document number" /></label></div></section><footer><button class="button-primary" type="submit">Save changes</button><button type="button" class="button-quiet" data-account-tab="profile">Cancel</button></footer></form>
+      <form method="post" action="{{ url_for('user_portal_update_profile') }}" class="account-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <section>
+          <h2>Personal details</h2>
+          <div class="account-fields">
+            <label>First name<input type="text" name="first_name" value="{{ account.first_name or '' }}" maxlength="80" autocomplete="given-name" placeholder="First name" /></label>
+            <label>Last name<input type="text" name="last_name" value="{{ account.last_name or '' }}" maxlength="80" autocomplete="family-name" placeholder="Last name" /></label>
+            <label>Date of birth<input type="date" name="dob" data-nx-calendar="past" value="{{ account.dob or '' }}" autocomplete="bday" /></label>
+            <label>Gender<select name="gender">
+              <option value="" {% if not account.gender %}selected{% endif %}>Prefer not to say</option>
+              <option value="male" {% if account.gender == 'male' %}selected{% endif %}>Male</option>
+              <option value="female" {% if account.gender == 'female' %}selected{% endif %}>Female</option>
+              <option value="non_binary" {% if account.gender == 'non_binary' %}selected{% endif %}>Non-binary</option>
+              <option value="prefer_not_to_say" {% if account.gender == 'prefer_not_to_say' %}selected{% endif %}>Other</option>
+            </select></label>
+          </div>
+        </section>
+        <section>
+          <h2>Contact and travel documents</h2>
+          <p>Private, and only used to pre-fill your travel information.</p>
+          <div class="account-fields">
+            <label>Phone number<input type="tel" name="phone_number" value="{{ account.phone_number or '' }}" maxlength="32" autocomplete="tel" placeholder="+1 555 000 0000" /></label>
+            <label>Nationality<input type="text" name="nationality" value="{{ account.nationality or '' }}" maxlength="64" autocomplete="country-name" placeholder="e.g. American" /></label>
+            <label class="account-field-wide">Passport or ID number <small>Optional</small><input type="text" name="passport_number" value="{{ account.passport_number or '' }}" maxlength="32" autocomplete="off" placeholder="Add a document number" /></label>
+          </div>
+        </section>
+        <section>
+          <h2>Frequent flyer &amp; trusted traveler</h2>
+          <p>Auto-fill loyalty numbers when you book.</p>
+          <div class="account-fields">
+            <label>Airline program<input type="text" name="frequent_flyer_program" value="{{ account.frequent_flyer_program or '' }}" maxlength="64" placeholder="e.g. United MileagePlus" /></label>
+            <label>Membership number<input type="text" name="frequent_flyer_number" value="{{ account.frequent_flyer_number or '' }}" maxlength="32" placeholder="Add a member number" /></label>
+            <label class="account-field-wide">TSA PreCheck / Known Traveler Number <small>Optional</small><input type="text" name="known_traveler_number" value="{{ account.known_traveler_number or '' }}" maxlength="32" placeholder="Add your KTN" /></label>
+          </div>
+        </section>
+        <section>
+          <h2>Emergency contact</h2>
+          <p>Who we should reach if plans change while you're traveling.</p>
+          <div class="account-fields">
+            <label>Name<input type="text" name="emergency_contact_name" value="{{ account.emergency_contact_name or '' }}" maxlength="80" autocomplete="off" placeholder="Contact name" /></label>
+            <label>Relationship<input type="text" name="emergency_contact_relationship" value="{{ account.emergency_contact_relationship or '' }}" maxlength="32" placeholder="e.g. Spouse" /></label>
+            <label class="account-field-wide">Phone number<input type="tel" name="emergency_contact_phone" value="{{ account.emergency_contact_phone or '' }}" maxlength="32" placeholder="+1 555 000 0000" /></label>
+          </div>
+        </section>
+        <section>
+          <h2>Travel preferences</h2>
+          <p>Preferences for smoother booking — applied as defaults, never a requirement.</p>
+          <div class="account-fields">
+            <label>Preferred airport<input type="text" name="preferred_airport" value="{{ account.preferred_airport or '' }}" maxlength="8" placeholder="e.g. JFK" /></label>
+            <label>Preferred airline<input type="text" name="preferred_airline" value="{{ account.preferred_airline or '' }}" maxlength="64" placeholder="e.g. Delta" /></label>
+            <label>Cabin class<select name="cabin_preference">
+              <option value="" {% if not account.cabin_preference %}selected{% endif %}>No preference</option>
+              <option value="economy" {% if account.cabin_preference == 'economy' %}selected{% endif %}>Economy</option>
+              <option value="premium_economy" {% if account.cabin_preference == 'premium_economy' %}selected{% endif %}>Premium Economy</option>
+              <option value="business" {% if account.cabin_preference == 'business' %}selected{% endif %}>Business</option>
+              <option value="first" {% if account.cabin_preference == 'first' %}selected{% endif %}>First</option>
+            </select></label>
+            <label>Seat<select name="seat_preference">
+              <option value="" {% if not account.seat_preference %}selected{% endif %}>No preference</option>
+              <option value="window" {% if account.seat_preference == 'window' %}selected{% endif %}>Window</option>
+              <option value="aisle" {% if account.seat_preference == 'aisle' %}selected{% endif %}>Aisle</option>
+              <option value="no_preference" {% if account.seat_preference == 'no_preference' %}selected{% endif %}>No preference</option>
+            </select></label>
+            <label class="account-field-wide">Meal<input type="text" name="meal_preference" value="{{ account.meal_preference or '' }}" maxlength="64" placeholder="e.g. Vegetarian" /></label>
+          </div>
+        </section>
+        <footer><button class="button-primary" type="submit">Save changes</button><button type="button" class="button-quiet" data-account-tab="profile">Cancel</button></footer>
+      </form>
     </section>
 
     <section class="account-panel" data-account-panel="trips" aria-label="Trips">
       <header class="account-heading account-heading--action"><div><h1>Trips</h1><p>All of your upcoming and past bookings in one place.</p></div><a class="button-primary" href="{{ url_for('index') }}">Search flights</a></header>
-      {% set trip_count = namespace(value=0) %}{% for ref in account.linked_booking_references %}{% if account.get('trip_summaries', {}).get(ref, {}).get('route') %}{% set trip_count.value = trip_count.value + 1 %}{% endif %}{% endfor %}
-      {% if trip_count.value %}<section class="trip-group"><h2>Trips</h2><div class="trip-grid">{% for ref in account.linked_booking_references %}{% set trip = account.get('trip_summaries', {}).get(ref, {}) %}{% if trip.get('route') %}{% set destination_code = trip.get('route', '').split(' → ')|last %}{% set destination = trip_cities.get(destination_code, destination_code) %}<article class="trip-card" style="--trip-image: url('{{ url_for('static', filename=trip_images.get(destination_code, 'img/flights-hero.jpg')) }}');"><div class="trip-card-image" aria-hidden="true"><span>Trip to</span><h3>{{ destination }}</h3></div><div class="trip-card-body"><p class="trip-route">{{ trip.get('route') }}</p><p class="trip-date">{% if trip.get('date_label') %}{{ trip.get('date_label') }}{% else %}Dates available in trip details{% endif %}</p><div><span>Booking reference {{ ref }}</span><a href="{{ url_for('manage_booking') }}?booking_reference={{ ref }}">View trip <b>→</b></a></div></div></article>{% endif %}{% endfor %}</div></section>{% elif account.linked_booking_references %}<section class="trip-lookup"><div><h2>Find a booking</h2><p>Your saved booking references are ready. Open a booking to see its full itinerary and trip details.</p></div><a class="button-secondary" href="{{ url_for('manage_booking') }}">Manage a booking</a></section>{% else %}<section class="account-empty"><div class="account-empty-icon" aria-hidden="true">✈</div><h2>No trips yet</h2><p>When you book while signed in, your confirmation and itinerary will be here.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a><a href="{{ url_for('manage_booking') }}">Already booked? Manage a booking</a></section>{% endif %}
+      {% if has_trips %}
+      <section class="trip-group"><div class="trip-grid">{% for ref, trip in trip_refs.list %}{{ trip_card(ref, trip) }}{% endfor %}</div></section>
+      {% elif has_lookup_only %}
+      <section class="trip-lookup"><div><h2>Find a booking</h2><p>Your saved booking references are ready. Open a booking to see its full itinerary and trip details.</p></div><a class="button-secondary" href="{{ url_for('manage_booking') }}">Manage a booking</a></section>
+      {% else %}
+      <section class="account-empty"><div class="account-empty-icon" aria-hidden="true">{{ icon('plane-takeoff') }}</div><h2>No trips yet</h2><p>When you book while signed in, your confirmation and itinerary will be here.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a><a href="{{ url_for('manage_booking') }}">Already booked? Manage a booking</a></section>
+      {% endif %}
     </section>
 
     <section class="account-panel" data-account-panel="saved" aria-label="Saved searches">
       <header class="account-heading account-heading--action"><div><h1>Saved searches</h1><p>Pick up a search right where you left off.</p></div>{% if saved_searches %}<form method="post" action="{{ url_for('user_portal_clear_searches') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button class="text-action" type="submit">Clear all</button></form>{% endif %}</header>
-      {% if saved_search_cards %}<div class="saved-search-list">{% for item in saved_search_cards %}<article><div class="saved-search-icon" aria-hidden="true">✈</div><div><p>{{ item.mode_label }} · {{ item.date_label }}</p><h2>{{ item.summary }}</h2><span>{{ item.route }}{% if item.cabin %} · {{ item.cabin }}{% endif %}</span></div><footer><form method="post" action="{{ url_for('search_edit') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-secondary">Edit</button></form><form method="post" action="{{ url_for('search_shell') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-primary">Search again</button></form></footer></article>{% endfor %}</div>{% else %}<section class="account-empty"><div class="account-empty-icon" aria-hidden="true">♡</div><h2>No saved searches</h2><p>Search while signed in and we’ll save it here for you.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a></section>{% endif %}
+      {% if saved_search_cards %}
+      <div class="saved-search-list">{% for item in saved_search_cards %}
+        <article>
+          <div class="saved-search-icon" aria-hidden="true">{{ icon('plane-takeoff') }}</div>
+          <div>
+            <p>{{ item.mode_label }} · {{ item.date_label }}</p>
+            <h2>{{ item.summary }}</h2>
+            <span>{{ item.route }}{% if item.cabin %} · {{ item.cabin }}{% endif %}{% if item.budget %} · {{ item.budget }}{% endif %}</span>
+            {% if item.insight %}<em class="saved-search-insight">{{ icon('sparkles', 'nx-icon--sm') }}{{ item.insight }}</em>{% endif %}
+          </div>
+          <footer>
+            <form method="post" action="{{ url_for('search_edit') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-secondary">Edit</button></form>
+            <form method="post" action="{{ url_for('search_shell') }}">{% for pair in item.fields or [] %}{% if pair and pair|length >= 2 %}<input type="hidden" name="{{ pair[0] }}" value="{{ pair[1] }}" />{% endif %}{% endfor %}<button type="submit" class="button-primary">Search again</button></form>
+          </footer>
+        </article>
+      {% endfor %}</div>
+      {% else %}
+      <section class="account-empty"><div class="account-empty-icon" aria-hidden="true">{{ icon('heart') }}</div><h2>No saved searches</h2><p>Search while signed in and we'll save it here for you.</p><a class="button-primary" href="{{ url_for('index') }}">Search flights</a></section>
+      {% endif %}
     </section>
 
     <section class="account-panel" data-account-panel="settings" aria-label="Settings">
-      <header class="account-heading"><div><h1>Settings</h1><p>Choose how Skairova keeps in touch and protect your account.</p></div></header>
-      <form method="post" action="{{ url_for('user_portal_update_preferences') }}" class="settings-card"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><h2>Notifications</h2><label><span><b>Price drop alerts</b><small>Email me when a route I’m tracking becomes cheaper.</small></span><span class="setting-switch"><input type="checkbox" name="price_alerts_enabled" role="switch" {% if account.price_alerts_enabled %}checked{% endif %} /><i></i></span></label><label><span><b>Route tracking</b><small>Keep recent routes easy to revisit.</small></span><span class="setting-switch"><input type="checkbox" name="route_tracking_enabled" role="switch" {% if account.route_tracking_enabled %}checked{% endif %} /><i></i></span></label><footer><button class="button-primary" type="submit">Save preferences</button></footer></form>
-      <section class="security-section"><h2>Sign-in and security</h2><article><div><p>Email address</p><strong>{{ account.email }}</strong><span>Your primary sign-in email</span></div></article><article><div><p>Password</p><strong>{% if account.get('oauth_provider') %}Signed in with {{ account.oauth_provider|capitalize }}{% else %}••••••••••••{% endif %}</strong><span>{% if account.get('oauth_provider') %}Set a password to sign in with email too.{% else %}Use a password you don’t use elsewhere.{% endif %}</span></div><a class="text-action" href="{{ url_for('auth_page', mode='reset_request', reset_email=account.email) }}">{% if account.get('oauth_provider') %}Set password{% else %}Change password{% endif %}</a></article>{% if active_sessions %}<article><div><p>Current session</p>{% for s in active_sessions %}<strong>{{ s.label }}</strong><span>{{ s.ip }} · Last active {{ s.last_seen or 'recently' }}</span>{% endfor %}</div><form method="post" action="{{ url_for('user_portal_revoke_sessions') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit" class="text-action">Sign out other sessions</button></form></article>{% endif %}</section>
+      <header class="account-heading"><div><h1>Settings</h1><p>Notifications, security, and support.</p></div></header>
+      <form method="post" action="{{ url_for('user_portal_update_preferences') }}" class="settings-card">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <h2>Notifications</h2>
+        <label><span><b>Price drop alerts</b><small>Email me when a route I'm tracking becomes cheaper.</small></span><span class="setting-switch"><input type="checkbox" name="price_alerts_enabled" role="switch" {% if account.price_alerts_enabled %}checked{% endif %} /><i></i></span></label>
+        <label><span><b>Route tracking</b><small>Keep recent routes easy to revisit.</small></span><span class="setting-switch"><input type="checkbox" name="route_tracking_enabled" role="switch" {% if account.route_tracking_enabled %}checked{% endif %} /><i></i></span></label>
+        <footer><button class="button-primary" type="submit">Save preferences</button></footer>
+      </form>
+      <section class="security-section">
+        <h2>Security &amp; privacy</h2>
+        <article><div><p>Email address</p><strong>{{ account.email }}</strong><span>Your primary sign-in email</span></div></article>
+        <article>
+          <div><p>Password</p><strong>{% if account.get('oauth_provider') %}Signed in with {{ account.oauth_provider|capitalize }}{% else %}••••••••••••{% endif %}</strong><span>{% if account.get('oauth_provider') %}Set a password to sign in with email too.{% else %}Use a password you don't use elsewhere.{% endif %}</span></div>
+          <a class="text-action" href="{{ url_for('auth_page', mode='reset_request', reset_email=account.email) }}">{% if account.get('oauth_provider') %}Set password{% else %}Change password{% endif %}</a>
+        </article>
+        {% if active_sessions %}
+        <article>
+          <div>{% for s in active_sessions %}<p>Current session</p><strong>{{ s.label }}</strong><span>{{ s.ip }} · Last active {{ s.last_seen or 'recently' }}</span>{% endfor %}</div>
+          <form method="post" action="{{ url_for('user_portal_revoke_sessions') }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}" /><button type="submit" class="text-action">Sign out other sessions</button></form>
+        </article>
+        {% endif %}
+      </section>
+      <section class="security-section">
+        <h2>Support</h2>
+        <article><div><p>Contact support</p><strong>We're here to help</strong><span>Questions about a booking or your account</span></div><a class="text-action" href="mailto:support@skairova.com">Email us</a></article>
+        <article><div><p>Legal</p><strong>Terms &amp; Privacy</strong><span>How Skairova handles your data</span></div><a class="text-action" href="{{ url_for('terms_and_conditions') }}">View</a></article>
+      </section>
     </section>
   </section>
 </main>
@@ -66,7 +286,55 @@
 <main class="account-gate"><section><p>SKAIROVA ACCOUNT</p><h1>Your trips, all in one place.</h1><span>{{ page_notice or "Sign in to manage your travel details, bookings, and saved searches." }}</span><div><a class="button-primary" href="{{ url_for('auth_page', mode='signup') }}">Create account</a><a href="{{ url_for('auth_page', mode='login') }}">Sign in</a></div></section></main>
 {% endif %}
 <script>
-(() => { const controls = [...document.querySelectorAll('[data-account-tab]')]; const panels = [...document.querySelectorAll('[data-account-panel]')]; if (!controls.length) return; const aliases = { bookings: 'trips', searches: 'saved' }; const show = (raw, scroll) => { const tab = aliases[raw] || raw; if (!panels.some((panel) => panel.dataset.accountPanel === tab)) return; controls.forEach((control) => control.classList.toggle('is-active', control.dataset.accountTab === tab)); panels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.accountPanel === tab)); try { history.replaceState(null, '', `?tab=${tab}`); } catch (_) {} if (scroll) document.getElementById('account-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; controls.forEach((control) => control.addEventListener('click', () => show(control.dataset.accountTab, true))); const requested = new URLSearchParams(location.search).get('tab'); if (requested) show(requested, false); })();
+(() => {
+  const controls = [...document.querySelectorAll('[data-account-tab]')];
+  const panels = [...document.querySelectorAll('[data-account-panel]')];
+  if (!panels.length) return;
+  const aliases = { bookings: 'trips', searches: 'saved' };
+
+  /* Traveling pill indicator behind the active nav tab — same technique
+     as the site header's underline (static/header-menu.js): one shared
+     absolutely-positioned element whose transform/width is measured off
+     whichever button is active, so it visibly slides on tab change. */
+  const nav = document.getElementById('accountNav');
+  const indicator = document.getElementById('accountNavIndicator');
+  const navButtons = nav ? [...nav.querySelectorAll('[data-account-tab]')] : [];
+  const placeIndicator = (button) => {
+    if (!nav || !indicator || !button) return;
+    const navRect = nav.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    indicator.style.transform = `translateX(${rect.left - navRect.left}px)`;
+    indicator.style.width = `${rect.width}px`;
+    indicator.style.opacity = '1';
+  };
+  const placeIndicatorForTab = (tab) => {
+    placeIndicator(navButtons.find((button) => button.dataset.accountTab === tab));
+  };
+
+  const show = (raw, scroll) => {
+    const tab = aliases[raw] || raw;
+    if (!panels.some((panel) => panel.dataset.accountPanel === tab)) return;
+    controls.forEach((control) => control.classList.toggle('is-active', control.dataset.accountTab === tab));
+    panels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset.accountPanel === tab));
+    placeIndicatorForTab(tab);
+    try { history.replaceState(null, '', tab === 'overview' ? location.pathname : `?tab=${tab}`); } catch (_) {}
+    if (scroll) document.getElementById('account-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  controls.forEach((control) => control.addEventListener('click', () => show(control.dataset.accountTab, true)));
+  const requested = new URLSearchParams(location.search).get('tab');
+  if (requested) show(requested, false);
+
+  const activeTab = () => (navButtons.find((button) => button.classList.contains('is-active')) || navButtons[0])?.dataset.accountTab;
+  navButtons.forEach((button) => {
+    button.addEventListener('mouseenter', () => placeIndicator(button));
+    button.addEventListener('focus', () => placeIndicator(button));
+  });
+  nav?.addEventListener('mouseleave', () => placeIndicatorForTab(activeTab()));
+  window.addEventListener('resize', () => placeIndicatorForTab(activeTab()));
+  placeIndicatorForTab(activeTab());
+  // Fonts loading late can shift button widths after the initial measure.
+  window.addEventListener('load', () => placeIndicatorForTab(activeTab()));
+})();
 </script>
 {% include "partials/theme_scripts.html" %}
 </body>

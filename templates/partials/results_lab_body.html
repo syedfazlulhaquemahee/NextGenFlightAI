@@ -123,6 +123,8 @@
     },
     'searchForm': {
         'searchUrl': url_for('search'),
+        'datePriceUrl': url_for('results_date_prices'),
+        'airportSuggestUrl': url_for('airports'),
         'originRaw': query.get('origin') or '',
         'destinationRaw': query.get('destination') or '',
         'tripTypeRaw': trip_mode,
@@ -140,26 +142,126 @@
     <header class="lab-summary">
       <div class="lab-summary-heading">
         <div class="lab-summary-route">
-          <span>{{ (query.get('origin') or '')|upper }}</span>
-          <span class="lab-summary-arrow" aria-hidden="true">{{ '⇄' if trip_mode == 'roundtrip' else '→' }}</span>
-          <span>{{ (query.get('destination') or '')|upper }}</span>
+          <span>{{ airport_header_label_local(query.get('origin')) }}</span>
+          <!-- Lucide Arrow Left Right, https://github.com/lucide-icons/lucide -->
+          <svg class="lab-summary-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            {% if trip_mode == 'roundtrip' %}
+            <path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" />
+            {% else %}
+            <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
+            {% endif %}
+          </svg>
+          <span>{{ airport_header_label_local(query.get('destination')) }}</span>
         </div>
-        <div class="lab-summary-meta">
-          {% if query.get('origin') and query.get('destination') %}
-            <span class="lab-summary-city">{{ airport_header_label_local(query.get('origin')) }} {{ '⇄' if trip_mode == 'roundtrip' else '→' }} {{ airport_header_label_local(query.get('destination')) }}</span>
-            <span class="lab-dot"></span>
-          {% endif %}
+        <div class="lab-summary-details">
           <span>
             {% if query.get('depart_date') %}
               {{ query.depart_date|format_date }}{% if query.return_date %} – {{ query.return_date|format_date }}{% endif %}
             {% else %}Any dates{% endif %}
           </span>
-          <span class="lab-dot"></span>
+          <span class="lab-dot" aria-hidden="true"></span>
           <span>{{ passenger_count }} traveler{{ '' if passenger_count == 1 else 's' }} &middot; {{ cabin_label }}</span>
+          <span class="lab-dot" aria-hidden="true"></span>
+          <span class="lab-summary-codes" aria-label="Airport codes">
+            <span>{{ (query.get('origin') or '')|upper }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {% if trip_mode == 'roundtrip' %}
+              <path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" />
+              {% else %}
+              <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
+              {% endif %}
+            </svg>
+            <span>{{ (query.get('destination') or '')|upper }}</span>
+          </span>
         </div>
       </div>
-      <button type="button" class="lab-summary-edit" id="labEditSearch">Edit search</button>
+      <button type="button" class="lab-summary-edit" id="labEditSearch" aria-label="Edit search" title="Edit search">
+        <!-- Lucide Pencil, https://github.com/lucide-icons/lucide -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+          <path d="m15 5 4 4" />
+        </svg>
+      </button>
     </header>
+
+    {# Lab owns this editor. It deliberately does not share the classic
+       results editor's progressive panels or mobile sheet. #}
+    <section class="lab-search-editor" id="labSearchEditor" role="dialog" aria-modal="true" aria-labelledby="labSearchEditorTitle" hidden>
+      <button type="button" class="lab-search-editor-backdrop" data-lab-editor-close aria-label="Close edit search"></button>
+      <form class="lab-search-editor-panel" id="labSearchEditorForm" method="post" action="{{ url_for('search') }}" autocomplete="off">
+        <input type="hidden" name="mode" value="standard" />
+        <input type="hidden" name="force_refresh" value="1" />
+        <input type="hidden" name="trip_type" id="labEditorTripType" value="{{ trip_mode }}" />
+        <input type="hidden" name="sort" value="recommended" />
+
+        <div class="lab-search-editor-head">
+          <div>
+            <p class="lab-search-editor-eyebrow">Flight search</p>
+            <h2 id="labSearchEditorTitle">Update your trip</h2>
+          </div>
+          <button type="button" class="lab-search-editor-close" data-lab-editor-close aria-label="Close edit search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+
+        <div class="lab-search-editor-trip-row">
+          <div class="lab-search-editor-trip" role="tablist" aria-label="Trip type">
+            <button type="button" data-lab-editor-trip="roundtrip" aria-selected="{{ 'true' if trip_mode == 'roundtrip' else 'false' }}">Round trip</button>
+            <button type="button" data-lab-editor-trip="oneway" aria-selected="{{ 'true' if trip_mode == 'oneway' else 'false' }}">One way</button>
+          </div>
+          <div class="lab-editor-inline-controls">
+            <label class="lab-editor-inline-select" aria-label="Travelers">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <select name="passengers" id="labEditorPassengers">
+                {% for n in range(1, 10) %}
+                <option value="{{ n }}" {{ 'selected' if passenger_count == n }}>{{ n }} traveler{{ '' if n == 1 else 's' }}</option>
+                {% endfor %}
+              </select>
+              <svg class="lab-editor-inline-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </label>
+            <label class="lab-editor-inline-select" aria-label="Cabin">
+              <!-- Lucide Armchair SVG, https://lucide.dev/icons/armchair -->
+              <img src="{{ url_for('static', filename='icons/armchair.svg') }}" alt="" aria-hidden="true" />
+              <select name="cabin" id="labEditorCabin">
+                {% for c in ["ECONOMY","PREMIUM_ECONOMY","BUSINESS","FIRST"] %}
+                <option value="{{ c }}" {{ 'selected' if (query.get('cabin') or 'ECONOMY') == c }}>{{ c.replace('_', ' ')|title }}</option>
+                {% endfor %}
+              </select>
+              <svg class="lab-editor-inline-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </label>
+          </div>
+        </div>
+
+        <div class="lab-search-editor-fields">
+          <label class="lab-editor-field">
+            <span>From</span>
+            <input id="labEditorOrigin" name="origin" value="{{ (query.get('origin') or '')|upper }}" maxlength="30" inputmode="search" autocapitalize="characters" spellcheck="false" aria-autocomplete="list" aria-expanded="false" />
+            <div class="lab-editor-airports" id="labEditorOriginOptions" role="listbox" hidden></div>
+          </label>
+          <button type="button" class="lab-editor-swap" id="labEditorSwap" aria-label="Swap origin and destination" title="Swap route">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 3 4 4-4 4"/><path d="M3 7h18"/><path d="m7 21-4-4 4-4"/><path d="M21 17H3"/></svg>
+          </button>
+          <label class="lab-editor-field">
+            <span>To</span>
+            <input id="labEditorDestination" name="destination" value="{{ (query.get('destination') or '')|upper }}" maxlength="30" inputmode="search" autocapitalize="characters" spellcheck="false" aria-autocomplete="list" aria-expanded="false" />
+            <div class="lab-editor-airports" id="labEditorDestinationOptions" role="listbox" hidden></div>
+          </label>
+
+          <label class="lab-editor-field lab-editor-date-range-field" id="labEditorDateRangeField">
+            <span>Dates</span>
+            <input class="lab-editor-date-input" type="date" id="labEditorDepart" name="depart_date" value="{{ query.get('depart_date') or '' }}" data-nx-calendar-range-start="lab-editor" data-nx-calendar-trip-type="labEditorTripType" placeholder="Select dates" aria-label="Departure and return dates" required />
+            <input class="lab-editor-date-input" type="date" id="labEditorReturn" name="return_date" value="{{ query.get('return_date') or '' }}" data-nx-calendar-range-end="lab-editor" placeholder="Add return" aria-label="Return date" {% if trip_mode == 'roundtrip' %}required{% endif %} />
+          </label>
+
+        </div>
+
+        <div class="lab-search-editor-footer">
+          <label class="lab-editor-nonstop"><input type="checkbox" name="nonstop" {{ 'checked' if query.get('nonstop') }} /><span>Nonstop only</span></label>
+          <p class="lab-search-editor-error" id="labSearchEditorError" role="alert" hidden></p>
+          <button type="submit" class="lab-editor-submit">Search flights</button>
+        </div>
+      </form>
+    </section>
 
     {% if error %}
       <div class="lab-empty">
@@ -174,9 +276,20 @@
     {% else %}
 
       <nav class="lab-progress" id="labProgress" hidden aria-label="Booking progress">
-        <span class="lab-progress-step" data-lab-step="departure" aria-current="step">Departure</span>
-        <span class="lab-progress-step" data-lab-step="return">Return</span>
-        <span class="lab-progress-step" data-lab-step="review">Review</span>
+        <ol class="lab-progress-list">
+          <li class="lab-progress-step" data-lab-step="departure" aria-current="step">
+            <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+            <span class="lab-progress-copy">Departure</span>
+          </li>
+          <li class="lab-progress-step" data-lab-step="return">
+            <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">2</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+            <span class="lab-progress-copy">Return</span>
+          </li>
+          <li class="lab-progress-step" data-lab-step="review">
+            <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">3</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+            <span class="lab-progress-copy">Review</span>
+          </li>
+        </ol>
       </nav>
 
       <div class="lab-pinned" id="labPinnedDeparture" hidden></div>
@@ -265,41 +378,27 @@
             <div class="lab-toolbar-top">
               <div class="lab-toolbar-count"><strong id="labVisibleCount">{{ flights|length }}</strong> <span id="labResultsCountLabel">flights</span></div>
               <div class="lab-sort" id="labSort">
-                <button type="button" class="lab-sort-trigger" id="labSortTrigger" aria-haspopup="listbox" aria-expanded="false">
-                  <span class="lab-spark" aria-hidden="true">✦</span>
-                  <span id="labSortLabel">Skairova Best</span>
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                <button type="button" class="lab-mobile-filter-trigger" data-lab-open-rail="more" aria-label="Open filters" title="Filters">
+                  <span aria-hidden="true"></span>
                 </button>
-                <span class="lab-tab-info" data-lab-how-ranking role="button" tabindex="0" aria-label="How Skairova ranks results">i</span>
-                <div class="lab-sort-menu" id="labSortMenu" role="listbox" aria-label="Sort flights" hidden>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="best" aria-selected="true"><span class="lab-spark" aria-hidden="true">✦</span> Skairova Best</button>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="cheapest" aria-selected="false">Lowest price</button>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="fastest" aria-selected="false">Fastest</button>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="stops" aria-selected="false">Fewest stops</button>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="departure" aria-selected="false">Departure time</button>
-                  <button type="button" class="lab-sort-option" role="option" data-lab-sort="arrival" aria-selected="false">Arrival time</button>
+                <div class="lab-sort-tabs" role="tablist" aria-label="Sort flights">
+                  <button type="button" class="lab-sort-tab" role="tab" data-lab-tab="best" aria-selected="true">
+                    <span class="lab-sort-tab-label"><span class="lab-spark" aria-hidden="true">✦</span> Best</span>
+                    <span class="lab-sort-tab-value" id="labTabValueBest"></span>
+                  </button>
+                  <button type="button" class="lab-sort-tab" role="tab" data-lab-tab="cheapest" aria-selected="false">
+                    <span class="lab-sort-tab-label">Cheapest</span>
+                    <span class="lab-sort-tab-value" id="labTabValueCheapest"></span>
+                  </button>
+                  <button type="button" class="lab-sort-tab" role="tab" data-lab-tab="fastest" aria-selected="false">
+                    <span class="lab-sort-tab-label">Quickest</span>
+                    <span class="lab-sort-tab-value" id="labTabValueFastest"></span>
+                  </button>
                 </div>
+                <span class="lab-tab-info" data-lab-how-ranking role="button" tabindex="0" aria-label="How Skairova ranks results">i</span>
                 <div class="lab-rank-pop" id="labHowRankingPop" hidden>
                   Skairova Best weighs price the most heavily, then rewards nonstop and low-stop itineraries, a good departure time, a safe connection window, and meaningfully shorter total trip time — in that order.
                 </div>
-              </div>
-            </div>
-            <div class="lab-toolbar-row">
-              <div class="lab-toolbar-chips">
-                <button type="button" class="lab-chip" data-lab-quick="nonstop" aria-pressed="false">Nonstop</button>
-                <button type="button" class="lab-chip" data-lab-quick="stop1" aria-pressed="false" aria-label="1 stop or fewer">≤1 stop</button>
-                <button type="button" class="lab-chip" data-lab-open-rail="times">Times</button>
-                <button type="button" class="lab-chip" data-lab-open-rail="airlines">Airlines</button>
-              </div>
-              <div class="lab-toolbar-actions">
-                <div class="lab-updating" id="labUpdating"><span>Updating results…</span></div>
-                {% if query.get('depart_date') and not manual_flow %}
-                <button type="button" class="lab-track-price" id="labTrackPrice" aria-pressed="false">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a5 5 0 0 0-5 5v3.4c0 .8-.32 1.56-.88 2.12L5 14.6c-.6.6-.17 1.6.66 1.6h12.68c.83 0 1.26-1 .66-1.6l-1.12-1.08a3 3 0 0 1-.88-2.12V8a5 5 0 0 0-5-5Z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>
-                  <span id="labTrackPriceLabel">Track price</span>
-                </button>
-                {% endif %}
-                <button type="button" class="lab-chip lab-chip-more" data-lab-open-rail="more">More filters</button>
               </div>
             </div>
           </div>
@@ -318,4 +417,4 @@
 </div>
 
 <script type="application/json" id="labFlightsData">{{ lab_payload | tojson }}</script>
-<script src="{{ url_for('static', filename='results-lab.js', v='20260820-1') }}" defer></script>
+<script src="{{ url_for('static', filename='results-lab.js', v='20260821-52') }}" defer></script>
