@@ -337,7 +337,7 @@
   .account-shell { width: 100%; padding-bottom: 96px; }
   .account-content { width: min(640px, 100%); padding: 0 20px; }
   .account-topbar { position: static; }
-  .profile-hero { grid-template-columns: 1fr; text-align: center; padding: 26px 22px; }
+  .profile-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 26px 22px; }
   .profile-hero-copy h1, .profile-hero-copy p { white-space: normal; }
   .profile-hero-actions { flex-direction: row; justify-content: center; }
   .trip-grid { grid-template-columns: 1fr; }
@@ -387,8 +387,9 @@
     box-shadow: 0 16px 36px rgba(21, 27, 46, .16), inset 0 1px rgba(255, 255, 255, .9);
   }
   .account-nav-indicator { top: 6px; bottom: 6px; border-radius: 14px; }
-  .account-nav button { flex-direction: column; gap: 3px; min-height: 50px; padding: 0 2px; font-size: 9px; }
-  .account-nav .nx-icon { width: 17px; height: 17px; }
+  .account-nav button { flex-direction: column; justify-content: center; align-items: center; gap: 3px; min-height: 50px; padding: 0 2px; font-size: 9px; line-height: 1; }
+  .account-nav .nx-icon { display: block; width: 17px; height: 17px; line-height: 0; }
+  .account-nav button em { display: block; line-height: 1; }
 
   .account-mobile-signout { display: flex; justify-content: center; margin: 22px 0 0; padding: 0; }
   .account-mobile-signout button { min-height: 30px; padding: 0 8px; border: 0; background: transparent; color: var(--ap-danger); font-size: 13px; font-weight: 600; }

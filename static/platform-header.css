@@ -96,11 +96,14 @@
   flex: none !important;
   text-decoration: none !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.09em !important;
   font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif) !important;
   font-size: 1.18rem !important;
   line-height: 1 !important;
   font-weight: 700 !important;
+  -webkit-text-stroke: .9px currentColor !important;
+  transform: scaleX(1.055) !important;
+  transform-origin: left center !important;
   color: var(--hdr-ink) !important;
 }
 
@@ -582,10 +585,13 @@ html.hdr-menu-open { overflow: hidden; }
   gap: 9px;
   text-decoration: none;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.09em;
   font-family: var(--font-display, "Space Grotesk", "Inter", sans-serif);
   font-size: 1.1rem;
   font-weight: 700;
+  -webkit-text-stroke: .9px currentColor;
+  transform: scaleX(1.055);
+  transform-origin: left center;
   color: var(--hdr-ink) !important;
 }
 
@@ -803,7 +809,7 @@ html.hdr-menu-open { overflow: hidden; }
 @media (max-width: 380px) {
   :root { --hdr-pad: 10px; }
 
-  .topbar.platform-header .brand-link { font-size: 0.9rem !important; letter-spacing: 0.03em !important; }
+  .topbar.platform-header .brand-link { font-size: 0.9rem !important; letter-spacing: 0.07em !important; }
 }
 
 /* ============================================================================
