@@ -108,4 +108,40 @@
   desktopQuery.addEventListener("change", function (event) {
     if (event.matches) close();
   });
+
+  /* Header message icon — a second, always-visible entry point into the
+     existing floating AI chat (static/ai-assistant.js). Simplest correct
+     wiring: forward to the real trigger button rather than duplicating its
+     open/close/badge/quick-reply logic here. */
+  var headerChatBtn = document.getElementById("hdrOpenChatBtn");
+  var headerChatDot = document.getElementById("hdrOpenChatDot");
+  if (headerChatBtn) {
+    headerChatBtn.addEventListener("click", function () {
+      var realTrigger = document.querySelector("#aiChatBubbleWrap .ai-chat-trigger");
+      if (realTrigger) realTrigger.click();
+    });
+  }
+
+  /* The dot mirrors the real .ai-chat-badge the floating widget already
+     shows/hides itself — never set independently, so it can't drift into
+     a permanent fake "you have a notification" state. That badge is
+     removed from the DOM (not just hidden) once the chat is opened, so
+     childList must be watched too, not just the style attribute. */
+  if (headerChatDot) {
+    var wrap = document.getElementById("aiChatBubbleWrap");
+    var syncDot = function () {
+      var badge = wrap && wrap.querySelector(".ai-chat-badge");
+      var visible = !!badge && badge.style.display !== "none";
+      headerChatDot.hidden = !visible;
+    };
+    syncDot();
+    if (wrap && window.MutationObserver) {
+      new MutationObserver(syncDot).observe(wrap, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style"],
+      });
+    }
+  }
 })();

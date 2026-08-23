@@ -562,6 +562,16 @@ body.agent-page-search .command-search input:focus-visible {
   letter-spacing: -0.03em;
 }
 
+/* airport-search.css's shared .airport-input base adds its own border/
+   background/min-height/padding — neutralize it here, since this form
+   already draws that chrome on the surrounding .field-control wrapper. */
+.airport-control input.airport-input {
+  border: 0;
+  background: transparent;
+  min-height: 0;
+  padding: 0;
+}
+
 .airport-hint {
   color: #61718c;
   margin-top: 2px;
@@ -1462,51 +1472,6 @@ body.agent-page-search .command-search input:focus-visible {
   margin: 6px 0 0;
   color: #66728a;
   font-size: 13px;
-}
-
-/* Suggestions */
-.airport-suggestion-panel {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  border: 1px solid #b8c8df;
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 22px 54px rgba(16, 30, 54, 0.17);
-  padding: 6px;
-}
-
-.airport-suggestion-option {
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #17223a;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: 46px 1fr;
-  gap: 10px;
-  align-items: center;
-  text-align: left;
-  cursor: pointer;
-}
-
-.airport-suggestion-option:hover,
-.airport-suggestion-option.active {
-  background: #f1f5ff;
-}
-
-.airport-suggestion-option strong {
-  color: var(--booking-blue);
-  font-size: 13px;
-}
-
-.airport-suggestion-option span {
-  color: #506078;
-  font-size: 12px;
-  line-height: 1.35;
 }
 
 /* Bottom status */

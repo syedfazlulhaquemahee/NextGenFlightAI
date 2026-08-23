@@ -1,10 +1,12 @@
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&family=Space+Grotesk:wght@600;700&display=swap" />
+{# Self-hosted — see static/fonts.css for why (Google Fonts is commonly
+   blocked outright by privacy browsers/ad-blockers, which silently falls
+   back to the OS system font and reads as "generic Arial" even though
+   every font-family rule here is correctly set to Inter). #}
+<link rel="stylesheet" href="{{ url_for('static', filename='fonts.css', v='20260823-selfhost-1') }}" />
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg', v='20260427-skairova') }}" />
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.svg', v='20260427-skairova') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='theme.css', v='20260729-modern-chips') }}" />
-<link rel="stylesheet" href="{{ url_for('static', filename='platform-header.css', v='20260821-wordmark-stronger-3') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='platform-header.css', v='20260823-reference-header-4') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-results-calendar') }}" />
 <script type="module" src="{{ url_for('static', filename='vendor/cally/cally.js', v='0.9.2') }}"></script>
 <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260813-results-calendar') }}"></script>

@@ -1,11 +1,8 @@
 {% if portal_signed_in %}
 
-  <a class="hdr-icon-btn hdr-desktop-only" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-      <rect x="9" y="3" width="6" height="4" rx="1"/>
-    </svg>
-    <span class="hdr-icon-label">Trips</span>
+  <a class="hdr-text-link hdr-desktop-only" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
+    <img class="hdr-svg" src="{{ url_for('static', filename='icons/header-luggage.svg') }}" alt="" aria-hidden="true" />
+    Trips
   </a>
 
   {% include "partials/theme_toggle.html" %}
@@ -13,10 +10,14 @@
   <details class="portal-menu" id="portalMenuDropdown">
     <summary class="hdr-account-btn portal-menu-trigger" aria-label="Account menu for {{ portal_account_name }}">
       <span class="hdr-avatar" aria-hidden="true">{{ portal_account_initials }}</span>
-      <span class="hdr-account-name">{{ portal_account_name.split()[0] if portal_account_name else 'Account' }}</span>
-      <svg class="hdr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
+      <span class="hdr-account-text">
+        <span class="hdr-account-name">{{ portal_account_name.split()[0] if portal_account_name else 'Account' }}</span>
+        {# SkairCash is a placeholder balance display — there is no real
+           loyalty/rewards ledger behind this yet, so it always reads $0.00
+           rather than implying an earned amount that doesn't exist. #}
+        <span class="hdr-account-balance">$0.00 SkairCash</span>
+      </span>
+      <img class="hdr-svg hdr-chevron" src="{{ url_for('static', filename='icons/header-chevron-down.svg') }}" alt="" aria-hidden="true" />
     </summary>
     <div class="portal-menu-dropdown" role="menu">
       <div class="portal-menu-header" aria-hidden="true">
@@ -48,12 +49,9 @@
 
 {% else %}
 
-  <a class="hdr-icon-btn hdr-desktop-only" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-      <rect x="9" y="3" width="6" height="4" rx="1"/>
-    </svg>
-    <span class="hdr-icon-label">Trips</span>
+  <a class="hdr-text-link hdr-desktop-only" href="{{ url_for('manage_booking') }}" aria-label="Manage Booking" title="Manage Booking">
+    <img class="hdr-svg" src="{{ url_for('static', filename='icons/header-luggage.svg') }}" alt="" aria-hidden="true" />
+    Trips
   </a>
 
   {% include "partials/theme_toggle.html" %}

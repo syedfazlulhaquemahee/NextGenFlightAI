@@ -103,7 +103,6 @@ if DUFFEL_PAYMENT_MODE not in {"card", "balance"}:
     DUFFEL_PAYMENT_MODE = "card"
 DUFFEL_SUPPLIER_TIMEOUT_MS = int(os.getenv("DUFFEL_SUPPLIER_TIMEOUT_MS", "20000"))
 DUFFEL_HTTP_TIMEOUT = float(os.getenv("DUFFEL_HTTP_TIMEOUT", "28"))
-DUFFEL_PLACE_TIMEOUT = float(os.getenv("DUFFEL_PLACE_TIMEOUT", "6"))
 
 # Voice AI: Flask never talks to Deepgram directly — it only mints short-lived
 # JWTs that the voice_service/ proxy (a separate async process) verifies
@@ -2180,6 +2179,9 @@ def _iata_city_row(code: str) -> dict[str, Any] | None:
     loc = f" ({name}, {country})" if name or country else ""
     return {
         "code": code.upper(),
+        "name": "All airports",
+        "city": name,
+        "country": country,
         "label": f"{code.upper()} — {name} (all airports){loc}".strip(),
         "subType": "CITY",
     }
@@ -2226,30 +2228,6 @@ def _airport_text_matches_query(qn: str, code_l: str, name: str, city: str) -> b
         return True
     if len(qn) >= 3 and qn in name:
         return True
-    return False
-
-
-def _remote_place_matches_query(qn: str, item: dict[str, Any]) -> bool:
-    """Drop Duffel place rows that do not relate to the typed query (avoid global hubs)."""
-    if not qn:
-        return True
-    code = (item.get("code") or "").strip().lower()
-    raw = (item.get("label") or "").strip()
-    label_lo = raw.lower()
-    body = raw.split("—", 1)[-1].strip().lower() if "—" in raw else label_lo
-    if code == qn or code.startswith(qn) or (len(code) == 3 and qn.startswith(code) and len(qn) <= 4):
-        return True
-    if len(qn) < 3:
-        return False
-    if qn in label_lo or label_lo.startswith(qn):
-        return True
-    if qn in body or body.startswith(qn):
-        return True
-    for part in re.split(r"[\s,()/]+", body):
-        if len(part) < 3:
-            continue
-        if part.startswith(qn) or qn in part:
-            return True
     return False
 
 
@@ -4235,60 +4213,6 @@ class DuffelClient:
             print("DUFFEL CONFIRM ORDER CHANGE JSON ERROR:", repr(exc))
             raise DuffelAPIError("Duffel returned an unexpected order change confirmation response.")
         return data
-
-    def search_places(self, keyword: str, limit: int = 12) -> list[dict[str, Any]]:
-        if not DUFFEL_ACCESS_TOKEN:
-            return []
-        try:
-            resp = self._request(
-                "GET",
-                "/places/suggestions",
-                params={"query": keyword},
-                timeout=DUFFEL_PLACE_TIMEOUT,
-                fast=True,
-            )
-        except requests.RequestException as exc:
-            print("DUFFEL PLACE EXCEPTION:", repr(exc))
-            return []
-        if not resp.ok:
-            print("DUFFEL PLACE STATUS:", resp.status_code)
-            print("DUFFEL PLACE BODY:", resp.text[:400])
-            return []
-
-        results: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        for item in resp.json().get("data", []):
-            place_type = (item.get("type") or "").lower()
-            code = (item.get("iata_code") or "").strip().upper()
-            if not code or len(code) != 3 or code in seen:
-                continue
-
-            country = (item.get("iata_country_code") or "").strip().upper()
-
-            if place_type == "city":
-                seen.add(code)
-                display = (item.get("name") or item.get("city_name") or code).strip()
-                city_name = (item.get("city_name") or "").strip()
-                loc_parts = [x for x in [city_name or display, country] if x]
-                loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
-                results.append({
-                    "code": code,
-                    "label": f"{code} — {display} (all airports){loc}".strip(),
-                    "subType": "CITY",
-                })
-            elif place_type == "airport":
-                seen.add(code)
-                city = (item.get("city_name") or "").strip()
-                name = (item.get("name") or "").strip()
-                loc_parts = [x for x in [city, country] if x]
-                loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
-                results.append({"code": code, "label": f"{code} — {name}{loc}".strip(), "subType": "AIRPORT"})
-            else:
-                continue
-
-            if len(results) >= limit:
-                break
-        return results
 
     def flight_offers_raw(
         self,
@@ -12902,6 +12826,27 @@ def manage_booking_change_apply(order_id: str):
     )
 
 
+def _liteapi_airport_item(row: dict[str, Any]) -> dict[str, Any]:
+    code = row.get("code", "")
+    city = row.get("city", "")
+    country = row.get("country", "")
+    name = row.get("name", "")
+    loc = f" ({', '.join(p for p in (city, country) if p)})" if (city or country) else ""
+    # LiteAPI's own metro/city-group rows (e.g. "Los Angeles - All Airports")
+    # carry no distinguishing type field of their own — "all airports" in the
+    # name is the one consistent signal across every metro code observed
+    # (New York, Rome, London, Milan, Bucharest, ...).
+    is_metro_group = "all airports" in name.lower()
+    return {
+        "code": code,
+        "name": name,
+        "city": city,
+        "country": country,
+        "label": f"{code} — {name}{loc}".strip(" —"),
+        "subType": "CITY" if is_metro_group else "AIRPORT",
+    }
+
+
 @app.route("/airports")
 def airports():
     q = (request.args.get("q") or "").strip()
@@ -12909,61 +12854,26 @@ def airports():
     if len(qn) < 3:
         return jsonify([])
 
-    cache_key = f"v6:{qn}"
+    cache_key = f"v7:{qn}"
     cached = AIRPORT_SUGGEST_CACHE.get(cache_key)
     if cached is not None:
         return jsonify(cached)
 
-    intent = _query_intent(qn)
-    local_city = _local_iata_city_suggestions(q)
-    local_airports = _local_airport_suggest(q, limit=AIRPORT_SUGGEST_LIMIT)
+    # Curated metro/city grouping (e.g. ROM -> all Rome airports) — a small
+    # local table, not the retired CSV/Duffel airport bank. Merged ahead of
+    # LiteAPI's own results as a safety net; LiteAPI's endpoint already
+    # returns its own metro-group rows for most major cities.
+    city_groups = _local_iata_city_suggestions(q)
 
-    # Exact airport IATA / US state: local airports only, but still prepend any
-    # matching grouped city rows (e.g. ROM when searching "rome"). Metro and
-    # tri-letter IATA *city* codes (BJS) merge with Duffel below.
-    if local_airports and (
-        intent in {"iata", "state"}
-        or (len(qn) <= 4 and intent not in {"metro", "city_code"})
-    ):
-        merged_sc = (local_city + local_airports)[:AIRPORT_SUGGEST_LIMIT]
-        AIRPORT_SUGGEST_CACHE.set(cache_key, merged_sc)
-        _track_analytics_event(
-            event_type="airport_suggestions_served",
-            search_mode="airport_autocomplete",
-            result_count=len(merged_sc),
-            success=bool(merged_sc),
-            metadata={
-                "query": q[:80],
-                "intent": intent,
-                "source": "local_only",
-                "top_codes": [str(item.get("code") or "").strip().upper() for item in merged_sc[:5]],
-            },
-        )
-        return jsonify(merged_sc)
-
-    remote = []
     try:
-        data = DUFF.search_places(q, limit=12)
-        seen = set()
-        for item in data:
-            code = item.get("code")
-            if not code or code in seen:
-                continue
-            if not _remote_place_matches_query(qn, item):
-                continue
-            seen.add(code)
-            remote.append(item)
+        rows = LITE.search_airports(q) if LITE_ENABLED else []
     except Exception:
-        remote = []
-
-    remote_cities = [it for it in remote if (it.get("subType") or "").upper() == "CITY"]
-    remote_airports = [it for it in remote if (it.get("subType") or "").upper() != "CITY"]
-    stream = local_city + remote_cities + local_airports + remote_airports
+        rows = []
+    airport_items = [_liteapi_airport_item(r) for r in rows]
 
     merged = []
     seen = set()
-
-    for item in stream:
+    for item in city_groups + airport_items:
         code = item["code"]
         if code in seen:
             continue
@@ -12980,8 +12890,7 @@ def airports():
         success=bool(merged),
         metadata={
             "query": q[:80],
-            "intent": intent,
-            "source": "merged_local_remote",
+            "source": "liteapi",
             "top_codes": [str(item.get("code") or "").strip().upper() for item in merged[:5]],
         },
     )

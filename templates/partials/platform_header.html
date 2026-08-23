@@ -6,6 +6,9 @@
   {% set flights_active = request.endpoint not in hotel_endpoints + ['deals'] and not on_home_hotels_tab %}
   {% set hotels_active = request.endpoint in hotel_endpoints or on_home_hotels_tab %}
   {% set deals_active = request.endpoint == 'deals' %}
+  {% macro header_icon(name, class_name='') -%}
+  <img class="hdr-svg {{ class_name }}" src="{{ url_for('static', filename='icons/header-' + name + '.svg') }}" alt="" aria-hidden="true" />
+  {%- endmacro %}
 
   {# Three-region grid — logo | nav (true center) | actions — rather than
      grouping logo+nav on the left. The nav's center column is independent
@@ -13,20 +16,47 @@
      marketing nav (logo-left / nav-center / CTA-right). #}
   <div class="brand platform-header-inner">
     <a class="brand-link" href="{{ url_for('index') }}">
-      <span class="brand-dot" aria-hidden="true"></span>
+      <span class="brand-mark" aria-hidden="true">S</span>
       SKAIROVA
     </a>
 
     <nav class="site-nav" aria-label="Main navigation" id="siteNav">
       <span class="site-nav-indicator" id="siteNavIndicator" aria-hidden="true"></span>
-      <a class="site-nav-link {{ 'site-nav-active' if flights_active else '' }}" href="{{ url_for('index') }}">Flights</a>
-      <a class="site-nav-link {{ 'site-nav-active' if hotels_active else '' }}" href="{{ url_for('hotels') }}">Hotels</a>
-      <a class="site-nav-link {{ 'site-nav-active' if deals_active else '' }}" href="{{ url_for('deals') }}">Deals</a>
+      <a class="site-nav-link {{ 'site-nav-active' if flights_active else '' }}" href="{{ url_for('index') }}">
+        {{ header_icon('plane') }}
+        Flights
+      </a>
+      <a class="site-nav-link {{ 'site-nav-active' if hotels_active else '' }}" href="{{ url_for('hotels') }}">
+        {{ header_icon('building-2') }}
+        Hotels
+      </a>
+      <a class="site-nav-link {{ 'site-nav-active' if deals_active else '' }}" href="{{ url_for('deals') }}">
+        {{ header_icon('tag') }}
+        Deals
+      </a>
     </nav>
 
     <div class="topbar-utility">
       <div class="topbar-links">
+        {# Static display, not a real control — the app is USD-only, so a
+           chevron with no menu behind it would be dishonest; this one is
+           purely visual to match the reference, cursor stays default. #}
+        <span class="hdr-currency hdr-desktop-only" aria-label="Currency: US Dollar" title="US Dollar">
+          USD
+          {{ header_icon('chevron-down', 'hdr-currency-chevron') }}
+          <span class="hdr-currency-flag" aria-hidden="true">🇺🇸</span>
+        </span>
+        <span class="hdr-divider hdr-desktop-only" aria-hidden="true"></span>
+        <a class="hdr-text-link hdr-desktop-only" href="{{ url_for('agent.login') }}">
+          {{ header_icon('briefcase-business') }}
+          Agent Portal
+        </a>
+        <a class="hdr-text-link hdr-desktop-only" href="mailto:support@skairova.com">
+          {{ header_icon('circle-help') }}
+          Support
+        </a>
         {% include "partials/user_portal_link.html" %}
+        <span class="hdr-divider hdr-desktop-only hdr-divider--account" aria-hidden="true"></span>
         {# Below 920px the nav and desktop actions above hide — this is the
            only way back to Hotels/Deals from anywhere but the home page's
            own tabs, so it needs to be a real, discoverable menu. #}
@@ -64,6 +94,18 @@
     </a>
     <a class="hdr-mobile-link" href="{{ url_for('deals') }}">
       <span>Deals</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
+    </a>
+  </nav>
+
+  <p class="hdr-mobile-eyebrow">More</p>
+  <nav class="hdr-mobile-nav" aria-label="More">
+    <a class="hdr-mobile-link" href="{{ url_for('agent.login') }}">
+      <span>Agent Portal</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
+    </a>
+    <a class="hdr-mobile-link" href="mailto:support@skairova.com">
+      <span>Support</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
   </nav>
@@ -108,5 +150,5 @@
 {% if not portal_signed_in and not hide_auth_modal %}
   {% include "partials/auth_modal.html" %}
 {% endif %}
-<script src="{{ url_for('static', filename='header-menu.js', v='20260817-nav15-rebuild') }}" defer></script>
+<script src="{{ url_for('static', filename='header-menu.js', v='20260823-icons-1') }}" defer></script>
 {% include "partials/ai_chatbot.html" %}

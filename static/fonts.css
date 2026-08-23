@@ -1,0 +1,36 @@
+/* Self-hosted Inter + Space Grotesk — previously loaded from
+   fonts.googleapis.com/fonts.gstatic.com. That cross-origin request is
+   commonly blocked outright by privacy browsers/ad-blockers (Brave Shields'
+   fingerprinting protection blocks Google Fonts by default, and it's a
+   common uBlock/Privacy Badger target too), which silently falls back to
+   the OS system font — reads exactly like "generic Arial" even though every
+   font-family rule in the app is correctly set to Inter. Self-hosting the
+   same files removes the external dependency entirely so the brand
+   typography actually renders regardless of the visitor's blocking setup.
+
+   Files are the literal woff2s Google Fonts itself serves for this exact
+   family/weight/style range (fetched directly from fonts.gstatic.com, same
+   open-license (OFL) font, not re-encoded) — swapped to a local url() only.
+*/
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/inter-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/inter-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/static/fonts/space-grotesk.woff2') format('woff2');
+}

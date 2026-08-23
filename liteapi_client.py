@@ -340,6 +340,35 @@ class LiteAPIClient:
 
         return self._cached(f"places:{query.lower()}", load, ttl=3600)
 
+    def search_airports(self, query: str) -> list[dict[str, Any]]:
+        """Autocomplete origin/destination airports for flight search —
+        LiteAPI's own flights airport-search endpoint, replacing the retired
+        local-CSV + Duffel-places autocomplete."""
+        query = (query or "").strip()
+        if len(query) < 2:
+            return []
+
+        def load():
+            payload = self._request(
+                "GET", LITE_DATA_BASE, "/data/flights/airports",
+                params={"q": query}, timeout=LITE_CONTENT_TIMEOUT,
+            )
+            out = []
+            for block in payload.get("data") or []:
+                for row in block.get("airports") or []:
+                    iata = str(row.get("iata") or "").strip().upper()
+                    if len(iata) != 3:
+                        continue
+                    out.append({
+                        "code": iata,
+                        "name": str(row.get("name") or "").strip(),
+                        "city": str(row.get("city") or "").strip(),
+                        "country": str(row.get("country") or "").strip(),
+                    })
+            return out
+
+        return self._cached(f"airports:{query.lower()}", load, ttl=3600)
+
     def _hotel_content(self, lookup: Mapping[str, Any], cache_key: str, limit: int) -> list[dict[str, Any]]:
         """Page the static content DB. `lookup` must carry one of the accepted
         location keys — placeId, countryCode(+cityName), or latitude/longitude."""

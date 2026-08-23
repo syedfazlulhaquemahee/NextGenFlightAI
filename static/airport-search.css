@@ -1,0 +1,223 @@
+/* ============================================================================
+   Skairova flight airport picker — design ported from the Nuitée/liteAPI
+   reference storefront (mahisyed-mahee-7kufz.nuitee.link), the same process
+   already used once for hotel search (see static/hotels.css). Replaces three
+   independently-drifted implementations (home page, results page, agent
+   portal) and four stacked, contradictory redefinitions that used to live in
+   style.css.
+
+   Item layout (icon + stacked title/subtitle + "City" badge for grouped
+   metro codes) matches the reference's actual dropdown, confirmed against a
+   real screenshot rather than the closed-input CSS extracted from the
+   compiled bundle alone.
+
+   Color normalized to #6366f1 rather than the reference's literal #4F46E5,
+   matching the precedent hotels.css already set (--nu-primary: #6366f1) and
+   every other indigo accent already on the site (e.g. the AI chat widget).
+
+   Dark mode is "temporarily disabled" sitewide (see
+   templates/partials/theme_init.html) but kept restorable — this file
+   follows the same dark-first-base + html[data-theme="light"]-override
+   convention as every other component. The reference itself is light-only,
+   so the html[data-theme="light"] block below is the one that must be
+   pixel-faithful; the dark base is a reasonable inverse for later.
+   ============================================================================ */
+
+:root {
+  --ap-accent: #6366f1;
+  --ap-accent-hover: #818cf8;
+  --ap-radius: 8px;
+  --ap-radius-lg: 16px;
+}
+
+.airport-input,
+.airport-suggest,
+.airport-selected-display {
+  box-sizing: border-box;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.airport-suggest *,
+.airport-selected-display * {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* Closed input state */
+.airport-input {
+  min-height: 44px;
+  border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: var(--ap-radius);
+  background: var(--card-strong, rgba(22,22,34,.92));
+  color: var(--text, rgba(255,255,255,.92));
+  padding: 10px 14px;
+  font-size: 14px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.airport-input:focus {
+  outline: none;
+  border-color: var(--ap-accent);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.22);
+}
+.airport-input::placeholder {
+  color: var(--muted, rgba(255,255,255,.58));
+}
+
+/* Dropdown panel */
+.airport-suggest {
+  position: absolute;
+  z-index: 9999;
+  display: none;
+  border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: var(--ap-radius-lg);
+  background: var(--card-strong, rgba(22,22,34,.96));
+  box-shadow: 0 20px 50px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+  padding: 8px;
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+}
+
+/* Item row — icon (city rows only) + stacked title/subtitle + badge */
+.airport-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  margin-bottom: 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.airport-item:last-child { margin-bottom: 0; }
+.airport-item:hover,
+.airport-item.active {
+  background: rgba(255,255,255,.06);
+}
+
+.airport-item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  color: var(--muted, rgba(255,255,255,.6));
+}
+.airport-item-icon svg { width: 20px; height: 20px; }
+
+.airport-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.airport-item-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, rgba(255,255,255,.92));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.airport-item-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted, rgba(255,255,255,.58));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.airport-item-badge {
+  flex-shrink: 0;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: var(--muted, rgba(255,255,255,.6));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Selected-state overlay — splits city name from IATA code, sitting close
+   together as one compact unit (not spread across the field) at the same
+   font/padding as the real input beneath it (set inline by JS per-input,
+   since that varies by page — see positionOverlay() in airport-search.js).
+   Sits over the still-real, still-focusable input; hidden while editing. */
+.airport-selected-display {
+  position: absolute;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--ap-radius);
+  background: var(--card-strong, rgba(22,22,34,.92));
+  cursor: text;
+  pointer-events: auto;
+}
+.airport-selected-display__city {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text, rgba(255,255,255,.92));
+  font: inherit;
+}
+.airport-selected-display__code {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 0.85em;
+  letter-spacing: .03em;
+  color: var(--muted, rgba(255,255,255,.58));
+}
+
+/* ================================================================
+   LIGHT MODE — html[data-theme="light"] (always active today; the
+   reference site itself is light-only, so this block is the one that
+   needs to be pixel-faithful).
+   ================================================================ */
+html[data-theme="light"] .airport-input {
+  background: #ffffff;
+  border-color: #e2e5ea;
+  color: #111827;
+}
+html[data-theme="light"] .airport-input::placeholder {
+  color: #9aa3b2;
+}
+html[data-theme="light"] .airport-suggest {
+  background: #ffffff;
+  border-color: #e2e5ea;
+  box-shadow: 0 20px 50px rgba(15,23,42,.14), 0 4px 14px rgba(15,23,42,.08);
+}
+html[data-theme="light"] .airport-item:hover,
+html[data-theme="light"] .airport-item.active {
+  background: #f3f4f6;
+}
+html[data-theme="light"] .airport-item-icon {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+html[data-theme="light"] .airport-item-title {
+  color: #111827;
+}
+html[data-theme="light"] .airport-item-sub {
+  color: #6b7280;
+}
+html[data-theme="light"] .airport-item-badge {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+html[data-theme="light"] .airport-selected-display {
+  background: #ffffff;
+}
+html[data-theme="light"] .airport-selected-display__city {
+  color: #111827;
+}
+html[data-theme="light"] .airport-selected-display__code {
+  color: #6b7280;
+}

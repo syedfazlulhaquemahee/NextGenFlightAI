@@ -1641,45 +1641,7 @@ body::before{
 }
 
 
-/* Airport autocomplete dropdown */
-.airport-suggest{
-  position: absolute;
-  z-index: 9999;
-  border: 1px solid var(--line);
-  background: var(--card-strong);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.airport-item{
-  width: 100%;
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 0;
-  background: black;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.airport-item:hover{
-  background: rgba(255,255,255,.05);
-}
-
-.airport-code{
-  font-weight: 800;
-  letter-spacing: .04em;
-}
-
-.airport-label{
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.25;
-}
-
+/* Airport autocomplete — styled by static/airport-search.css */
 
 
 
@@ -1793,108 +1755,6 @@ body::before{
   margin-left: 4px; /* Align slightly with input curve */
 }
 
-
-
-
-
-/* ==============================================
-   DROPDOWN MODERNIZATION
-   Paste at bottom to override previous dropdown styles
-   ============================================== */
-
-/* 1. The Container: Floating Glass Panel */
-.airport-suggest {
-  /* Position & Size */
-  margin-top: 8px; /* Space between input and list */
-  border-radius: 16px;
-  padding: 6px; /* Padding creates the "floating items" effect */
-  
-  /* Glassmorphism Background */
-  background: rgba(18, 18, 24, 0.96) !important; /* Very dark, slightly transparent */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  
-  /* Borders & Depth */
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 
-    0 20px 50px -10px rgba(0,0,0,0.7), /* Deep drop shadow */
-    0 0 0 1px rgba(255,255,255,0.05);  /* Inner highlight */
-    
-  /* Ensure it sits on top of everything */
-  z-index: 10000;
-}
-
-/* 2. The List Items */
-.airport-item {
-  /* Layout */
-  display: grid;
-  grid-template-columns: auto 1fr; /* Auto width for code, rest for name */
-  gap: 14px;
-  align-items: center;
-  
-  /* Spacing */
-  padding: 10px 10px;
-  margin-bottom: 2px;
-  border-radius: 12px;
-  
-  /* Colors */
-  background: transparent; /* Remove the hard black */
-  color: rgba(255,255,255,0.75);
-  border: 1px solid transparent; /* Reserve space for hover border */
-  transition: all 0.1s ease-out;
-}
-
-/* Hover / Active State */
-.airport-item:hover {
-  background: rgba(255,255,255,0.06);
-  color: #fff;
-  border-color: rgba(255,255,255,0.08);
-  transform: scale(0.99); /* Subtle press effect */
-}
-
-/* 3. The "Code" Badge (JFK, LGA, etc.) */
-.airport-code {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  /* Tech Badge Look */
-  min-width: 48px;
-  height: 32px;
-  border-radius: 8px;
-  background: rgba(var(--accent), 0.12);
-  border: 1px solid rgba(var(--accent), 0.25);
-  color: rgb(var(--accent));
-  
-  /* Typography */
-  font-family: 'SF Mono', 'Menlo', monospace;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  transition: all 0.2s ease;
-}
-
-/* Make the badge glow on hover */
-.airport-item:hover .airport-code {
-  background: rgba(var(--accent), 0.25);
-  box-shadow: 0 0 15px rgba(var(--accent), 0.3);
-  border-color: rgba(var(--accent), 0.5);
-  color: #fff;
-}
-
-/* 4. The Airport Name Text */
-.airport-label {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  line-height: 1.35;
-  word-break: break-word;
-}
 
 
 
@@ -6757,31 +6617,6 @@ body::after{
   box-shadow: 0 12px 24px rgba(var(--accent-warm), .10) !important;
 }
 
-.airport-suggest{
-  background: rgba(7,19,28,.94) !important;
-  border-color: rgba(186,210,220,.12) !important;
-  box-shadow:
-    0 24px 60px rgba(2,8,15,.48),
-    0 0 0 1px rgba(255,255,255,.04) !important;
-}
-
-.airport-item{
-  color: rgba(236,244,248,.88) !important;
-}
-
-.airport-item:hover{
-  background: linear-gradient(135deg, rgba(var(--accent), .12), rgba(var(--accent-cool), .10)) !important;
-  border-color: rgba(var(--accent), .18) !important;
-}
-
-.airport-code{
-  color: rgba(214,255,248,.94) !important;
-}
-
-.airport-label{
-  color: rgba(177,194,204,.84) !important;
-}
-
 .flatpickr-calendar{
   background: rgba(8,19,29,.96) !important;
   border-color: rgba(186,210,220,.10) !important;
@@ -7908,7 +7743,6 @@ body::after{
 .hint,
 .section-title,
 .field label,
-.airport-label,
 .loader-sub,
 .loader-elapsed,
 .results-lede,
@@ -7953,7 +7787,6 @@ body::after{
 .results-query-block,
 .results-query-utility,
 .price-panel,
-.airport-suggest,
 .loader-card,
 .flatpickr-calendar,
 .flatpickr-calendar.nx-calendar{
@@ -7968,8 +7801,7 @@ body::after{
 .trust-card,
 .journey-leg,
 .results-query-block,
-.results-query-utility,
-.airport-suggest{
+.results-query-utility{
   background:
     linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)),
     rgba(21, 33, 48, .94) !important;
@@ -8335,34 +8167,6 @@ body::after{
   color: var(--text) !important;
 }
 
-.airport-suggest{
-  background:
-    linear-gradient(180deg, rgba(27, 40, 56, .98), rgba(18, 31, 45, .99)) !important;
-}
-
-.airport-item{
-  background: transparent !important;
-  color: var(--text) !important;
-  border-color: transparent !important;
-}
-
-.airport-item:hover{
-  background:
-    linear-gradient(135deg, rgba(var(--accent), .16), rgba(var(--accent-cool), .12)) !important;
-  border-color: rgba(var(--accent-cool), .26) !important;
-}
-
-.airport-code{
-  background: rgba(var(--accent-cool), .18) !important;
-  border-color: rgba(var(--accent-cool), .28) !important;
-  color: var(--text) !important;
-}
-
-.airport-item:hover .airport-code{
-  background: linear-gradient(135deg, rgba(var(--accent), 1), rgba(var(--accent-cool), .96)) !important;
-  color: var(--ink-on-accent) !important;
-}
-
 .flatpickr-calendar,
 .flatpickr-calendar.nx-calendar{
   background:
@@ -8462,9 +8266,7 @@ a:hover,
 .empty-card h2,
 .results-query-label,
 .results-query-footer strong,
-.results-query-nonstop-copy strong,
-.airport-label strong,
-.airport-label b{
+.results-query-nonstop-copy strong{
   color: var(--text) !important;
 }
 
@@ -9346,12 +9148,6 @@ textarea.ai-input:focus{
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
-  }
-
-  .airport-suggest{
-    max-height: min(50vh, 360px) !important;
-    overflow-y: auto !important;
-    border-radius: 18px !important;
   }
 }
 
@@ -10570,11 +10366,6 @@ textarea.ai-input:focus{
   .results-page .loader-card{
     padding: 18px !important;
     border-radius: 22px !important;
-  }
-
-  .results-page .airport-suggest{
-    max-height: min(48vh, 320px) !important;
-    border-radius: 18px !important;
   }
 }
 

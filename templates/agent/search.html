@@ -6,6 +6,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='agent-booking.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='airport-search.css', v='20260823-liteapi-3') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
 {% endblock %}
 
@@ -674,6 +675,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js', v='4.6.13') }}"></script>
+<script src="{{ url_for('static', filename='airport-search.js', v='20260823-liteapi-3') }}"></script>
 <script>
 (function () {
   "use strict";
@@ -733,26 +735,6 @@
       returnPicker.clear();
       if (returnDisplay) returnDisplay.value = "";
     }
-  }
-
-  function summarizeAirportLabel(code, label) {
-    const fallback = (label || "").replace((code || "") + " — ", "").trim();
-    if (!fallback) return "";
-    const parenMatches = Array.from(fallback.matchAll(/\(([^()]+)\)/g));
-    if (parenMatches.length) {
-      const lastMatch = parenMatches[parenMatches.length - 1];
-      return String(lastMatch[1] || "").trim() || fallback;
-    }
-    const parts = fallback.split(",").map(function (part) { return part.trim(); }).filter(Boolean);
-    if (parts.length >= 2) {
-      return parts.slice(-2).join(", ");
-    }
-    return fallback;
-  }
-
-  function applyAirportSelection(input, hint, code, label) {
-    if (input) input.value = code || "";
-    if (hint) hint.textContent = summarizeAirportLabel(code, label);
   }
 
   function syncTripMode() {
@@ -1030,113 +1012,6 @@
 
   document.querySelectorAll(".quick-route-card, .popular-route-card").forEach(function (button) {
     button.addEventListener("click", function () { fillRoute(button); });
-  });
-
-  document.querySelectorAll(".airport-input").forEach(function (input) {
-    let popup = null;
-    let controller = null;
-    let selectedIndex = -1;
-
-    function closePopup() {
-      if (popup) popup.remove();
-      popup = null;
-      selectedIndex = -1;
-    }
-
-    function ensurePopup() {
-      if (popup) return popup;
-      popup = document.createElement("div");
-      popup.className = "airport-suggestion-panel";
-      input.closest(".airport-field").appendChild(popup);
-      return popup;
-    }
-
-    function setActive(items) {
-      items.forEach(function (item, index) {
-        item.classList.toggle("active", index === selectedIndex);
-      });
-    }
-
-    async function requestSuggestions(query) {
-      if (controller) controller.abort();
-      controller = new AbortController();
-      try {
-        const response = await fetch("/airports?q=" + encodeURIComponent(query), {
-          signal: controller.signal,
-          credentials: "same-origin",
-          headers: { "Accept": "application/json" }
-        });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        return [];
-      }
-    }
-
-    async function updateSuggestions() {
-      const value = input.value.trim();
-      if (value.length < 3) {
-        closePopup();
-        return;
-      }
-      const items = await requestSuggestions(value);
-      if (!items.length) {
-        closePopup();
-        return;
-      }
-      const panel = ensurePopup();
-      panel.innerHTML = "";
-      items.slice(0, 8).forEach(function (item) {
-        const option = document.createElement("button");
-        const code = String(item.code || "").toUpperCase();
-        const label = String(item.label || code);
-        option.type = "button";
-        option.className = "airport-suggestion-option";
-        option.dataset.code = code;
-        option.dataset.label = label;
-        option.innerHTML = "<strong></strong><span></span>";
-        option.querySelector("strong").textContent = code;
-        option.querySelector("span").textContent = summarizeAirportLabel(code, label);
-        panel.appendChild(option);
-      });
-      selectedIndex = -1;
-    }
-
-    input.addEventListener("input", updateSuggestions);
-    input.addEventListener("focus", updateSuggestions);
-    input.addEventListener("keydown", function (event) {
-      if (!popup) return;
-      const items = Array.from(popup.querySelectorAll(".airport-suggestion-option"));
-      if (!items.length) return;
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-        setActive(items);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, 0);
-        setActive(items);
-      } else if (event.key === "Enter" && selectedIndex >= 0) {
-        event.preventDefault();
-        items[selectedIndex].click();
-      } else if (event.key === "Escape") {
-        closePopup();
-      }
-    });
-
-    input.closest(".airport-field").addEventListener("click", function (event) {
-      const option = event.target.closest(".airport-suggestion-option");
-      if (!option) return;
-      const hint = input.closest(".airport-field").querySelector(".airport-hint");
-      applyAirportSelection(input, hint, option.dataset.code || "", option.dataset.label || "");
-      closePopup();
-      input.focus();
-    });
-
-    document.addEventListener("click", function (event) {
-      if (!input.closest(".airport-field").contains(event.target)) closePopup();
-    });
   });
 
   const resultList = document.getElementById("agentResultsList");
