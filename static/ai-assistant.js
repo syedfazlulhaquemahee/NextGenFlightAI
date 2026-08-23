@@ -102,7 +102,73 @@
     };
   }
 
+  /* The "Lab" results experience (results-lab.js) is the page real users
+     land on today, but it builds cards as .lab-card elements with none of
+     the .fc-x / .flight-card classes extractFlightFromCard() above looks
+     for — it finds nothing there. It does embed a #labFlightsData JSON blob
+     with the same underlying offers (richer, actually — real numbers, not
+     scraped text), so read that directly instead of the DOM when present. */
+  function extractFlightFromLabPayload(f, idx) {
+    const out = f.out || {};
+    const ret = f.ret || {};
+    const priceRaw = Number(f.price) || 0;
+    const price = priceRaw ? `$${Math.round(priceRaw)}` : (f.priceLabel || "");
+    const durMin = f.totalDurationMin || out.durationMin || 0;
+    const stopCount = f.totalStops != null ? f.totalStops : (out.stops || 0);
+
+    function segFrom(leg) {
+      if (!leg || !leg.originCode) return null;
+      const layovers = (leg.layovers || []).map(l => l.name || l.code || "").filter(Boolean).join(", ");
+      return {
+        from: leg.originCode || "", to: leg.destCode || "",
+        depart: leg.departTime || "", arrive: leg.arriveTime || "",
+        duration: leg.durationLabel || "", stops: leg.stopsLabel || "",
+        layovers,
+      };
+    }
+    const segments = [segFrom(out), segFrom(ret)].filter(Boolean);
+
+    const priceVsCheapest = Number(f.priceVsCheapest) || 0;
+    const priceNote = priceVsCheapest > 0.5 ? `+$${Math.round(priceVsCheapest)} vs cheapest` : "Lowest price";
+
+    return {
+      rank: idx + 1,
+      airline: f.airlineName || "",
+      price,
+      price_raw: priceRaw,
+      price_note: priceNote,
+      duration: out.durationLabel || "",
+      duration_min: durMin,
+      stops: stopCount === 0 ? "Nonstop" : stopCount === 1 ? "1 stop" : `${stopCount} stops`,
+      stop_count: stopCount,
+      depart_date: (out.departIso || "").split("T")[0] || "",
+      depart_time: out.departTime || "",
+      arrive_time: out.arriveTime || "",
+      origin: (out.originCode || "").toUpperCase(),
+      destination: (out.destCode || "").toUpperCase(),
+      badges: f.badge ? [f.badge] : [],
+      smart_badge: f.badgeReasoning || f.badge || "",
+      segments,
+    };
+  }
+
+  function extractAllFlightsFromLabPayload() {
+    const dataEl = document.getElementById("labFlightsData");
+    if (!dataEl) return null;
+    try {
+      const payload = JSON.parse(dataEl.textContent || "{}");
+      const flights = payload.flights || [];
+      if (!flights.length) return null;
+      return flights.slice(0, 12).map((f, idx) => extractFlightFromLabPayload(f, idx));
+    } catch (e) {
+      return null;
+    }
+  }
+
   function extractAllFlights() {
+    const labFlights = extractAllFlightsFromLabPayload();
+    if (labFlights) return labFlights;
+
     const cards = Array.from(document.querySelectorAll(
       ".flight-card:not(.flex-live-skeleton):not([aria-hidden='true'])"
     )).filter(c => !c.classList.contains("flex-live-skeleton"));
@@ -206,6 +272,16 @@
       ctx.focus_mode = _focusMode;
     }
 
+    // Nearby-date pricing (the results-lab.js date strip already fetched
+    // this for its own UI — read it opportunistically rather than the AI
+    // routes fetching Duffel data themselves on every chat message).
+    if (window.SkairDateStrip) {
+      try {
+        const prices = window.SkairDateStrip.getPrices();
+        if (prices && Object.keys(prices).length) ctx.nearby_date_prices = prices;
+      } catch (e) { /* ignore */ }
+    }
+
     return ctx;
   }
 
@@ -274,25 +350,18 @@
 
     // Results page — use actual live flight data
     const replies = [];
-    if (cheapAirline && cheapPrice) {
-      replies.push(`Is ${cheapAirline} reliable for this route?`);
-      replies.push(`What's included in the ${cheapPrice} fare?`);
-    } else if (dest) {
-      replies.push(`What's ${dest} like to visit?`);
-      replies.push("Which flight gives the best value?");
-    } else {
-      replies.push("Which flight gives the best value?");
-    }
+    replies.push(cheapPrice ? `Is ${cheapPrice} a good price for this route?` : "Is this a good price for this route?");
+    replies.push(dest ? `Do I need a visa for ${dest}?` : "What documents might I need for this trip?");
     if (topAirline && topAirline !== cheapAirline) {
       replies.push(`How good is ${topAirline} on this route?`);
-    } else if (dest && !replies.some(r => r.includes(dest))) {
-      replies.push(`Best time of year to visit ${dest}?`);
+    } else if (cheapAirline) {
+      replies.push(`Is ${cheapAirline} reliable for this route?`);
     } else {
-      replies.push("Best seat tips for a long-haul flight?");
+      replies.push("Which flight gives the best value?");
     }
     if (fastest && cheapest && fastest !== cheapest && fastest.airline) {
       replies.push(`Is the faster ${fastest.airline} option worth the extra?`);
-    } else if (!replies.some(r => r.includes("visa") || r.includes("airport"))) {
+    } else {
       replies.push("How early should I arrive at the airport?");
     }
     return replies.slice(0, 4);
@@ -353,6 +422,30 @@
             textEl.textContent = "Your results are ready. Check the top cards for our best picks.";
           }
         });
+    },
+  };
+
+  /* ─────────────────────────────────────────────────────────
+     PROACTIVE CHEAPER-DATE NUDGE
+     results-lab.js calls this once it has already confirmed (via plain
+     arithmetic on data it fetched for its own date-strip UI — no LLM call,
+     no extra network request) that a nearby date is meaningfully cheaper
+     than the one currently selected. This file only renders the nudge,
+     reusing the existing system-message mechanism (lights the chat badge,
+     never force-opens the panel — same behavior as flight-focus tracking).
+  ───────────────────────────────────────────────────────── */
+  window.SkairAIChat = {
+    notifyCheaperDate: function (opts) {
+      opts = opts || {};
+      if (!opts.date || !opts.price || typeof _addSystemMsg !== "function") return;
+      const currency = opts.currency || "USD";
+      const symbol = currency === "USD" ? "$" : currency + " ";
+      const deltaTxt = opts.deltaAmount ? ` — ${symbol}${Math.round(opts.deltaAmount)} less` : "";
+      let dateLabel = opts.date;
+      try {
+        dateLabel = new Date(opts.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      } catch (e) { /* keep raw date string */ }
+      _addSystemMsg(`💡 ${dateLabel} is cheaper: ${symbol}${Math.round(opts.price)}${deltaTxt}. Tap that date above to switch.`);
     },
   };
 
@@ -540,6 +633,7 @@
     let hasInteracted = false;
     let selectedModel = "Skairova";
     let responseStyle = "Balanced";
+    let _qrPopulated = false;
 
     /* Wire module-level callbacks */
     _updateFocusUI = function(flight, mode) {
@@ -553,7 +647,8 @@
       else focusBar.classList.remove("is-selected");
     };
 
-    _addSystemMsg = function(text) {
+    _addSystemMsg = function(text, persist) {
+      if (persist !== false) { _persistedMessages.push({ role: "system", text }); savePersistedChat(); }
       const row = document.createElement("div");
       row.className = "ai-system-msg";
       row.textContent = text;
@@ -563,6 +658,42 @@
       if (!isOpen && badge) { badge.style.display = "flex"; }
     };
 
+    /* ── Conversation persistence — survives page navigation within the
+       tab (sessionStorage, not localStorage: a chat about this booking
+       session shouldn't outlive the tab it happened in). Every message
+       that lands in the DOM also lands here; on init we replay whatever
+       was saved instead of showing a fresh per-page greeting. ── */
+    const CHAT_STORAGE_KEY = "skair_ai_chat_transcript";
+    let _persistedMessages = [];
+
+    function loadPersistedChat() {
+      try {
+        const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return (parsed && Array.isArray(parsed.messages)) ? parsed : null;
+      } catch (e) { return null; }
+    }
+    function savePersistedChat() {
+      try {
+        sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({ messages: _persistedMessages }));
+      } catch (e) { /* storage unavailable/full — degrade to in-memory only */ }
+    }
+
+    const _saved = loadPersistedChat();
+    const _restoredConversation = !!(_saved && _saved.messages.length);
+    if (_restoredConversation) {
+      hasInteracted = true;
+      _chatHasInteracted = true;
+      msgs.replaceChildren(); // drop the template's static placeholder bubble before replaying
+      _saved.messages.forEach(m => {
+        _persistedMessages.push(m);
+        if (m.role === "system") _addSystemMsg(m.text, false);
+        else addMessage(m.role, m.text, false);
+      });
+      _qrPopulated = true;
+      if (qrWrap) qrWrap.style.display = "none";
+    }
+
     if (focusClear) {
       focusClear.addEventListener("click", () => {
         _focusedFlight = null;
@@ -571,65 +702,40 @@
       });
     }
 
-    /* Set page-aware greeting in the static bubble message */
-    (function () {
+    /* Set page-aware greeting in the static bubble message — skipped when a
+       persisted conversation is being restored (see below), since that
+       bubble already holds real history and must not be overwritten. */
+    if (!_restoredConversation) (function () {
       let _p = window.SKAIR_PAGE || {};
       try { const el = document.getElementById("skairPageCtx"); if (el) _p = Object.assign(_p, JSON.parse(el.textContent || "{}")); } catch(e) {}
       const page = _p.page_type || "results";
       const p = _p;
-      const greetingTitle = wrap.querySelector(".ai-chat-greeting-title");
-      const greetingBody  = wrap.querySelector(".ai-chat-greeting-sub");
-      const firstBubble   = wrap.querySelector(".ai-msg-bubble");
+      const firstBubble = wrap.querySelector(".ai-msg-bubble");
 
       // Expose greeting bubble to module scope so refreshAllFlights() can enrich it with real prices
       if (page === "results" || !p.page_type) _greetingBubble = firstBubble;
 
-      const greetings = {
-        results: {
-          title: p.destination ? `Flights to ${p.destination}` : "Flight results",
-          sub: "Ask me about any airline shown, fare differences, baggage, or travel tips — I can't run new searches.",
-          bubble: p.origin && p.destination
-            ? `I can see your ${p.origin} → ${p.destination} results. Ask me about the airlines, fare classes, what to expect, or anything travel related.`
-            : p.destination
-              ? `Looking at flights to ${p.destination}? Ask me about the airlines, fare differences, or travel tips.`
-              : "Ask me about any flight shown — airline quality, fare classes, stops, or what to expect.",
-        },
-        checkout: {
-          title: "Ready to book?",
-          sub: "Ask me about baggage, documents, or what to expect — I can't make changes on your behalf.",
-          bubble: `You've selected ${p.airline_name || "a flight"}${p.route_summary ? " — " + p.route_summary : ""}. Ask me anything before you confirm.`,
-        },
-        seat_selection: {
-          title: "Picking your seat?",
-          sub: "Ask me about legroom, window vs aisle, exit rows, or seats to avoid — I can't select seats for you.",
-          bubble: `Choosing a seat on ${p.airline_name || "your flight"}. Ask me which seats are best for comfort, legroom, or window views.`,
-        },
-        confirmation: {
-          title: "Booking confirmed!",
-          sub: "Ask me about check-in timing, baggage, visa requirements, or what to pack.",
-          bubble: `Your booking is confirmed${p.booking_reference ? " — ref " + p.booking_reference : ""}. Ask me about check-in, baggage, or what to expect at your destination.`,
-        },
-        manage_booking: {
-          title: "Managing your booking?",
-          sub: "Ask me about fare rules, cancellation policies, or what to do if plans change — I can't make changes for you.",
-          bubble: `I can see your booking${p.booking_reference ? " " + p.booking_reference : ""}. Ask me about refunds, change policies, or what to expect on this route.`,
-        },
-        booking_review: {
-          title: "Reviewing your trip?",
-          sub: "Ask me about this fare, baggage, the airline's reputation, or the airports on this route.",
-          bubble: `You're reviewing your trip on ${p.airline_name || "this airline"}${p.route_summary ? " — " + p.route_summary : ""}. Ask me anything about this flight.`,
-        },
+      const bubbles = {
+        results: p.origin && p.destination
+          ? `I can see your ${p.origin} → ${p.destination} results. Ask if this is a good price, whether another date's cheaper, or what to expect when you land.`
+          : p.destination
+            ? `Looking at flights to ${p.destination}? Ask about the fares, the airlines, or what you'll need to travel there.`
+            : "Ask whether a fare's a good deal, how the airlines compare, or what to expect at the airport.",
+        checkout: `You've selected ${p.airline_name || "a flight"}${p.route_summary ? " — " + p.route_summary : ""}. Ask me anything before you confirm.`,
+        seat_selection: `Choosing a seat on ${p.airline_name || "your flight"}. Ask me which seats are best for comfort, legroom, or window views.`,
+        confirmation: `Your booking is confirmed${p.booking_reference ? " — ref " + p.booking_reference : ""}. Ask me about check-in, baggage, or what to expect at your destination.`,
+        manage_booking: `I can see your booking${p.booking_reference ? " " + p.booking_reference : ""}. Ask me about refunds, change policies, or what to expect on this route.`,
+        booking_review: `You're reviewing your trip on ${p.airline_name || "this airline"}${p.route_summary ? " — " + p.route_summary : ""}. Ask me anything about this flight.`,
       };
-      const g = greetings[page];
-      if (g) {
-        if (greetingTitle) greetingTitle.textContent = g.title;
-        if (greetingBody)  greetingBody.textContent  = g.sub;
-        if (firstBubble)   firstBubble.textContent   = g.bubble;
+      const bubbleText = bubbles[page];
+      if (bubbleText && firstBubble) {
+        firstBubble.textContent = bubbleText;
+        _persistedMessages.push({ role: "ai", text: bubbleText });
+        savePersistedChat();
       }
     })();
 
     /* Quick replies — built lazily on first open so live flight data is available */
-    let _qrPopulated = false;
     function populateQuickReplies() {
       if (_qrPopulated || !qrWrap) return;
       _qrPopulated = true;
@@ -732,9 +838,13 @@
       history.length = 0;
       hasInteracted = false;
       _chatHasInteracted = false;
+      let keptFirst = null;
       msgs.querySelectorAll(".ai-msg, .ai-system-msg").forEach((message, index) => {
         if (index > 0 || message.classList.contains("ai-system-msg")) message.remove();
+        else keptFirst = message.querySelector(".ai-msg-bubble")?.textContent || null;
       });
+      _persistedMessages = keptFirst ? [{ role: "ai", text: keptFirst }] : [];
+      savePersistedChat();
       if (qrWrap) {
         qrWrap.replaceChildren();
         qrWrap.style.display = "";
@@ -747,8 +857,10 @@
     /* Messages */
     function scrollToBottom() { msgs.scrollTop = msgs.scrollHeight; }
 
-    function addMessage(role, text) {
+    function addMessage(role, text, persist) {
       if (role === "user") history.push({ role: "user", content: text });
+      else if (role === "ai") history.push({ role: "assistant", content: text });
+      if (persist !== false) { _persistedMessages.push({ role, text }); savePersistedChat(); }
       const row = document.createElement("div");
       row.className = `ai-msg ai-msg--${role}`;
       if (role === "ai") {
@@ -829,7 +941,6 @@
           typingRow.remove();
           const reply = data.reply || "I'm sorry, I couldn't process that. Please try again.";
           addMessage("ai", reply);
-          history.push({ role: "assistant", content: reply });
         })
         .catch(() => {
           typingRow.remove();

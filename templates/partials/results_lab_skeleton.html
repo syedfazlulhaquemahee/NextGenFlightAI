@@ -1,0 +1,84 @@
+{# Lab-matching loading skeleton for search_shell.html. Reuses the exact
+   same scaffold partials (header/stepper/filter-rail) the real
+   results_lab_body.html renders, plus 8 shimmer cards using the
+   already-styled-but-previously-unused .lab-skeleton-card class
+   (static/results-lab.css:2237-2253), so there is no visual handoff when
+   static/flex-results-stream.js swaps this out for the real page — same
+   header, same layout, same card slots, just shimmer instead of content.
+   Deliberately excludes the nearby-dates chip strip and the edit-search
+   dialog (secondary async widgets — they should simply appear once real
+   content lands, not be "replaced"). #}
+{% set trip_mode = (query.get('trip_type') if query.get('trip_type') in ['roundtrip', 'oneway'] else ('roundtrip' if query.get('return_date') else 'oneway')) %}
+{% set passenger_count = query.get('passengers', 1) %}
+{% set cabin_label = query.get('cabin', 'ECONOMY').replace('_', ' ')|title %}
+
+<div class="results-lab-body" id="resultsLabBody">
+  <div class="lab-shell">
+
+    {% set skeleton = true %}
+    {% include "partials/lab_summary_header.html" %}
+    {% include "partials/lab_progress_stepper.html" %}
+
+    {# flex-results-stream.js updates these by id regardless of which
+       skeleton is showing (resultsFlexLiveStatus/resultsFlexProgressFill/
+       resultsFlexBestFound, plus the two flex-only elements below) — without
+       this, <main class="wrap"> being hidden here also hides the ONLY place
+       those ids existed, so a Lab-mode search shows static shimmer with
+       zero progress feedback for however long the live search actually
+       takes. Same markup/ids results_pending_loader_block.html and
+       flex_stream_list_head.html already use, just placed to fit the Lab
+       layout instead of the classic list-head. #}
+    <div class="lab-toolbar" aria-hidden="true" style="padding-bottom:0;">
+      {% if flex_streaming %}
+        <div class="gf-date-chips" id="resultsFlexDateChips" aria-label="Date checks completed" hidden></div>
+        <p id="resultsFlexStreamLede" hidden></p>
+        {% if flex_ai_deferred | default(false) %}
+          {% set loader_primary = "Parsing your trip with AI…" %}
+        {% elif query.get('origin') and query.get('destination') %}
+          {% set loader_primary = "Live scan · " ~ query.get('origin') ~ " → " ~ query.get('destination') ~ ((" · " ~ query.get('flex_month')) if query.get('flex_month') else "") %}
+        {% else %}
+          {% set loader_primary = "Searching live inventory…" %}
+        {% endif %}
+      {% elif query.get('origin') and query.get('destination') %}
+        {% set loader_primary = "Live search · " ~ query.get('origin') ~ " → " ~ query.get('destination') %}
+      {% elif query.get('raw_text') %}
+        {% set loader_primary = "Searching with AI…" %}
+      {% else %}
+        {% set loader_primary = "Searching live inventory…" %}
+      {% endif %}
+      {% include "partials/results_unified_loader.html" %}
+    </div>
+
+    <div class="lab-layout">
+      {% include "partials/lab_filter_rail.html" %}
+
+      <div class="lab-column">
+        <div class="lab-toolbar" id="labResultsHeader" aria-hidden="true">
+          <div class="lab-toolbar-top">
+            <div class="lab-toolbar-count"><span class="gf-sk-shimmer" style="display:inline-block;width:70px;height:16px;border-radius:5px;"></span></div>
+            <div class="lab-sort">
+              <div class="lab-sort-tabs" role="tablist" aria-label="Sort flights">
+                <button type="button" class="lab-sort-tab" role="tab" aria-selected="true" disabled tabindex="-1">
+                  <span class="lab-sort-tab-label"><span class="lab-spark" aria-hidden="true">✦</span> Best</span>
+                </button>
+                <button type="button" class="lab-sort-tab" role="tab" aria-selected="false" disabled tabindex="-1">
+                  <span class="lab-sort-tab-label">Cheapest</span>
+                </button>
+                <button type="button" class="lab-sort-tab" role="tab" aria-selected="false" disabled tabindex="-1">
+                  <span class="lab-sort-tab-label">Quickest</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lab-list" aria-hidden="true">
+          {% for i in range(8) %}
+          <div class="lab-skeleton-card"></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

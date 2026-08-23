@@ -21,13 +21,7 @@
     })();
   </script>
   <title>Results • Skairova</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
-  {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-results-calendar') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260819-route-timeline') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='results-lab.css', v='20260821-61') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260818-typography-hierarchy') }}" />
+  {% include "partials/results_head_assets.html" %}
   {% if flex_streaming or search_pending %}
   <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
   {% endif %}
@@ -436,6 +430,22 @@
   {% endmacro %}
 
   {% include "partials/platform_header.html" %}
+
+  {# theme-toggle.js / portal-menu.js must run exactly once and never be
+     torn down by the shell to results swap, so they're loaded outside
+     #resultsContentRoot in both this template and search_shell.html.
+     If they were inside, swapInFinalResults()'s innerHTML replacement
+     would destroy the original script element, its dedupe-by-src check
+     would no longer find it in document.scripts, and the swapped-in
+     copy would re-execute and double-bind every listener these scripts
+     set up. #}
+  {% include "partials/theme_scripts.html" %}
+
+  {# Swap anchor for the non-destructive shell->results transition
+     (static/flex-results-stream.js's swapInFinalResults()) — search_shell.html
+     wraps its loading skeleton in the exact same id so the client can patch
+     this whole region in place instead of document.write()-ing the page. #}
+  <div id="resultsContentRoot">
 
   <div class="fc-modal-backdrop" id="fcModalBackdrop" hidden></div>
 
@@ -3110,83 +3120,17 @@
   })();
   </script>
   {% if flex_streaming or search_pending %}
-  <script src="{{ url_for('static', filename='flex-results-stream.js', v='20260513-reload-url') }}"></script>
+  <script src="{{ url_for('static', filename='flex-results-stream.js', v='20260822-swap-fix') }}"></script>
   {% endif %}
-  {% include "partials/theme_scripts.html" %}
 
-  {# ── AI Chatbot Bubble ── #}
-  <div id="aiChatBubbleWrap" class="ai-chat-bubble-wrap" aria-label="AI flight assistant">
-    <div class="ai-chat-panel" role="dialog" aria-label="Skairova AI flight assistant" aria-modal="false">
-      <header class="ai-chat-header">
-        <div class="ai-chat-header-avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
-        </div>
-        <div class="ai-chat-header-info">
-          <div class="ai-chat-header-name">Skairova AI</div>
-          <div class="ai-chat-header-status">
-            <span class="ai-chat-status-dot" aria-hidden="true"></span>
-            Flight expert · Online
-          </div>
-        </div>
-        <button class="ai-chat-header-close" type="button" aria-label="Close chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </header>
-
-      <div class="ai-chat-focus-bar" aria-live="polite" aria-atomic="true">
-        <span class="ai-chat-focus-label"></span>
-        <button class="ai-chat-focus-clear" type="button" aria-label="Clear flight focus">Clear</button>
-      </div>
-
-      <div class="ai-chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
-        <div class="ai-chat-greeting">
-          <div class="ai-chat-greeting-title">Hi, I'm your flight expert</div>
-          <div class="ai-chat-greeting-sub">Ask me anything about this trip — or click <strong>Details</strong> on any flight and I'll answer questions specifically about that one.</div>
-        </div>
-        <div class="ai-msg ai-msg--ai">
-          <div class="ai-msg-avatar" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
-          </div>
-          <div class="ai-msg-bubble">
-            {% if query.get('origin') and query.get('destination') %}
-              I can see you're looking at flights from {{ query.get('origin') }} to {{ query.get('destination') }}{% if query.get('depart_date') %} on {{ query.get('depart_date') }}{% endif %}. What would you like to know?
-            {% elif flex_streaming and query.get('flex_month') %}
-              I can see you're doing a flex search for {{ query.get('flex_month') }}. I'll analyze the results for you. Got questions?
-            {% else %}
-              I'm here to help with your flight search. Ask me anything!
-            {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <div class="ai-quick-replies" aria-label="Quick questions"></div>
-
-      <footer class="ai-chat-footer">
-        <div class="ai-chat-input-wrap">
-          <textarea
-            class="ai-chat-input"
-            placeholder="Ask about this flight…"
-            rows="1"
-            maxlength="400"
-            aria-label="Type your question (max 400 characters)"
-          ></textarea>
-          <span class="ai-chat-char-count" aria-live="polite" aria-atomic="true">0/400</span>
-        </div>
-        <button class="ai-chat-send" type="button" aria-label="Send message" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
-        </button>
-      </footer>
-      <div class="ai-chat-footer-note">Flight expert only · Max 400 chars per message</div>
-    </div>
-
-    <button class="ai-chat-trigger" type="button" aria-label="Open AI flight assistant" aria-expanded="false">
-      <svg class="ai-chat-trigger-icon-chat" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l4.93-1.37A9.96 9.96 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zM7.5 14a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4.5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
-      <svg class="ai-chat-trigger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      <span class="ai-chat-badge" style="display:none;" aria-label="1 new message">1</span>
-    </button>
-  </div>
-
-  {% set _skair_page = {"page_type": "results", "origin": query.get("origin") or "", "destination": query.get("destination") or "", "depart_date": query.get("depart_date") or "", "return_date": query.get("return_date") or "", "cabin": query.get("cabin") or "ECONOMY", "passengers": query.get("passengers") or 1, "trip_type": query.get("trip_type") or "roundtrip", "flex_month": query.get("flex_month") or "", "nonstop": "on" if query.get("nonstop") else "", "raw_text": query.get("raw_text") or ""} %}
+  {# AI chat bubble lives in partials/ai_chatbot.html now (included once via
+     platform_header.html, on every page) — this used to have its own
+     inline copy here too, which meant two #aiChatBubbleWrap elements with
+     the same id stacked in the same fixed bottom-right spot, the second
+     one running a stale ai-assistant.js version that never got wired up
+     correctly. Removed rather than kept "just in case": the shared partial
+     already covers this page like every other. #}
+  {% set _skair_page = {"page_type": "results", "origin": query.get("origin") or "", "destination": query.get("destination") or "", "depart_date": query.get("depart_date") or "", "return_date": query.get("return_date") or "", "cabin": query.get("cabin") or "ECONOMY", "passengers": query.get("passengers") or 1, "trip_type": query.get("trip_type") or "roundtrip", "flex_month": query.get("flex_month") or "", "nonstop": "on" if query.get("nonstop") else "", "raw_text": query.get("raw_text") or "", "price_spread": flights | price_spread} %}
   <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
   <script>
     /* Persist search so the homepage can restore it on back navigation or after an error/expiry.
@@ -3218,12 +3162,14 @@
       } catch (e) {}
     })();
   </script>
-  <script src="{{ url_for('static', filename='ai-assistant.js', v='20260526-next-level') }}"></script>
   <script>
     window.addEventListener("pageshow", function () {
       document.documentElement.style.opacity = "";
       document.documentElement.style.transition = "";
     });
   </script>
+  <script src="{{ url_for('static', filename='liteapi-supplement.js', v='20260822-1') }}" defer></script>
+
+  </div><!-- /#resultsContentRoot -->
 </body>
 </html>

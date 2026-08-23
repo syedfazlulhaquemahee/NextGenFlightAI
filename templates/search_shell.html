@@ -10,13 +10,19 @@
     html, body { background: #07070b; }
     html[data-theme="light"], html[data-theme="light"] body { background: #f1f4f9; }
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260529-border-only-focus') }}" />
+  {% include "partials/results_head_assets.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
-  {% include "partials/theme_head.html" %}
   {% include "partials/flights_parity_head.html" %}
+  {# Warm the cache for the scripts the post-swap page needs but this
+     loading page doesn't load itself, so swapInFinalResults()'s dynamic
+     script creation (static/flex-results-stream.js) is a fast local hit
+     instead of a cold fetch. Version strings must stay in lockstep with
+     the real <script> tags in results.html or this silently no-ops. #}
+  <link rel="preload" as="script" href="{{ url_for('static', filename='results-lab.js', v='20260822-null-leg-fix') }}" />
+  <link rel="preload" as="script" href="{{ url_for('static', filename='ai-assistant.js', v='20260822-content-1') }}" />
+  <link rel="preload" as="script" href="{{ url_for('static', filename='liteapi-supplement.js', v='20260822-1') }}" />
 </head>
-<body class="results-page flex-stream-results">
+<body class="results-page flex-stream-results{% if request.cookies.get('resultsView') == 'lab' %} lab-active{% endif %}">
   {% if flex_streaming %}
   <form id="flexStreamBootForm" method="post" action="{{ url_for('search_flex_stream') }}" class="sr-only" aria-hidden="true">
     {% for name, value in flex_stream_fields.items() %}
@@ -39,7 +45,35 @@
 
   {% include "partials/platform_header.html" %}
 
-  <main class="wrap">
+  {# theme-toggle.js / portal-menu.js must run exactly once and never be
+     torn down by the shell to results swap — see the matching comment in
+     results.html for why this has to stay outside #resultsContentRoot. #}
+  {% include "partials/theme_scripts.html" %}
+
+  {# Gate the Lab-styled skeleton on the same resultsView cookie results.html
+     uses to decide Lab vs classic, so the loading state always matches
+     whichever final UI this exact request is actually going to land on.
+     Not gated on flex_streaming: that flag only describes how THIS shell
+     page was reached, not what the final results.html render (which never
+     receives it) ends up showing — tying to it would reintroduce the same
+     shell/final mismatch for flex and AI-flex searches. manual_flow is the
+     one server-side condition that genuinely produces a classic-shaped
+     final render for a roundtrip search (see search_liteapi_supplement's
+     analogous _liteapi_flight_search_supported gating for the same
+     "combination_mode already tells us the eventual shape" pattern). #}
+  {% set shell_manual_combo = (query.get('combination_mode') == 'manual') and (query.get('trip_type', 'roundtrip') == 'roundtrip') %}
+  {% set show_lab_skeleton = (request.cookies.get('resultsView') == 'lab') and not shell_manual_combo %}
+
+  {# Swap anchor for the non-destructive shell->results transition — must
+     match results.html's #resultsContentRoot exactly (see
+     static/flex-results-stream.js's swapInFinalResults()). #}
+  <div id="resultsContentRoot">
+
+  {% if show_lab_skeleton %}
+    {% include "partials/results_lab_skeleton.html" %}
+  {% endif %}
+
+  <main class="wrap"{% if show_lab_skeleton %} hidden{% endif %}>
     {% set shell_trip_mode = query.get('trip_type', 'roundtrip') %}
     {% set shell_pax = query.get('passengers', 1) %}
     {% set shell_cabin = query.get('cabin', 'ECONOMY').replace('_', ' ')|title %}
@@ -201,8 +235,9 @@
     </footer>
   </main>
 
-  <script src="{{ url_for('static', filename='flex-results-stream.js', v='20260526-ux') }}"></script>
-  {% include "partials/theme_scripts.html" %}
+  </div><!-- /#resultsContentRoot -->
+
+  <script src="{{ url_for('static', filename='flex-results-stream.js', v='20260822-swap-fix') }}"></script>
   <script>
     /* If user lands here via back/forward navigation after streaming already completed,
        the stream won't restart — redirect them home so search is accessible. */

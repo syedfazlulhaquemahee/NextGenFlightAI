@@ -17,6 +17,14 @@
   const cardsEl = document.getElementById("resultsCards");
   if (!cardsEl) return;
 
+  // When the Lab-styled skeleton is showing (search_shell.html sets
+  // show_lab_skeleton and hides <main class="wrap">, the classic markup's
+  // container), skip populating classic skeleton cards nobody will ever
+  // see — real work still happens (status text/progress bar), just no
+  // wasted DOM churn on hidden nodes.
+  const classicMainEl = document.querySelector("main.wrap");
+  const classicHidden = Boolean(classicMainEl && classicMainEl.hidden);
+
   const progressFill = document.getElementById("resultsFlexProgressFill");
 
   const skeletonSlots = Array.from(cardsEl.querySelectorAll(".flex-live-skeleton"));
@@ -129,6 +137,134 @@
     const gt = html.indexOf(">", idx);
     if (gt === -1) return snippet + html;
     return html.slice(0, gt + 1) + snippet + html.slice(gt + 1);
+  }
+
+  // Scripts inserted via innerHTML are inert — browsers never execute
+  // <script> elements created that way. Walk the just-swapped-in subtree
+  // and recreate each one so it actually runs. Any script whose src already
+  // exists OUTSIDE this subtree is skipped instead of recreated — that's
+  // what stops header-menu.js/theme-toggle.js/portal-menu.js (all loaded
+  // once already, outside #resultsContentRoot, before this swap ever ran)
+  // from double-binding their listeners.
+  //
+  // Deliberately checks only scripts OUTSIDE root, not all of
+  // document.scripts: by the time this runs, root.innerHTML was just
+  // assigned, so the (still-inert) copies of results-lab.js/ai-assistant.js/
+  // etc. we're about to replace are ALREADY in document.scripts too —
+  // comparing against the unfiltered list made every script match itself
+  // and get silently removed instead of executed, so nothing in Lab mode
+  // ever rendered a single card.
+  //
+  // Returns a promise that resolves once results-lab.js has loaded (or
+  // failed to), so the caller can wait for it before revealing the page.
+  function executeInjectedScripts(root) {
+    const originals = Array.from(root.querySelectorAll("script"));
+    const outsideSrcs = new Set(
+      Array.from(document.scripts)
+        .filter(function (s) { return !root.contains(s); })
+        .map(function (s) { return s.src; })
+        .filter(Boolean)
+    );
+    let labLoadPromise = null;
+    originals.forEach(function (old) {
+      const src = old.getAttribute("src");
+      if (src) {
+        const absoluteSrc = new URL(src, window.location.href).href;
+        if (outsideSrcs.has(absoluteSrc)) {
+          old.remove();
+          return;
+        }
+      }
+      const fresh = document.createElement("script");
+      Array.from(old.attributes).forEach(function (attr) {
+        fresh.setAttribute(attr.name, attr.value);
+      });
+      // Dynamically-inserted scripts default to async; forcing this off
+      // makes multiple newly-created src scripts execute in document
+      // order, matching the guarantees the original deferred tags had.
+      fresh.async = false;
+      if (!src) fresh.textContent = old.textContent;
+      const isLabScript = Boolean(src) && /(^|\/)results-lab\.js(\?|$)/.test(src);
+      if (isLabScript) {
+        labLoadPromise = new Promise(function (resolve) {
+          fresh.addEventListener("load", resolve, { once: true });
+          fresh.addEventListener("error", resolve, { once: true });
+        });
+      }
+      old.replaceWith(fresh);
+    });
+    return labLoadPromise || Promise.resolve();
+  }
+
+  function nextPaint() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(resolve);
+      });
+    });
+  }
+
+  function delay(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  // Non-destructive replacement for document.write(): swaps the freshly
+  // completed results.html render into the live page in place, instead of
+  // tearing the whole document down and rebuilding it. Same DOMParser +
+  // targeted-innerHTML pattern already proven working in
+  // static/liteapi-supplement.js, applied to the shell->results handoff.
+  async function swapInFinalResults(html, reloadUrl) {
+    const currentRoot = document.getElementById("resultsContentRoot");
+    let newRoot = null;
+    if (currentRoot) {
+      try {
+        const parsedDoc = new DOMParser().parseFromString(html, "text/html");
+        newRoot = parsedDoc.getElementById("resultsContentRoot");
+      } catch (e) {
+        newRoot = null;
+      }
+    }
+
+    if (!currentRoot || !newRoot) {
+      // Defensive fallback — template drift or an unexpected error-page
+      // shape. Degrade to the previously-shipped, known-working mechanism
+      // rather than leaving the page stuck on the loading skeleton.
+      html = injectResultsScrollFix(html);
+      try {
+        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      } catch (e) {
+        /* ignore */
+      }
+      window.history.replaceState({ searchLoader: true }, "", reloadUrl);
+      window.scrollTo(0, 0);
+      document.open();
+      document.write(html);
+      document.close();
+      return;
+    }
+
+    const newTitle = newRoot.ownerDocument && newRoot.ownerDocument.title;
+
+    // Content changes instantly underneath while invisible, then fades in
+    // once results-lab.js is ready — the user never sees an in-between
+    // blank/broken state, and (since nothing is torn down) the browser
+    // preserves scroll position through the swap with no extra handling.
+    currentRoot.style.transition = "opacity .22s ease";
+    currentRoot.style.opacity = "0";
+    await nextPaint();
+
+    currentRoot.innerHTML = newRoot.innerHTML;
+    const labReady = executeInjectedScripts(currentRoot);
+
+    window.history.replaceState({ searchLoader: true }, "", reloadUrl);
+    if (newTitle) document.title = newTitle;
+
+    await Promise.race([labReady, delay(800)]);
+
+    currentRoot.style.opacity = "";
+    currentRoot.style.transition = "";
   }
 
   function formatMoneyExact(currency, amount) {
@@ -964,36 +1100,27 @@
       } else {
         bumpProgress(Math.max(loadProgress, 0.93 + Math.min(0.04, rank * 0.008)));
       }
-      const f = obj.flight || {};
-      const html = buildResultsFlightCardHtml(rank, f, "per traveler");
-      const idx = rank - 1;
-      if (idx >= 0 && idx < skeletonSlots.length && skeletonSlots[idx]) {
-        const slot = skeletonSlots[idx];
-        const wrap = document.createElement("div");
-        wrap.innerHTML = html.trim();
-        const node = wrap.firstElementChild;
-        if (node && slot.parentNode) slot.parentNode.replaceChild(node, slot);
-        skeletonSlots[idx] = null;
-      } else {
-        cardsEl.insertAdjacentHTML("beforeend", html);
+      if (!classicHidden) {
+        const f = obj.flight || {};
+        const html = buildResultsFlightCardHtml(rank, f, "per traveler");
+        const idx = rank - 1;
+        if (idx >= 0 && idx < skeletonSlots.length && skeletonSlots[idx]) {
+          const slot = skeletonSlots[idx];
+          const wrap = document.createElement("div");
+          wrap.innerHTML = html.trim();
+          const node = wrap.firstElementChild;
+          if (node && slot.parentNode) slot.parentNode.replaceChild(node, slot);
+          skeletonSlots[idx] = null;
+        } else {
+          cardsEl.insertAdjacentHTML("beforeend", html);
+        }
       }
       return;
     }
     if (obj.type === "complete") {
       bumpProgress(0.995);
-      let html = obj.html;
-      html = injectResultsScrollFix(html);
-      try {
-        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-      } catch (e) {
-        /* ignore */
-      }
       const reloadUrl = typeof obj.url === "string" && obj.url ? obj.url : "/search";
-      window.history.replaceState({ searchLoader: true }, "", reloadUrl);
-      window.scrollTo(0, 0);
-      document.open();
-      document.write(html);
-      document.close();
+      swapInFinalResults(obj.html, reloadUrl);
       return;
     }
     if (obj.type === "error") {

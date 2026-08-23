@@ -18,7 +18,15 @@
   } catch (e) {
     return;
   }
-  var allFlights = payload.flights || [];
+  // A flight with no outbound leg is unrenderable (every card template
+  // assumes fl.out exists — the "flat" case's `fl.ret ? [fl.out, fl.ret] :
+  // [fl.out]` in particular has no fallback for fl.out itself being
+  // missing) and shouldn't have reached this payload at all — filtering it
+  // out here, once, means every downstream computation (isRoundTrip,
+  // departureGroups, itemsForStage) only ever sees clean data instead of
+  // needing its own null-guard. One bad record no longer takes down the
+  // whole results list.
+  var allFlights = (payload.flights || []).filter(function (f) { return f && f.out; });
   var searchForm = payload.searchForm || null;
   if (!allFlights.length) return; // empty/error state already rendered server-side
 
@@ -998,6 +1006,51 @@
       }, null);
       if (selectedLowest !== null) datePrices[selectedKey] = { price: selectedLowest };
 
+      // Read-only surface for ai-assistant.js's collectContext() — the date
+      // strip already fetches this for its own UI, so the chat assistant
+      // gets it for free instead of the AI routes hitting Duffel themselves
+      // on every message (that endpoint's own concurrency is already
+      // deliberately capped low; adding chat-triggered calls on top of the
+      // UI's own would defeat that).
+      window.SkairDateStrip = {
+        getPrices: function () { return datePrices; },
+      };
+
+      function checkForCheaperDateNudge() {
+        if (selectedLowest === null || !window.SkairAIChat || typeof window.SkairAIChat.notifyCheaperDate !== "function") return;
+        // Only re-fire for a genuinely new search, not on scroll/re-render
+        // within the same one.
+        var dedupKey = "skair_cheaper_nudge_" + searchForm.originRaw + "_" + searchForm.destinationRaw + "_" + selectedKey;
+        try {
+          if (sessionStorage.getItem(dedupKey)) return;
+        } catch (e) { /* ignore */ }
+
+        var best = null;
+        Object.keys(datePrices).forEach(function (key) {
+          if (key === selectedKey) return;
+          var entry = datePrices[key];
+          if (!entry || !(Number(entry.price) > 0)) return;
+          if (best === null || entry.price < best.price) {
+            best = { date: key, price: entry.price, currency: entry.currency || "USD" };
+          }
+        });
+        if (!best) return;
+
+        var deltaAmount = selectedLowest - best.price;
+        var deltaPct = deltaAmount / selectedLowest;
+        // Real signal, not noise: at least $20 AND at least 8% cheaper.
+        if (deltaAmount < 20 || deltaPct < 0.08) return;
+
+        try { sessionStorage.setItem(dedupKey, "1"); } catch (e) { /* ignore */ }
+        window.SkairAIChat.notifyCheaperDate({
+          date: best.date,
+          price: best.price,
+          currency: best.currency,
+          deltaAmount: deltaAmount,
+          deltaPct: deltaPct,
+        });
+      }
+
       function submitSearchFor(departDate) {
         var form = document.createElement("form");
         form.method = "post";
@@ -1064,6 +1117,7 @@
               : { unavailable: true };
           });
           renderCells();
+          checkForCheaperDateNudge();
         }).catch(function () {
           keys.forEach(function (key) { datePrices[key] = { unavailable: true }; });
           renderCells();

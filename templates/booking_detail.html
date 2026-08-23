@@ -584,6 +584,17 @@
 
   {% endif %}
 
+  {# This is the real per-booking management page (manage_booking.html is only
+     ever the lookup form, before any booking is loaded) — it had no
+     #skairPageCtx at all, same gap confirmation.html/checkout.html already
+     closed. page_type "manage_booking" matches _build_ai_chat_system's
+     existing manage_booking branch (app.py), which already expects exactly
+     these field names. #}
+  {% if order_summary %}
+  {% set _skair_page = {"page_type": "manage_booking", "booking_reference": order_summary.booking_reference or "", "airline_name": order_summary.airline_name or "", "route_summary": (order_summary.slices[0].route if order_summary.slices else "") or "", "status_label": order_summary.status_label or "", "currency": order_summary.currency or "USD", "total_amount": order_summary.total_amount or "", "passenger_names": order_summary.passenger_names or [], "slices": order_summary.slices or []} %}
+  <script id="skairPageCtx" type="application/json">{{ _skair_page | tojson }}</script>
+  {% endif %}
+
   {% include "partials/theme_scripts.html" %}
 </body>
 </html>

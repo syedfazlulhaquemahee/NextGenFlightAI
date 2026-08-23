@@ -25,6 +25,7 @@ from typing import Any, Callable, Iterator, Mapping, Sequence
 import jwt as pyjwt
 import requests
 from flask import Flask, Response, has_request_context, jsonify, redirect, render_template, request, session, stream_with_context, url_for
+from werkzeug.datastructures import MultiDict
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dotenv import load_dotenv
@@ -57,6 +58,13 @@ from liteapi_client import (
     sanitize_description,
 )
 from hotel_booking import build_hotel_traveler_form, validate_hotel_checkout_form
+from liteapi_flights_client import (
+    LiteAPIFlightsClient,
+    LITE_FLIGHTS_ENABLED,
+    LITE_FLIGHTS_CHECKOUT_ENABLED,
+    LITE_FLIGHTS_SEARCH_TIMEOUT,
+    LITE_FLIGHTS_SUPPLEMENT_TIMEOUT,
+)
 
 HOTEL_AMENITY_FILTERS = [label for label, _ in FILTERABLE_AMENITIES]
 from duffel_booking import (
@@ -133,7 +141,16 @@ LIGHT_REQUEST_TIMEOUT = float(os.getenv("LIGHT_REQUEST_TIMEOUT", "7"))
 HTTP_POOL_CONNECTIONS = int(os.getenv("HTTP_POOL_CONNECTIONS", "32"))
 HTTP_POOL_MAXSIZE = int(os.getenv("HTTP_POOL_MAXSIZE", "64"))
 FLEX_SCAN_WORKERS = max(4, min(8, os.cpu_count() or 4))
-FLEX_SCAN_RPS = float(os.getenv("FLEX_SCAN_RPS", "6"))     # max Duffel requests/sec during flex scan
+# Despite the name, this throttles every fast=True Duffel call app-wide
+# (flex-month scanning, popular_flights' homepage widget, and the results-
+# page "nearby dates" strip all share the one _FLEX_RATE_LIMITER instance
+# below) — it's the single global gate that actually controls how many
+# Duffel requests/sec the whole app can produce, independent of how many
+# ThreadPoolExecutors or endpoints are firing at once. Was 6, which still
+# tripped Duffel's real production rate limit repeatedly (confirmed live:
+# popular-flights + the date-strip alone, running seconds apart, was
+# enough) — lowered until that stopped reproducing.
+FLEX_SCAN_RPS = float(os.getenv("FLEX_SCAN_RPS", "2"))
 FLEX_PROVISIONAL_MIN_INTERVAL = float(os.getenv("FLEX_PROVISIONAL_MIN_INTERVAL", "0.25"))  # min seconds between provisional card NDJSON bursts
 FLEX_SCAN_RETRY_MAX = int(os.getenv("FLEX_SCAN_RETRY_MAX", "2"))    # 429 retries per date
 FLEX_SCAN_RETRY_CAP = float(os.getenv("FLEX_SCAN_RETRY_CAP", "10")) # max seconds to honour from reset header
@@ -1864,20 +1881,32 @@ def _results_reload_token_from_form(form: Mapping[str, Any] | None = None) -> st
     return _coerce_results_reload_token(payload.get("results_reload_token"))
 
 
-def _store_results_reload_html(html: str, *, token: str | None = None) -> str:
+def _store_results_reload_html(
+    html: str,
+    *,
+    token: str | None = None,
+    refresh: dict[str, Any] | None = None,
+) -> str:
+    """`refresh` (when provided) is what lets a browser refresh on
+    /results/<token> re-run the search live instead of replaying this same
+    html forever — see results_reload(). Shape: either
+    {"pending_fields": [[k, v], ...]} (standard/non-flex-AI) or
+    {"flex_streaming": True, "query": {...}, "flex_stream_fields": {...},
+    "flex_ai_deferred": bool} (flex/AI-flex)."""
     reload_token = _coerce_results_reload_token(token) or _new_results_reload_token()
     RESULTS_RELOAD_CACHE.set(
         reload_token,
         {
             "html": html,
             "created_at": int(time.time()),
+            "refresh": refresh or None,
         },
     )
     return reload_token
 
 
-def _results_complete_stream_event(html: str) -> dict[str, str]:
-    reload_token = _store_results_reload_html(html, token=_results_reload_token_from_form())
+def _results_complete_stream_event(html: str, *, refresh: dict[str, Any] | None = None) -> dict[str, str]:
+    reload_token = _store_results_reload_html(html, token=_results_reload_token_from_form(), refresh=refresh)
     return {
         "type": "complete",
         "html": html,
@@ -3805,12 +3834,26 @@ User request:
 # ------------------------------------------------------------
 # Pooled Duffel client
 # ------------------------------------------------------------
-def _build_session(*, retry_total: int = 3, backoff_factor: float = 0.35) -> requests.Session:
+def _build_session(
+    *,
+    retry_total: int = 3,
+    backoff_factor: float = 0.35,
+    connect_retries: int | None = None,
+    read_retries: int | None = None,
+) -> requests.Session:
+    """connect_retries/read_retries let a caller decouple the two: a pooled
+    keep-alive connection that's gone stale after sitting idle (a dead
+    socket the server or a middlebox already closed) fails instantly and is
+    safe/cheap to retry once — unlike a slow-but-alive read, which is the
+    thing "fast" callers deliberately want zero retries on (retrying that
+    just multiplies the wait for no benefit, the same class of bug fixed in
+    liteapi_flights_client.py's dedicated search session). Defaulting both
+    to retry_total preserves every existing caller's behavior unchanged."""
     session = requests.Session()
     retry = Retry(
-        total=retry_total,
-        connect=retry_total,
-        read=retry_total,
+        total=max(retry_total, connect_retries or 0, read_retries or 0),
+        connect=retry_total if connect_retries is None else connect_retries,
+        read=retry_total if read_retries is None else read_retries,
         backoff_factor=backoff_factor,
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=frozenset(["GET", "POST"]),
@@ -3836,7 +3879,11 @@ class DuffelAPIError(RuntimeError):
 class DuffelClient:
     def __init__(self):
         self.session = _build_session()
-        self.fast_session = _build_session(retry_total=0, backoff_factor=0.0)
+        # total=0 would zero out connect_retries too (Retry.total is a hard
+        # ceiling over every retry category) — read stays 0 so a slow-but-alive
+        # response is never retried, but one connect retry survives a stale
+        # pooled connection instead of failing the whole "fast" search outright.
+        self.fast_session = _build_session(retry_total=0, backoff_factor=0.2, connect_retries=1, read_retries=0)
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -4334,6 +4381,17 @@ class DuffelClient:
 
 DUFF = DuffelClient()
 LITE = LiteAPIClient()
+LITE_FLIGHTS = LiteAPIFlightsClient()
+
+# One small pool for racing a LiteAPI flight search alongside the Duffel
+# call in search_flights() — exactly one extra request in flight per search,
+# so a persistent multi-worker pool isn't needed (contrast with LiteAPI
+# hotels' RATES_WORKERS pool, which fans out many per-hotel rate calls).
+_SEARCH_FANOUT_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="search-fanout")
+
+
+def _search_pool_submit(fn, *args, **kwargs):
+    return _SEARCH_FANOUT_POOL.submit(fn, *args, **kwargs)
 
 # ------------------------------------------------------------
 # Search core
@@ -4521,7 +4579,11 @@ def _cheapest_offer_snapshot(params: dict[str, Any]) -> dict[str, Any] | None:
     if raw is None:
         return None
     if not raw:
-        CHEAPEST_SNAPSHOT_CACHE.set(cache_key, None)
+        # Not cached: an empty-but-successful response here is indistinguishable
+        # from Duffel's own supplier_timeout truncating a slow/rate-limited
+        # request, same failure mode fixed in search_flights() above. Caching
+        # "no flights" would wrongly mark a real date "Unavailable" on the
+        # nearby-dates strip for the full 15min TTL.
         return None
 
     cheapest: dict[str, Any] | None = None
@@ -5908,9 +5970,187 @@ def _parse_offer(offer: dict[str, Any], params: dict[str, Any], detailed: bool) 
             "_out_via_codes": out_via_codes,
             "_in_via_codes": in_via_codes,
             "_sort_total_duration": total_trip_duration,
+            "provider": "duffel",
         }
     except Exception as exc:
         print("DUFFEL PARSE ERROR:", repr(exc))
+        return None
+
+
+LITEAPI_OFFER_PREFIX = "LF-"
+
+
+def liteapi_offer_id(raw_offer_id: str) -> str:
+    return f"{LITEAPI_OFFER_PREFIX}{raw_offer_id}"
+
+
+def is_liteapi_offer_id(offer_id: str) -> bool:
+    return str(offer_id or "").startswith(LITEAPI_OFFER_PREFIX)
+
+
+def strip_liteapi_offer_prefix(offer_id: str) -> str:
+    return str(offer_id or "")[len(LITEAPI_OFFER_PREFIX):]
+
+
+def _liteapi_journey_segments_by_direction(journey: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    out_segs: list[dict[str, Any]] = []
+    in_segs: list[dict[str, Any]] = []
+    for seg in journey.get("segments") or []:
+        if str(seg.get("direction") or "").upper() == "INBOUND":
+            in_segs.append(seg)
+        else:
+            out_segs.append(seg)
+    return out_segs, in_segs
+
+
+def _liteapi_leg_duration_min(journey: Mapping[str, Any], direction: str) -> int:
+    for entry in journey.get("legDurations") or []:
+        if str(entry.get("direction") or "").upper() == direction:
+            return int(((entry.get("duration") or {}).get("minutes")) or 0)
+    return 0
+
+
+def normalize_liteapi_offer(
+    journey: Mapping[str, Any],
+    offer: Mapping[str, Any],
+    params: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """LiteAPI Flights equivalent of _parse_offer() above — same flattened
+    output shape so results.html and the sort/ranking pipeline (_sort_flights
+    etc., which key purely on this dict's fields) work unchanged regardless
+    of which provider an offer came from. `journey` carries the itinerary
+    (segments/duration), `offer` carries pricing/fare/baggage/terms for one
+    specific fare tier within that journey (LiteAPI returns several fare
+    tiers per itinerary via journey["offers"] — the caller picks which one,
+    typically journey["cheapestOffer"])."""
+    try:
+        out_segs, in_segs = _liteapi_journey_segments_by_direction(journey)
+        if not out_segs:
+            return None
+
+        def seg_carrier_codes(seg: Mapping[str, Any]) -> tuple[str, str]:
+            carrier = seg.get("carrier") or {}
+            marketing_code = str(carrier.get("marketingCode") or "").strip().upper()
+            operating_code = str(carrier.get("operatingCode") or "").strip().upper()
+            _register_carrier(marketing_code, carrier.get("marketingName"))
+            _register_carrier(operating_code, carrier.get("operatingName"))
+            return (marketing_code, operating_code)
+
+        out_carrier_codes = [c for seg in out_segs for c in seg_carrier_codes(seg) if c]
+        in_carrier_codes = [c for seg in in_segs for c in seg_carrier_codes(seg) if c]
+        all_carrier_codes = _unique_preserve([*out_carrier_codes, *in_carrier_codes])
+
+        out_via_codes = [seg.get("destinationCode") for seg in out_segs[:-1] if seg.get("destinationCode")]
+        in_via_codes = [seg.get("destinationCode") for seg in in_segs[:-1] if seg.get("destinationCode")]
+
+        def to_amadeus_segment(seg: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "departure": {"iataCode": seg.get("originCode"), "at": seg.get("departureTime")},
+                "arrival": {"iataCode": seg.get("destinationCode"), "at": seg.get("arrivalTime")},
+            }
+
+        # _build_layovers() is the same generic helper _parse_offer() uses for
+        # Duffel above (app.py:4353) — takes plain departure/arrival dicts, no
+        # Duffel-specific fields, so it's directly reusable here.
+        out_layovers = _build_layovers([to_amadeus_segment(s) for s in out_segs], detailed=True)
+        in_layovers = _build_layovers([to_amadeus_segment(s) for s in in_segs], detailed=True) if in_segs else []
+
+        out_first, out_last = out_segs[0], out_segs[-1]
+        in_first, in_last = (in_segs[0], in_segs[-1]) if in_segs else (None, None)
+
+        pricing = (offer.get("pricing") or {}).get("display") or {}
+        total_price = _safe_float(pricing.get("total"))
+        currency = pricing.get("currency") or "USD"
+        passenger_count = max(1, int(params.get("passengers", 1) or 1))
+        per_pax = ((pricing.get("perPassenger") or {}).get("adult") or {}).get("total")
+        price_per_pax = round(_safe_float(per_pax) if per_pax is not None else total_price / passenger_count, 2)
+
+        baggage = offer.get("baggage") or {}
+        carry_on_label = "Includes carry-on bags" if baggage.get("hasCarryOnBag") else "No carry-on bag option"
+        checked_bag_label = "Includes checked bags" if baggage.get("hasCheckedBag") else "No checked bag option"
+
+        terms = offer.get("terms") or {}
+        change_label = "Changes allowed" if terms.get("changeable") else "Not changeable"
+        refund_label = "Refundable" if terms.get("refundable") else "Not refundable"
+
+        fare = offer.get("fare") or {}
+        segment_fares = offer.get("segmentFares") or []
+        cabin_label = str((segment_fares[0].get("cabin") if segment_fares else "") or params.get("cabin") or "Economy").title()
+
+        total_duration_min = int(((journey.get("totalDuration") or {}).get("minutes")) or 0)
+        out_duration_min = _liteapi_leg_duration_min(journey, "OUTBOUND")
+        in_duration_min = _liteapi_leg_duration_min(journey, "INBOUND") if in_segs else 0
+        out_stops = max(0, len(out_segs) - 1)
+        in_stops = max(0, len(in_segs) - 1) if in_segs else None
+
+        raw_offer_id = str(offer.get("offerId") or "")
+        if not raw_offer_id or not total_price:
+            return None
+
+        return {
+            "price": total_price,
+            "price_per_pax": price_per_pax,
+            "passenger_count": passenger_count,
+            "currency": currency,
+            "selection_token": hashlib.sha1(raw_offer_id.encode("utf-8")).hexdigest()[:20],
+            "offer_id": liteapi_offer_id(raw_offer_id),
+            "expires_at": offer.get("expiration"),
+            "airline_logo_url": (out_segs[0].get("carrier") or {}).get("marketingLogo"),
+            "out_airline_logo_url": (out_segs[0].get("carrier") or {}).get("marketingLogo"),
+            "in_airline_logo_url": (in_segs[0].get("carrier") or {}).get("marketingLogo") if in_segs else None,
+            "airline_summary": _carrier_label(all_carrier_codes),
+            "airline_code_summary": _carrier_code_label(all_carrier_codes),
+            "airline_mix_label": _airline_mix_label(out_carrier_codes, in_carrier_codes),
+            "out_airline": (out_segs[0].get("carrier") or {}).get("marketingName"),
+            "out_airline_code": (out_segs[0].get("carrier") or {}).get("marketingCode"),
+            "out_depart_at": out_first.get("departureTime"),
+            "out_arrive_at": out_last.get("arrivalTime"),
+            "out_duration_min": out_duration_min,
+            "out_stops": out_stops,
+            "out_layovers": out_layovers,
+            "out_origin_code": out_first.get("originCode"),
+            "out_dest_code": out_last.get("destinationCode"),
+            "out_origin_name": out_first.get("originName"),
+            "out_dest_name": out_last.get("destinationName"),
+            "in_origin_code": in_first.get("originCode") if in_first else None,
+            "in_dest_code": in_last.get("destinationCode") if in_last else None,
+            "in_origin_name": in_first.get("originName") if in_first else None,
+            "in_dest_name": in_last.get("destinationName") if in_last else None,
+            "in_airline": (in_segs[0].get("carrier") or {}).get("marketingName") if in_segs else None,
+            "in_airline_code": (in_segs[0].get("carrier") or {}).get("marketingCode") if in_segs else None,
+            "in_depart_at": in_first.get("departureTime") if in_first else None,
+            "in_arrive_at": in_last.get("arrivalTime") if in_last else None,
+            "in_duration_min": in_duration_min,
+            "in_stops": in_stops,
+            "in_layovers": in_layovers,
+            "first_depart_at": out_first.get("departureTime"),
+            "final_arrive_at": (in_last or out_last).get("arrivalTime"),
+            "total_duration_min": total_duration_min,
+            "total_stop_count": out_stops + (in_stops or 0),
+            "fare_name": fare.get("family"),
+            "fare_brand": fare.get("family"),
+            "cabin_label": cabin_label,
+            "fare_features": [str(s.get("message") or "") for s in (terms.get("summary") or []) if s.get("message")],
+            "carry_on_label": carry_on_label,
+            "checked_bag_label": checked_bag_label,
+            "change_label": change_label,
+            "refund_label": refund_label,
+            "fare_rows": _offer_fare_rows(carry_on_label, checked_bag_label, change_label, refund_label, False),
+            "fare_profile_label": f"{change_label} · {refund_label}",
+            "fare_penalty_hint": "" if terms.get("changeable") and terms.get("refundable") else "Fare rules apply — see details before booking.",
+            "hold_supported": False,
+            "connection_airports": _unique_preserve([*out_via_codes, *in_via_codes]),
+            "is_multicity": False,
+            "_slice_meta": [],
+            "_airline_key": "|".join(sorted(all_carrier_codes)) or "UNKNOWN",
+            "_out_via_codes": out_via_codes,
+            "_in_via_codes": in_via_codes,
+            "_sort_total_duration": total_duration_min,
+            "provider": "liteapi",
+            "_liteapi_journey_key": journey.get("journeyKey"),
+        }
+    except Exception as exc:
+        print("LITEAPI FLIGHTS PARSE ERROR:", repr(exc))
         return None
 
 
@@ -6763,6 +7003,31 @@ def _annotate_comparison_metrics(flights: list[dict[str, Any]]) -> None:
         flight["metric_is_fastest"] = idx == fastest_idx
         flight["price_vs_cheapest"] = delta
 
+@app.template_filter("price_spread")
+def _price_spread_summary(flights: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate min/max/avg across a search's own results, for the AI chat
+    assistant to answer "is this a good price" with real numbers instead of
+    guessing — computed from the same `price` field every flight already
+    carries (survives _clean_flights_for_render, which only strips
+    underscore-prefixed internal fields), so this needs no new data, just a
+    one-line reduction. Registered as a Jinja filter rather than threaded
+    through every render_template("results.html", ...) call site — templates
+    already have `flights` in scope wherever _skair_page gets built."""
+    if not flights:
+        return {"count": 0}
+    prices = [float(f.get("price", 0) or 0) for f in flights]
+    prices = [p for p in prices if p > 0]
+    if not prices:
+        return {"count": 0}
+    return {
+        "count": len(prices),
+        "min": round(min(prices), 2),
+        "max": round(max(prices), 2),
+        "avg": round(sum(prices) / len(prices), 2),
+        "currency": str(flights[0].get("currency") or flights[0].get("total_currency") or "USD"),
+    }
+
+
 def _clean_flights_for_render(flights: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for flight in flights:
         for key in ("_sort_total_duration", "_recommended_score", "_airline_key", "_out_via_codes", "_in_via_codes", "_slice_meta"):
@@ -6804,12 +7069,73 @@ def _sort_flights(flights: list[dict[str, Any]], sort: str, *, params: dict[str,
         flights = _apply_google_like_airline_mix(flights, params=params)
     return flights
 
+
+def _liteapi_flight_search_supported(params: Mapping[str, Any]) -> bool:
+    """v1 scope cut: standard one-way/round-trip only. Multicity and
+    flex-date scans need their own verification pass against LiteAPI's
+    itinerary shape before being trusted here (see plan doc)."""
+    trip_type = str(params.get("trip_type") or "roundtrip").strip().lower()
+    return trip_type in ("oneway", "one_way", "roundtrip", "round_trip")
+
+
+def _fetch_liteapi_flight_offers(
+    params: Mapping[str, Any],
+    *,
+    timeout: float | None = None,
+) -> list[dict[str, Any]]:
+    """Search LiteAPI/Nuitee Connect in parallel with Duffel and normalize
+    into the same flattened shape _parse_offer() produces, so the existing
+    provider-agnostic sort/ranking pipeline treats both providers' offers
+    identically. Never raises — a LiteAPI failure degrades to Duffel-only.
+
+    `timeout` defaults to LITE_FLIGHTS_SEARCH_TIMEOUT (tuned for the
+    synchronous/blocking search path, which needs to fail fast). The async
+    supplement route passes the longer LITE_FLIGHTS_SUPPLEMENT_TIMEOUT
+    instead, since nothing is blocked waiting on it."""
+    if not LITE_FLIGHTS_ENABLED or not _liteapi_flight_search_supported(params):
+        return []
+    origin = str(params.get("origin") or "").strip().upper()
+    destination = str(params.get("destination") or "").strip().upper()
+    depart_date = str(params.get("depart_date") or "").strip()
+    if not origin or not destination or not depart_date:
+        return []
+
+    legs = [{"origin": origin, "destination": destination, "date": depart_date, "direction": "OUTBOUND"}]
+    return_date = str(params.get("return_date") or "").strip()
+    if return_date:
+        legs.append({"origin": destination, "destination": origin, "date": return_date, "direction": "INBOUND"})
+
+    cabin = str(params.get("cabin") or "ECONOMY").strip().upper() or "ECONOMY"
+    passengers = int(params.get("passengers", 1) or 1)
+
+    try:
+        groups = LITE_FLIGHTS.search(
+            legs=legs, adults=passengers, currency="USD", cabin_class=cabin,
+            timeout=timeout if timeout is not None else LITE_FLIGHTS_SEARCH_TIMEOUT,
+        )
+    except Exception as exc:
+        print("LITEAPI FLIGHTS FANOUT ERROR:", repr(exc))
+        return []
+
+    offers: list[dict[str, Any]] = []
+    for group in groups or []:
+        for journey in (group.get("journeys") or []):
+            cheapest = journey.get("cheapestOffer")
+            if not cheapest:
+                continue
+            normalized = normalize_liteapi_offer(journey, cheapest, params)
+            if normalized:
+                offers.append(normalized)
+    return offers
+
+
 def search_flights(
     params: dict[str, Any],
     *,
     detailed: bool = True,
     flex_final: bool = False,
     force_refresh: bool = False,
+    include_liteapi: bool = True,
 ) -> list[dict[str, Any]]:
     cache_key = _normalize_search_key(params, detailed=detailed)
     if not force_refresh:
@@ -6817,15 +7143,34 @@ def search_flights(
         if cached is not None:
             return cached
 
+    # include_liteapi is independent of `detailed`: the instant/fast pass
+    # (detailed=False) explicitly sets this False and gets LiteAPI's
+    # (much slower — ~15-20s) results later via the async
+    # /search/liteapi-supplement endpoint instead, so the fast page load
+    # stays fast. Callers that want one blocking merged result (the no-JS
+    # fallback path) leave this at the default True.
+    liteapi_future = None
+    if include_liteapi and LITE_FLIGHTS_ENABLED and _liteapi_flight_search_supported(params) and not flex_final:
+        liteapi_future = _search_pool_submit(_fetch_liteapi_flight_offers, params)
+
     raw = _fetch_live_offer_rows(
         params,
         detailed=detailed,
         flex_final=flex_final,
         force_refresh=force_refresh,
     )
+
+    liteapi_flights: list[dict[str, Any]] = []
+    if liteapi_future is not None:
+        try:
+            liteapi_flights = liteapi_future.result(timeout=LITE_FLIGHTS_SEARCH_TIMEOUT + 2)
+        except Exception as exc:
+            print("LITEAPI FLIGHTS FANOUT JOIN ERROR:", repr(exc))
+            liteapi_flights = []
+
     if raw is None:
-        return []
-    flights = _collect_best_presentations(raw, params, detailed=detailed)
+        return liteapi_flights
+    flights = _collect_best_presentations(raw, params, detailed=detailed) + liteapi_flights
 
     sort_mode = params.get("sort", "recommended")
     if sort_mode == "recommended":
@@ -6838,9 +7183,33 @@ def search_flights(
             force_refresh=force_refresh,
         )
         if expanded_raw is not raw:
-            flights = _collect_best_presentations(expanded_raw, params, detailed=detailed)
-            ranked_flights = _sort_flights(flights, sort_mode, params=params)
-        flights = ranked_flights[:RECOMMENDED_RESULTS_LIMIT]
+            flights = _collect_best_presentations(expanded_raw, params, detailed=detailed) + liteapi_flights
+
+    flights = _finalize_flight_results(flights, sort_mode, params)
+    if flights:
+        # An empty result here is indistinguishable from "Duffel got rate-limited
+        # or its own supplier_timeout truncated a slow response" — raw wasn't None
+        # (that already short-circuits above without caching), just empty. Caching
+        # that would silently serve "no flights" to every identical search for the
+        # full 15min TTL even after the transient pressure clears. A genuinely
+        # empty route just costs one extra live fetch next time instead.
+        SEARCH_CACHE.set(cache_key, flights)
+    return flights
+
+
+def _finalize_flight_results(
+    flights: list[dict[str, Any]],
+    sort_mode: str,
+    params: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Shared tail of search_flights(): sort+trim, badges, comparison
+    metrics, decorate, clean. Factored out so the LiteAPI async-supplement
+    endpoint (which merges freshly fetched LiteAPI offers into an
+    already-finalized Duffel list, with no raw Duffel rows to expand from)
+    can reuse the exact same finishing logic instead of a second copy."""
+    if sort_mode == "recommended":
+        flights = _sort_flights(flights, sort_mode, params=params)
+        flights = flights[:RECOMMENDED_RESULTS_LIMIT]
     else:
         flights = _sort_flights(flights, sort_mode, params=params)
         flights = flights[:RESULTS_PAGE_LIMIT]
@@ -6849,7 +7218,6 @@ def search_flights(
     _annotate_comparison_metrics(flights)
     flights = _decorate_flights_for_display(flights, params)
     flights = _clean_flights_for_render(flights)
-    SEARCH_CACHE.set(cache_key, flights)
     return flights
 
 
@@ -6975,6 +7343,25 @@ def _iter_flex_search_ndjson(params: dict[str, Any]) -> Iterator[str]:
     def emit(obj: dict[str, Any]) -> Any:
         return _flex_ndjson_line(obj)
 
+    # So a browser refresh on the eventual /results/<token> re-runs this
+    # exact flex/AI-flex search live instead of replaying stale html — see
+    # results_reload(). raw_text is only ever set on the AI-flex path
+    # (search_flex_stream()), so its presence is what distinguishes the
+    # two _flex_stream_shell_hidden_fields() shapes.
+    _refresh_mode = "ai" if params.get("raw_text") else "flex"
+    _refresh_flex_fields = _flex_stream_shell_hidden_fields(
+        _refresh_mode, params,
+        ai_text=str(params.get("raw_text") or ""),
+        parse_token=str(params.get("parse_token") or ""),
+    )
+    refresh_meta = {
+        "flex_streaming": True,
+        "flex_stream_fields": _refresh_flex_fields,
+        "flex_ai_deferred": _refresh_mode == "ai",
+        "query": dict(params),
+        "mode": _refresh_mode,
+    }
+
     trip_oneway = params.get("trip_type") == "oneway"
     if trip_oneway:
         cache_key = (
@@ -7015,7 +7402,7 @@ def _iter_flex_search_ndjson(params: dict[str, Any]) -> Iterator[str]:
             minutes_to_hm=minutes_to_hm,
             fmt_dt=fmt_dt,
         )
-        yield emit(_results_complete_stream_event(html))
+        yield emit(_results_complete_stream_event(html, refresh=refresh_meta))
         return
     if cached_found and cached is None:
         yield emit({"type": "error", "message": _format_flex_no_results_error(params)})
@@ -7231,7 +7618,7 @@ def _iter_flex_search_ndjson(params: dict[str, Any]) -> Iterator[str]:
         minutes_to_hm=minutes_to_hm,
         fmt_dt=fmt_dt,
     )
-    yield emit(_results_complete_stream_event(html))
+    yield emit(_results_complete_stream_event(html, refresh=refresh_meta))
 
 
 def _clone_segments_ui(segments: list[dict[str, Any]] | None, *, first_label: str | None = None) -> list[dict[str, Any]]:
@@ -8175,6 +8562,24 @@ def _booking_lookup_error() -> str | None:
     if not DUFFEL_ACCESS_TOKEN:
         return "Booking lookup is not configured yet. Add DUFFEL_ACCESS_TOKEN to your .env file and try again."
     return None
+
+
+def _liteapi_flight_checkout_error(offer_id: str) -> str | None:
+    """LiteAPI flight booking isn't built yet (search/display only, so far).
+    Blocks every checkout entry point for an LF-prefixed offer_id with a
+    clear message, rather than letting a Duffel-shaped lookup fail
+    confusingly. Gated on LITE_FLIGHTS_CHECKOUT_ENABLED specifically — a
+    second, independent flag from LITE_FLIGHTS_ENABLED (search/display) —
+    so turning search on for price comparison never silently exposes a real
+    booking path before it's deliberately finished and turned on."""
+    if not is_liteapi_offer_id(offer_id):
+        return None
+    if LITE_FLIGHTS_CHECKOUT_ENABLED:
+        return None
+    return (
+        "Booking for this fare isn't available yet — we're still finishing this provider's "
+        "checkout. Please choose a different flight, or check back soon."
+    )
 
 
 def _demo_checkout_lock_error() -> str | None:
@@ -9944,7 +10349,7 @@ def _load_checkout_sidecars(offer: Mapping[str, Any]) -> tuple[list[dict[str, An
 # ------------------------------------------------------------
 @app.route("/checkout/<offer_id>", methods=["GET"])
 def checkout_offer(offer_id: str):
-    mode_error = _booking_mode_error()
+    mode_error = _liteapi_flight_checkout_error(offer_id) or _booking_mode_error()
     if mode_error:
         return render_template(
             "booking_review.html",
@@ -10002,6 +10407,8 @@ def checkout_offer(offer_id: str):
 
 @app.route("/checkout/<offer_id>/fare-options", methods=["GET"])
 def checkout_fare_options(offer_id: str):
+    if _liteapi_flight_checkout_error(offer_id):
+        return "", 404
     try:
         offer = DUFF.get_offer(offer_id, return_available_services=True)
     except DuffelAPIError as exc:
@@ -10019,7 +10426,7 @@ def checkout_fare_options(offer_id: str):
 
 @app.route("/checkout/<offer_id>/seats", methods=["GET"])
 def checkout_seats(offer_id: str):
-    mode_error = _booking_mode_error()
+    mode_error = _liteapi_flight_checkout_error(offer_id) or _booking_mode_error()
     if mode_error:
         return render_template(
             "seat_selection.html",
@@ -10083,7 +10490,7 @@ def checkout_seats(offer_id: str):
 @app.route("/checkout/<offer_id>/ancillaries", methods=["POST"])
 def checkout_ancillaries_to_session(offer_id: str):
     """Persist Duffel ancillaries selection server-side (payload can exceed query-string limits)."""
-    if _booking_mode_error():
+    if _liteapi_flight_checkout_error(offer_id) or _booking_mode_error():
         return redirect(url_for("checkout_details", offer_id=offer_id))
     payload = extract_ancillaries_payload(request.form)
     session[_session_ancillaries_key(offer_id)] = json.dumps(payload)
@@ -10092,7 +10499,7 @@ def checkout_ancillaries_to_session(offer_id: str):
 
 @app.route("/checkout/<offer_id>/details", methods=["GET", "POST"])
 def checkout_details(offer_id: str):
-    mode_error = _demo_checkout_lock_error() or _booking_mode_error()
+    mode_error = _liteapi_flight_checkout_error(offer_id) or _demo_checkout_lock_error() or _booking_mode_error()
     if mode_error:
         return render_template(
             "checkout.html",
@@ -14372,7 +14779,12 @@ def results_date_prices():
         }
 
     prices: dict[str, dict[str, Any]] = {}
-    workers = min(3, len(requested_dates))
+    # Lower concurrency on purpose (see the matching note on popular_flights'
+    # own ThreadPoolExecutor): this fires on every results-page load, right
+    # alongside the real search's own Duffel calls — 3 simultaneous requests
+    # from this endpoint alone was enough to trip the rate limit by itself,
+    # showing "Unavailable" on dates that actually have flights.
+    workers = min(2, len(requested_dates))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [executor.submit(lookup_for_date, depart_date) for depart_date in requested_dates]
         for future in as_completed(futures):
@@ -14389,7 +14801,7 @@ def results_date_prices():
 
 def _smart_destination_date_candidates(is_domestic: bool) -> list[tuple[date, date]]:
     """
-    Three real candidate trips per destination, grounded in published 2026
+    One real candidate trip per destination, grounded in published 2026
     fare-timing research rather than one arbitrary shared weekend:
 
     - Domestic fares bottom out roughly 31-45 days before departure; for
@@ -14401,11 +14813,14 @@ def _smart_destination_date_candidates(is_domestic: bool) -> list[tuple[date, da
       NerdWallet). This mirrors the weekday bias already used by the
       existing "cheapest week" flex-month search (_weekday_bias below).
 
-    Checking a short weekend, a midweek trip, and a long weekend spread
-    across the appropriate booking window lets each destination land on
-    whichever shape turns out cheapest for that specific route — verified
-    by a real price lookup, never assumed. Two destinations only share
-    dates if that's genuinely what the live fares came back as.
+    Used to check 3 shapes (short weekend / midweek / long weekend) and let
+    whichever was genuinely cheapest win — 3x the live Duffel calls per
+    homepage load (up to ~24 concurrent, one call per destination x shape),
+    which was winning the production rate limit against real user searches
+    running at the same time (see the empty-result cache-poisoning bug this
+    was found alongside). Down to the one shape the research above already
+    says is usually cheapest, rather than re-verifying that with 2 extra
+    live calls per destination on every single page load.
     """
     today = date.today()
     offsets = (21, 35, 49) if is_domestic else (49, 70, 91)
@@ -14413,16 +14828,9 @@ def _smart_destination_date_candidates(is_domestic: bool) -> list[tuple[date, da
     def next_weekday_on_or_after(base: date, weekday: int) -> date:
         return base + timedelta(days=(weekday - base.weekday()) % 7)
 
-    early = today + timedelta(days=offsets[0])
     mid = today + timedelta(days=offsets[1])
-    late = today + timedelta(days=offsets[2])
-
-    shapes = [
-        (next_weekday_on_or_after(early, 4), 2),  # Fri -> Sun: short weekend
-        (next_weekday_on_or_after(mid, 1), 3),    # Tue -> Fri: midweek (cheapest day)
-        (next_weekday_on_or_after(late, 4), 3),   # Fri -> Mon: long weekend
-    ]
-    return [(dep, dep + timedelta(days=nights)) for dep, nights in shapes]
+    dep = next_weekday_on_or_after(mid, 1)  # Tue -> Fri: midweek (cheapest day)
+    return [(dep, dep + timedelta(days=3))]
 
 
 def _best_smart_candidate(results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -14472,7 +14880,13 @@ def popular_flights():
             tasks.append((code, depart, ret))
 
     by_code: dict[str, list[dict[str, Any]]] = {code: [] for code in codes}
-    workers = min(16, len(tasks))
+    # Capped well below len(tasks) on purpose: this widget is a nice-to-have
+    # homepage price teaser, not a real search — a lower concurrency ceiling
+    # spreads its Duffel calls out over time instead of opening them all at
+    # once, so it doesn't win the production rate limit against a real user
+    # search that happens to run at the same time (see the note on
+    # _smart_destination_date_candidates for the other half of this fix).
+    workers = min(4, len(tasks))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_task = {
             executor.submit(_destination_price_lookup, origin, code, dep.isoformat(), ret.isoformat()): (code, dep, ret)
@@ -14501,11 +14915,52 @@ def popular_flights():
     return jsonify({"origin": origin, "prices": prices})
 
 
+def _is_explicit_browser_reload() -> bool:
+    """True only for an actual reload (F5 / Cmd+R / the browser's reload
+    button) — every mainstream browser marks that specific action with
+    Cache-Control: max-age=0 (or the older Pragma: no-cache), and does NOT
+    set it for a plain navigation or for following a redirect. That's what
+    lets /results/<token> tell "user explicitly asked to refresh this page"
+    apart from "browser just landed here after the search redirected" —
+    without this check, EVERY first view of results after a search would
+    re-run the search from scratch instead of showing what was just
+    computed a moment ago."""
+    cache_control = (request.headers.get("Cache-Control") or "").lower()
+    pragma = (request.headers.get("Pragma") or "").lower()
+    return "no-cache" in cache_control or "max-age=0" in cache_control or "no-cache" in pragma
+
+
 @app.route("/results/<token>", methods=["GET"])
 def results_reload(token: str):
+    """The first view of a results page (browser following the redirect
+    right after a search completes) serves the exact HTML that search just
+    produced — fast, and it's already fresh. An explicit reload
+    (_is_explicit_browser_reload()) re-runs the search live instead via the
+    same shell pipeline a fresh search uses, so refreshing actually gets
+    updated prices rather than replaying an old snapshot. Handles both the
+    standard/non-flex-AI shape (pending_fields -> the same #resultsCards
+    skeleton + /search/stream flow /search/shell already uses) and the
+    flex/AI-flex shape (flex_stream_fields -> /search/flex-stream)."""
     reload_token = _coerce_results_reload_token(token)
     payload = RESULTS_RELOAD_CACHE.get(reload_token) if reload_token else None
     if isinstance(payload, Mapping):
+        refresh = payload.get("refresh")
+        if isinstance(refresh, Mapping) and _is_explicit_browser_reload():
+            if refresh.get("flex_streaming"):
+                return render_template(
+                    "search_shell.html",
+                    query=dict(refresh.get("query") or {}),
+                    flex_streaming=True,
+                    flex_stream_fields=dict(refresh.get("flex_stream_fields") or {}),
+                    flex_ai_deferred=bool(refresh.get("flex_ai_deferred")),
+                )
+            pending_fields = refresh.get("pending_fields")
+            if pending_fields:
+                rebuilt_form = MultiDict([(str(k), str(v)) for k, v in pending_fields])
+                return _render_search_shell_pending(form=rebuilt_form)
+
+        # No refresh metadata (an older cache entry from before this existed) —
+        # fall back to replaying the snapshot rather than showing an error.
         html = str(payload.get("html") or "")
         if html:
             return Response(html, mimetype="text/html")
@@ -14537,7 +14992,32 @@ def _redirect_post_search_results_to_reload_url(response: Response):
         except Exception:
             return response
         if html:
-            reload_token = _store_results_reload_html(html, token=_results_reload_token_from_form())
+            # The plain (no-JS-fallback) /search POST handles every mode
+            # inline rather than going through _iter_standard_search_ndjson
+            # / _iter_flex_search_ndjson, so it needs its own refresh
+            # metadata built here from the raw form — same shapes
+            # results_reload() already understands.
+            mode = (request.form.get("mode") or "standard").strip().lower()
+            if mode == "flex":
+                refresh: dict[str, Any] | None = {
+                    "flex_streaming": True,
+                    "flex_ai_deferred": False,
+                    "query": {
+                        "origin": request.form.get("origin", "").strip().upper(),
+                        "destination": request.form.get("destination", "").strip().upper(),
+                        "trip_type": request.form.get("trip_type", "roundtrip"),
+                        "flex_month": (request.form.get("flex_month", "").strip() or None),
+                        "trip_length_days": request.form.get("trip_length_days", str(DEFAULT_FLEX_TRIP_LENGTH_DAYS)),
+                        "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
+                        "cabin": request.form.get("cabin", "ECONOMY"),
+                        "nonstop": request.form.get("nonstop") == "on",
+                        "combination_mode": request.form.get("combination_mode", "auto"),
+                    },
+                }
+                refresh["flex_stream_fields"] = _flex_stream_shell_hidden_fields("flex", refresh["query"])
+            else:
+                refresh = {"pending_fields": [list(pair) for pair in _capture_pending_fields(request.form)]}
+            reload_token = _store_results_reload_html(html, token=_results_reload_token_from_form(), refresh=refresh)
             return redirect(url_for("results_reload", token=reload_token), code=303)
     return response
 
@@ -14968,40 +15448,54 @@ def search_flex_stream():
     return Response(stream_with_context(generate()), mimetype="application/x-ndjson")
 
 
-def _render_search_shell_pending() -> Any:
-    """Render `search_shell.html` with pending POST replay to `/search` (standard + non-flex AI)."""
-    mode = (request.form.get("mode") or "standard").strip().lower()
-
-    pending_fields: list[tuple[str, str]] = []
-    for key in request.form.keys():
-        values = request.form.getlist(key)
+def _capture_pending_fields(form: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Snapshots a form (request.form, or a MultiDict rebuilt from a stored
+    reload token — see results_reload()) into the flat tuple list
+    search_shell.html's hidden boot form replays verbatim."""
+    fields: list[tuple[str, str]] = []
+    for key in form.keys():
+        values = form.getlist(key)
         if not values:
-            pending_fields.append((key, ""))
+            fields.append((key, ""))
             continue
         for value in values:
-            pending_fields.append((key, value))
-    if request.form.get("instant") != "1":
+            fields.append((key, value))
+    return fields
+
+
+def _render_search_shell_pending(form: Mapping[str, Any] | None = None) -> Any:
+    """Render `search_shell.html` with pending POST replay to `/search` (standard + non-flex AI).
+
+    `form` defaults to request.form; results_reload() passes a MultiDict
+    rebuilt from a stored token's pending_fields instead, so a browser
+    refresh on /results/<token> re-runs the search live rather than
+    replaying the HTML snapshot from whenever the search first ran."""
+    form = form if form is not None else request.form
+    mode = (form.get("mode") or "standard").strip().lower()
+
+    pending_fields = _capture_pending_fields(form)
+    if form.get("instant") != "1":
         pending_fields.append(("instant", "1"))
 
     display_query: dict[str, Any] = {
-        "origin": request.form.get("origin", "").strip().upper(),
-        "destination": request.form.get("destination", "").strip().upper(),
-        "trip_type": request.form.get("trip_type", "roundtrip" if request.form.get("return_date") else "oneway"),
-        "depart_date": (request.form.get("depart_date", "").strip() or None),
-        "return_date": (request.form.get("return_date", "").strip() or None),
-        "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
-        "cabin": request.form.get("cabin", "ECONOMY"),
-        "nonstop": request.form.get("nonstop") == "on",
-        "sort": request.form.get("sort", "recommended"),
-        "combination_mode": request.form.get("combination_mode", "auto"),
+        "origin": form.get("origin", "").strip().upper(),
+        "destination": form.get("destination", "").strip().upper(),
+        "trip_type": form.get("trip_type", "roundtrip" if form.get("return_date") else "oneway"),
+        "depart_date": (form.get("depart_date", "").strip() or None),
+        "return_date": (form.get("return_date", "").strip() or None),
+        "passengers": form.get("passengers", str(DEFAULT_PASSENGERS)),
+        "cabin": form.get("cabin", "ECONOMY"),
+        "nonstop": form.get("nonstop") == "on",
+        "sort": form.get("sort", "recommended"),
+        "combination_mode": form.get("combination_mode", "auto"),
         "raw_text": "",
     }
     if mode == "ai":
-        display_query["raw_text"] = request.form.get("ai_text", "").strip()
+        display_query["raw_text"] = form.get("ai_text", "").strip()
     if mode == "standard":
-        leg_origins = request.form.getlist("leg_origin")
-        leg_destinations = request.form.getlist("leg_destination")
-        leg_dates = request.form.getlist("leg_date")
+        leg_origins = form.getlist("leg_origin")
+        leg_destinations = form.getlist("leg_destination")
+        leg_dates = form.getlist("leg_date")
         multi_legs = _build_multicity_form_legs(leg_origins, leg_destinations, leg_dates)
         if multi_legs:
             display_query["legs"] = multi_legs
@@ -15024,8 +15518,15 @@ def _iter_standard_search_ndjson() -> Iterator[str]:
     mode = (form.get("mode") or "standard").strip().lower()
     instant_mode = form.get("instant") == "1"
 
+    # Captured once, upfront, from the same raw form every branch below
+    # already reads — so a browser refresh on the eventual /results/<token>
+    # can re-run this exact search live (see results_reload()) regardless
+    # of which branch (error, AI parse failure, manual-combination, success)
+    # actually produced the html being cached.
+    refresh_pending_fields = [list(pair) for pair in _capture_pending_fields(form)]
+
     def complete_html(html: str) -> Iterator[str]:
-        yield emit(_results_complete_stream_event(html))
+        yield emit(_results_complete_stream_event(html, refresh={"pending_fields": refresh_pending_fields}))
 
     if mode == "flex":
         html = render_template(
@@ -15192,7 +15693,10 @@ def _iter_standard_search_ndjson() -> Iterator[str]:
     force_refresh = form.get("force_refresh") == "1"
     search_detailed = not instant_mode
     yield emit({"type": "standard_search", "stage": "fetch"})
-    flights = search_flights(params, detailed=search_detailed, force_refresh=force_refresh)
+    # instant mode gets Duffel-only here for speed; LiteAPI's slower results
+    # arrive afterward via /search/liteapi-supplement instead of blocking
+    # this render (see search_flights()'s include_liteapi docstring note).
+    flights = search_flights(params, detailed=search_detailed, force_refresh=force_refresh, include_liteapi=search_detailed)
     if not flights:
         html = render_template(
             "results.html",
@@ -15253,6 +15757,59 @@ def search_stream():
             )
 
     return Response(stream_with_context(generate()), mimetype="application/x-ndjson")
+
+
+@app.route("/search/liteapi-supplement", methods=["POST"])
+def search_liteapi_supplement():
+    """Fetch LiteAPI's slower results after the fast Duffel-only page has
+    already rendered, merge with that fast pass's cached results, and
+    return a fresh results.html render for the client to pull updated
+    cards from. LiteAPI's real search aggregation genuinely takes ~15-20s
+    (confirmed live, not a bug — see plan doc) so it's deliberately left
+    out of the initial instant/fast render (search_flights(...,
+    include_liteapi=False) at the two instant-pass call sites) and fetched
+    here instead, non-blocking to the page the user already sees."""
+    if not LITE_FLIGHTS_ENABLED:
+        return jsonify({"updated": False})
+
+    params = {
+        "origin": request.form.get("origin", "").strip().upper(),
+        "destination": request.form.get("destination", "").strip().upper(),
+        "trip_type": (request.form.get("trip_type") or "roundtrip").strip().lower(),
+        "depart_date": (request.form.get("depart_date", "").strip() or None),
+        "return_date": (request.form.get("return_date", "").strip() or None),
+        "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
+        "cabin": request.form.get("cabin", "ECONOMY"),
+        "nonstop": request.form.get("nonstop") == "on",
+        "sort": request.form.get("sort", "recommended"),
+        "combination_mode": request.form.get("combination_mode", "auto"),
+        "raw_text": "",
+    }
+    params, error = _validate_standard_search_params(params)
+    if error or not _liteapi_flight_search_supported(params):
+        return jsonify({"updated": False})
+
+    liteapi_flights = _fetch_liteapi_flight_offers(params, timeout=LITE_FLIGHTS_SUPPLEMENT_TIMEOUT)
+    if not liteapi_flights:
+        return jsonify({"updated": False})
+
+    sort_mode = params.get("sort", "recommended")
+    cache_key = _normalize_search_key(params, detailed=False)
+    cached_duffel_flights = SEARCH_CACHE.get(cache_key)
+    if cached_duffel_flights is None:
+        # Cold cache (expired 15min TTL, or a bookmarked /results/<token>
+        # reload hours later) — fall back to one full blocking search
+        # rather than guessing at stale data.
+        flights = search_flights(params, detailed=True, force_refresh=False, include_liteapi=True)
+    else:
+        combined = list(cached_duffel_flights) + liteapi_flights
+        flights = _finalize_flight_results(combined, sort_mode, params)
+
+    if not flights:
+        return jsonify({"updated": False})
+
+    html = render_template("results.html", query=params, flights=flights, error="", minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
+    return jsonify({"updated": True, "html": html})
 
 
 @app.route("/search/shell", methods=["POST"])
@@ -15574,7 +16131,10 @@ def search():
     # Fast-first render for initial shell requests; refine/update/search refreshes
     # without `instant=1` still run the full detailed pipeline.
     search_detailed = not instant_mode
-    flights = search_flights(params, detailed=search_detailed, force_refresh=force_refresh)
+    # instant mode gets Duffel-only here for speed; LiteAPI's slower results
+    # arrive afterward via /search/liteapi-supplement instead of blocking
+    # this render (see search_flights()'s include_liteapi docstring note).
+    flights = search_flights(params, detailed=search_detailed, force_refresh=force_refresh, include_liteapi=search_detailed)
     if not flights:
         if real_search_submission:
             _track_search_completed_event(
@@ -15654,7 +16214,46 @@ def _fmt_flight_line(f: dict, idx: int) -> str:
     return line
 
 
-def _build_ai_chat_system(context: dict) -> str:
+def _fmt_account_context(account: dict[str, Any] | None) -> str:
+    """Short traveler-profile block for the AI system prompt, so the
+    assistant can actually be "tailored to the user" instead of generic.
+    Deliberately excludes passport_number and dob — neither has any upside
+    for anything this assistant does, and a passport number landing in an
+    LLM prompt (and whatever logs it) is a materially worse incident than
+    including a nationality string. nationality is the one PII-adjacent
+    field kept, since it's what makes visa guidance actually useful."""
+    if not account:
+        return ""
+    bits: list[str] = []
+    nationality = str(account.get("nationality") or "").strip()
+    if nationality:
+        bits.append(f"Nationality: {nationality}.")
+    prefs: list[str] = []
+    airline = str(account.get("preferred_airline") or "").strip()
+    if airline:
+        prefs.append(airline)
+    seat = str(account.get("seat_preference") or "").strip()
+    if seat:
+        prefs.append(f"{seat} seat")
+    cabin = str(account.get("cabin_preference") or "").strip()
+    if cabin:
+        prefs.append(f"{cabin.replace('_', ' ').title()} cabin")
+    meal = str(account.get("meal_preference") or "").strip()
+    if meal:
+        prefs.append(f"{meal} meal")
+    if prefs:
+        bits.append("Prefers " + ", ".join(prefs) + ".")
+    ff_program = str(account.get("frequent_flyer_program") or "").strip()
+    if ff_program:
+        bits.append(f"Frequent flyer with {ff_program}.")
+    if str(account.get("known_traveler_number") or "").strip():
+        bits.append("Has a Known Traveler Number on file (TSA PreCheck-eligible).")
+    if not bits:
+        return ""
+    return "\n\nTRAVELER PROFILE (use only if relevant, never volunteer unprompted): " + " ".join(bits)
+
+
+def _build_ai_chat_system(context: dict, account: dict[str, Any] | None = None, response_style: str = "balanced") -> str:
     page_type   = str(context.get("page_type") or "results").strip()
     origin      = str(context.get("origin") or "").strip()
     destination = str(context.get("destination") or "").strip()
@@ -15669,14 +16268,34 @@ def _build_ai_chat_system(context: dict) -> str:
     route       = str(context.get("route_summary") or "").strip()
     booking_ref = str(context.get("booking_reference") or "").strip()
 
+    response_style = str(response_style or "balanced").strip().lower()
+    if response_style == "detailed":
+        conciseness_rule = (
+            "CONCISENESS RULE: The user asked for detailed answers. Reply in up to 2 short paragraphs or "
+            "5-8 bullets when the question warrants it — still no filler, every sentence should carry real information."
+        )
+    else:
+        # "brief" and the default "balanced" both stay terse — balanced never
+        # meant "medium-length" here, the whole assistant is built around
+        # short answers; only an explicit Detailed request loosens that.
+        conciseness_rule = (
+            "CONCISENESS RULE: Reply in 1-2 sentences maximum. If listing multiple items, use 3-5 short bullets — never paragraphs."
+        )
+
     BASE = (
-        "You are Skairova AI, a concise flight expert embedded in the Skairova travel platform. "
-        "TOPIC RULE: Only discuss travel, flights, airports, airlines, baggage, and logistics. Decline anything off-topic in one sentence. "
-        "CONCISENESS RULE: Reply in 1-2 sentences maximum. If listing multiple items, use 3-5 short bullets — never paragraphs. "
+        "You are Skairova AI, a knowledgeable, proactive travel expert embedded in the Skairova platform — "
+        "you genuinely want the best outcome for this traveler, not just an answer to the literal question asked. "
+        "TOPIC RULE: Discuss travel broadly — flights, airports, airlines, baggage, fares, connections, airport-arrival timing, "
+        "visa and entry requirements, packing, and destination logistics are all in scope. Decline anything off-topic in one sentence. "
+        f"{conciseness_rule} "
         "Never start with filler phrases like 'Great question', 'Of course', or 'Certainly'. "
         "CAPABILITY LIMITS — you CANNOT: run flight searches, book flights, cancel or change bookings, apply filters, or take any action on the user's behalf. "
         "If asked to do any of these things, say in one sentence that you can't do it, then redirect to what you CAN help with. "
+        "VISA/ENTRY RULE: visa and entry requirements are destination + nationality + purpose specific and change often. "
+        "Give general, genuinely useful guidance, but always tell the user to confirm on the destination's official government or embassy site "
+        "before booking or traveling, and never state a requirement as a guaranteed fact. "
         "Be direct and confident like a seasoned travel expert."
+        + _fmt_account_context(account)
     )
 
     # ── CHECKOUT ──────────────────────────────────────────────────────────────
@@ -15871,17 +16490,54 @@ def _build_ai_chat_system(context: dict) -> str:
                 f"You may reference other results for comparison if helpful."
             )
 
+    spread_section = ""
+    spread = context.get("price_spread") or {}
+    if spread.get("count"):
+        spread_section = (
+            f"\n\nPRICE SPREAD ACROSS ALL {spread.get('count')} RESULTS FOR THIS SEARCH: "
+            f"{spread.get('currency', 'USD')} {spread.get('min')} (cheapest) to {spread.get('currency', 'USD')} {spread.get('max')} "
+            f"(most expensive), average {spread.get('currency', 'USD')} {spread.get('avg')}. "
+            "Use these real numbers if asked whether a price is good — never guess or estimate an average yourself."
+        )
+
+    nearby_section = ""
+    nearby = context.get("nearby_date_prices") or {}
+    if nearby and depart:
+        current_price = None
+        for key in (depart,):
+            entry = nearby.get(key)
+            if isinstance(entry, dict) and entry.get("price"):
+                current_price = float(entry["price"])
+        cheaper = []
+        for date_key, entry in nearby.items():
+            if date_key == depart or not isinstance(entry, dict) or not entry.get("price"):
+                continue
+            price = float(entry["price"])
+            if current_price and price < current_price:
+                cheaper.append((date_key, price, entry.get("currency", "USD")))
+        if cheaper:
+            cheaper.sort(key=lambda t: t[1])
+            best_date, best_price, best_cur = cheaper[0]
+            nearby_section = (
+                f"\n\nNEARBY DATE PRICING: the selected date ({depart}) is {currency or 'USD'} "
+                f"{current_price if current_price else 'unknown'}, but {best_date} is available for {best_cur} {best_price} — "
+                "cheaper. If the user hasn't already been told this, proactively mention it as a helpful tip; "
+                "don't just wait to be asked. Keep it to one sentence unless they ask for more."
+            )
+
     return (
         f"{BASE}\n\n"
         f"CURRENT PAGE: Flight search results.\n"
         f"{search_ctx}"
         f"{flights_section}"
         f"{focused_section}"
+        f"{spread_section}"
+        f"{nearby_section}"
         "\n\nNever invent flight data, prices, or schedules not listed above."
     )
 
 
-def _build_ai_insight_prompt(context: dict) -> str:
+def _build_ai_insight_prompt(context: dict, account: dict[str, Any] | None = None) -> str:
     origin = context.get("origin", "")
     destination = context.get("destination", "")
     depart = context.get("depart_date", "")
@@ -15925,6 +16581,9 @@ def _build_ai_insight_prompt(context: dict) -> str:
         prompt += f"The top-ranked airline is {best_airline}. "
     if dur_str:
         prompt += f"The fastest available option takes {dur_str}. "
+    preferred_airline = str((account or {}).get("preferred_airline") or "").strip()
+    if preferred_airline and best_airline and preferred_airline.lower() in str(best_airline).lower():
+        prompt += f"This traveler's preferred airline is {preferred_airline} — worth a brief mention that this matches. "
     prompt += (
         "Return EXACTLY two lines separated by a single newline character. "
         "Line 1 (headline): one short punchy sentence with the key numbers — price, airline, date. Lead with the best fact. "
@@ -15940,7 +16599,9 @@ def ai_insight():
         return jsonify({"error": "AI not configured"}), 503
     try:
         data = request.get_json(silent=True) or {}
-        prompt = _build_ai_insight_prompt(data)
+        account_email = _session_account_email()
+        account = _account_lookup(account_email) if account_email else None
+        prompt = _build_ai_insight_prompt(data, account)
         result = model.generate_content(prompt)
         text = ""
         if hasattr(result, "text"):
@@ -15969,8 +16630,11 @@ def ai_chat():
             return jsonify({"error": "Empty message"}), 400
         context = data.get("context", {})
         history = data.get("history", [])
+        response_style = str((context.get("assistant") or {}).get("response_style") or "balanced")
 
-        system_prompt = _build_ai_chat_system(context)
+        account_email = _session_account_email()
+        account = _account_lookup(account_email) if account_email else None
+        system_prompt = _build_ai_chat_system(context, account, response_style)
 
         convo_parts = [f"System: {system_prompt}\n"]
         for h in history[-8:]:
@@ -16176,4 +16840,12 @@ def mobile_airports():
 
 
 if __name__ == "__main__":
-    app.run(debug=os.getenv("FLASK_DEBUG", "0") == "1", port=int(os.getenv("PORT", 5055)))
+    # threaded=True only matters for local `python app.py` runs — production
+    # already gets real concurrency from gunicorn (Procfile: --workers 2
+    # --threads 4). Without it, Werkzeug's dev server handles one request
+    # at a time, so a single slow blocking call (e.g. popular_flights()
+    # synchronously waiting on its own Duffel ThreadPoolExecutor batch)
+    # freezes every other request — including an unrelated real search —
+    # until it finishes. That's indistinguishable from "the app is down"
+    # to whoever's testing locally.
+    app.run(debug=os.getenv("FLASK_DEBUG", "0") == "1", port=int(os.getenv("PORT", 5055)), threaded=True)

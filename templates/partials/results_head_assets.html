@@ -1,0 +1,19 @@
+{# Canonical CSS set for any page that can end up showing the Lab results
+   experience (results.html's own <head>, and search_shell.html's loading
+   page). Kept in one place so the two templates can never drift apart on
+   stylesheet versions again — a drift here previously meant the shell's
+   loading page was missing ai-assistant.css/flatpickr/date-picker.css
+   entirely and running an older results-redesign.css, so swapping in the
+   final page's markup without a full document reload would have rendered
+   unstyled. gf-stream.css is intentionally NOT here — callers include it
+   themselves since only some pages need it. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}">
+{% include "partials/theme_head.html" %}
+<link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-results-calendar') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='results-redesign.css', v='20260819-route-timeline') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='results-lab.css', v='20260821-61') }}" />
+{# Version string must match partials/ai_chatbot.html's own <link> for this
+   same file — otherwise the browser fetches ai-assistant.css twice under
+   two different cache-busted URLs for no reason. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260822-chat-composer-focus-1') }}" />

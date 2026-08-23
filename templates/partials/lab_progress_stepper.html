@@ -1,0 +1,20 @@
+{# Extracted verbatim from results_lab_body.html. hidden exactly when
+   trip_mode != 'roundtrip' — results-lab.js applies the same rule at
+   results-lab.js:624-625, so skeleton and post-swap real state never
+   disagree and there's no round-trip-vs-one-way layout jump at completion. #}
+<nav class="lab-progress" id="labProgress"{% if trip_mode != 'roundtrip' %} hidden{% endif %} aria-label="Booking progress">
+  <ol class="lab-progress-list">
+    <li class="lab-progress-step" data-lab-step="departure" aria-current="step">
+      <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">1</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+      <span class="lab-progress-copy">Departure</span>
+    </li>
+    <li class="lab-progress-step" data-lab-step="return">
+      <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">2</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+      <span class="lab-progress-copy">Return</span>
+    </li>
+    <li class="lab-progress-step" data-lab-step="review">
+      <span class="lab-progress-marker" aria-hidden="true"><span class="lab-progress-number">3</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span>
+      <span class="lab-progress-copy">Review</span>
+    </li>
+  </ol>
+</nav>

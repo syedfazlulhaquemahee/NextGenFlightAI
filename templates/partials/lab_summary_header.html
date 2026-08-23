@@ -1,0 +1,48 @@
+{# Extracted verbatim from results_lab_body.html so the loading-skeleton
+   partial can render the exact same header — no separate copy to drift.
+   Pass skeleton=true to disable the edit button while nothing is wired up yet. #}
+{% set skeleton = skeleton|default(false) %}
+<header class="lab-summary">
+  <div class="lab-summary-heading">
+    <div class="lab-summary-route">
+      <span>{{ airport_header_label_local(query.get('origin')) }}</span>
+      <!-- Lucide Arrow Left Right, https://github.com/lucide-icons/lucide -->
+      <svg class="lab-summary-route-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {% if trip_mode == 'roundtrip' %}
+        <path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" />
+        {% else %}
+        <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
+        {% endif %}
+      </svg>
+      <span>{{ airport_header_label_local(query.get('destination')) }}</span>
+    </div>
+    <div class="lab-summary-details">
+      <span>
+        {% if query.get('depart_date') %}
+          {{ query.depart_date|format_date }}{% if query.return_date %} – {{ query.return_date|format_date }}{% endif %}
+        {% else %}Any dates{% endif %}
+      </span>
+      <span class="lab-dot" aria-hidden="true"></span>
+      <span>{{ passenger_count }} traveler{{ '' if passenger_count == 1 else 's' }} &middot; {{ cabin_label }}</span>
+      <span class="lab-dot" aria-hidden="true"></span>
+      <span class="lab-summary-codes" aria-label="Airport codes">
+        <span>{{ (query.get('origin') or '')|upper }}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          {% if trip_mode == 'roundtrip' %}
+          <path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" />
+          {% else %}
+          <path d="M5 12h14" /><path d="m13 6 6 6-6 6" />
+          {% endif %}
+        </svg>
+        <span>{{ (query.get('destination') or '')|upper }}</span>
+      </span>
+    </div>
+  </div>
+  <button type="button" class="lab-summary-edit" id="labEditSearch" aria-label="Edit search" title="Edit search"{% if skeleton %} disabled aria-disabled="true"{% endif %}>
+    <!-- Lucide Pencil, https://github.com/lucide-icons/lucide -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  </button>
+</header>

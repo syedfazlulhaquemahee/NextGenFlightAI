@@ -1,5 +1,5 @@
 {# Global Skairova AI assistant #}
-<link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260821-global-chat-6') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260822-chat-composer-focus-1') }}" />
 
 <div id="aiChatBubbleWrap" class="ai-chat-bubble-wrap" aria-label="Skairova AI assistant">
   <section class="ai-chat-panel" role="dialog" aria-label="Skairova AI" aria-modal="false">
@@ -23,10 +23,6 @@
     </div>
 
     <div class="ai-chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
-      <div class="ai-chat-greeting">
-        <div class="ai-chat-greeting-title">How can I help?</div>
-        <div class="ai-chat-greeting-sub">Ask about flights, fares, baggage, or your trip.</div>
-      </div>
       <div class="ai-msg ai-msg--ai">
         <div class="ai-msg-avatar" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 1.45 5.05L18.5 8.5l-5.05 1.45L12 15l-1.45-5.05L5.5 8.5l5.05-1.45L12 2Z"/></svg>
@@ -41,48 +37,27 @@
       <div class="ai-chat-composer-shell">
         <div class="ai-chat-compose-row">
           <div class="ai-chat-input-wrap">
-            <textarea class="ai-chat-input" placeholder="Reply, or pick a different model below" rows="2" maxlength="400" aria-label="Message"></textarea>
+            <textarea class="ai-chat-input" placeholder="Ask Skairova about your trip" rows="2" maxlength="400" aria-label="Message"></textarea>
             <span class="ai-chat-char-count" aria-live="polite" aria-atomic="true">0/400</span>
           </div>
           <button class="ai-chat-send" type="button" aria-label="Send message" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
           </button>
         </div>
-
-        <div class="ai-chat-composer-controls">
-          <button class="ai-chat-model-trigger" type="button" aria-expanded="false" aria-controls="aiChatModelMenu">
-            <svg class="ai-chat-model-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>
-            <span class="ai-chat-model-name">Skairova</span>
-            <svg class="ai-chat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
-          </button>
-        </div>
-
-        <div class="ai-chat-model-menu" id="aiChatModelMenu" role="listbox" aria-label="Choose model" hidden>
-          <div class="ai-chat-model-list">
-            <div class="ai-chat-model-menu-head">MODEL</div>
-            <button class="ai-chat-model-option" type="button" role="option" aria-selected="false" data-ai-model="Auto" data-ai-provider="Skairova" data-ai-description="Automatically chooses the right travel assistant for the task.">
-              <span><strong>Auto <em>Recommended</em></strong><small>Skairova</small></span>
-            </button>
-            <button class="ai-chat-model-option is-selected" type="button" role="option" aria-selected="true" data-ai-model="Skairova" data-ai-provider="Skairova" data-ai-description="Skairova’s travel model for planning, flight details, and booking questions.">
-              <span><strong>Skairova</strong><small>Skairova</small></span>
-              <svg class="ai-chat-option-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
-            </button>
-            <button class="ai-chat-model-option" type="button" role="option" aria-selected="false" data-ai-model="Skairova Long" data-ai-provider="Skairova" data-ai-description="For complex itineraries, detailed fare comparisons, and long travel plans.">
-              <span><strong>Skairova Long <em>Long context</em></strong><small>Skairova</small></span>
-            </button>
-            <button class="ai-chat-model-option" type="button" role="option" aria-selected="false" data-ai-model="Compass" data-ai-provider="Skairova" data-ai-description="A concise guide for quick airport, baggage, and check-in answers.">
-              <span><strong>Compass</strong><small>Skairova</small></span>
-            </button>
-            <button class="ai-chat-model-option" type="button" role="option" aria-selected="false" data-ai-model="Orbit" data-ai-provider="On device" data-ai-description="A private, lightweight option for simple travel questions.">
-              <span><strong>Orbit <em>On device</em></strong><small>Skairova</small></span>
-            </button>
-          </div>
+        {# The model list here used to offer Auto/Skairova/Skairova Long/
+           Compass/Orbit — including "Orbit — On device", implying local
+           inference that doesn't exist anywhere in this codebase (there's
+           exactly one Gemini wrapper backing every one of those "models").
+           Picking one and silently getting the same cloud call every time
+           is the kind of thing that becomes a trust problem once a user
+           notices, so the illusion is removed rather than built out for
+           real — this menu now only holds the (actually functional)
+           response-style control below. #}
+        <div class="ai-chat-model-menu" id="aiChatModelMenu" role="listbox" aria-label="Response style" hidden>
           <aside class="ai-chat-model-detail">
             <div class="ai-chat-model-detail-title" data-ai-model-detail-name>Skairova</div>
-            <div class="ai-chat-model-detail-provider" data-ai-model-detail-provider>Skairova</div>
-            <p data-ai-model-detail-description>Skairova’s travel model for planning, flight details, and booking questions.</p>
+            <p data-ai-model-detail-description>Skairova's travel assistant.</p>
             <div class="ai-chat-detail-row"><span>Context</span><strong>This page</strong></div>
-            <div class="ai-chat-detail-row"><span>Speed</span><strong>Balanced</strong></div>
             <div class="ai-chat-detail-row"><span>Cost</span><strong>Included</strong></div>
             <div class="ai-chat-reasoning-head"><span>REASONING</span><strong>✧ <span data-ai-reasoning-current>Balanced</span></strong></div>
             <div class="ai-chat-reasoning-meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
@@ -106,4 +81,4 @@
   </button>
 </div>
 
-<script src="{{ url_for('static', filename='ai-assistant.js', v='20260821-global-chat-6') }}"></script>
+<script src="{{ url_for('static', filename='ai-assistant.js', v='20260822-content-1') }}"></script>

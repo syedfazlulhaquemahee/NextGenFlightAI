@@ -1,0 +1,70 @@
+{# Extracted verbatim from results_lab_body.html. Group labels/inputs are
+   static markup — only counts/checkbox state populate later via
+   results-lab.js, and those containers (labAirlineFilterList etc.) are
+   already empty in the real pre-JS render, so this is byte-identical
+   between the loading skeleton and the real page.
+   Pass skeleton=true to make it unfocusable/invisible to AT while nothing
+   is wired up yet. #}
+{% set skeleton = skeleton|default(false) %}
+<aside class="lab-rail" id="labRail" aria-label="Flight filters"{% if skeleton %} inert aria-hidden="true"{% endif %}>
+  <div class="lab-rail-title">Refine</div>
+
+  <div class="lab-ai-filter">
+    <label class="lab-ai-filter-label" for="labAiFilterInput"><span class="lab-spark" aria-hidden="true">✦</span> Ask Skairova</label>
+    <p class="lab-ai-filter-hint">Filter these flights naturally</p>
+    <div class="lab-ai-filter-row">
+      <input type="text" id="labAiFilterInput" class="lab-ai-filter-input" placeholder="Nonstop under $400" autocomplete="off" />
+      <button type="button" id="labAiFilterGo" class="lab-ai-filter-go" aria-label="Apply Skairova filter">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+    <div class="lab-ai-filter-applied" id="labAiFilterApplied" hidden></div>
+  </div>
+
+  <div class="lab-rail-group" data-lab-rail-section="stops">
+    <div class="lab-rail-group-title">Stops</div>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-stop="0" /> Nonstop <span class="lab-check-price" data-lab-price-for-stop="0"></span></label>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-stop="1" /> 1 stop <span class="lab-check-price" data-lab-price-for-stop="1"></span></label>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-stop="2" /> 2+ stops <span class="lab-check-price" data-lab-price-for-stop="2"></span></label>
+  </div>
+
+  <div class="lab-rail-group">
+    <div class="lab-rail-group-title">Bags</div>
+    <label class="lab-check is-disabled"><input type="checkbox" disabled /> Not available until you pick a fare</label>
+  </div>
+
+  <div class="lab-rail-group" data-lab-rail-section="times">
+    <div class="lab-rail-group-title">Departure time</div>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-depart="morning" /> Morning &middot; 5am–12pm</label>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-depart="afternoon" /> Afternoon &middot; 12–6pm</label>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-depart="evening" /> Evening &middot; 6–10pm</label>
+    <label class="lab-check"><input type="checkbox" data-lab-filter-depart="night" /> Night &middot; 10pm–5am</label>
+  </div>
+
+  <div class="lab-rail-group" data-lab-rail-section="airlines">
+    <div class="lab-rail-group-title">Airlines</div>
+    <div class="lab-checklist" id="labAirlineFilterList"></div>
+  </div>
+
+  <div class="lab-rail-group" data-lab-rail-section="price">
+    <div class="lab-rail-group-title">Price</div>
+    <input type="range" class="lab-duration-slider" id="labPriceMax" min="0" max="0" step="1" />
+    <div class="lab-duration-label" id="labPriceMaxLabel"></div>
+  </div>
+
+  <div class="lab-rail-group">
+    <div class="lab-rail-group-title">Journey duration</div>
+    <input type="range" class="lab-duration-slider" id="labDurationMax" min="60" max="3000" step="30" />
+    <div class="lab-duration-label" id="labDurationMaxLabel"></div>
+  </div>
+
+  <div class="lab-rail-group">
+    <div class="lab-rail-group-title">Layover airports</div>
+    <div class="lab-checklist" id="labLayoverFilterList"></div>
+  </div>
+
+  <div class="lab-rail-actions">
+    <button type="button" class="lab-clear-filters" id="labClearFilters"{% if skeleton %} disabled{% endif %}>Clear all</button>
+    <button type="button" class="lab-apply-filters" id="labApplyFilters"{% if skeleton %} disabled{% endif %}>Show results</button>
+  </div>
+</aside>
