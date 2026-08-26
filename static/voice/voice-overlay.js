@@ -16,7 +16,7 @@
  */
 
 import { VoiceStateMachine } from "./voice-state-machine.js";
-import { AudioCapture, MicrophonePermissionError } from "./audio-capture.js";
+import { AudioCapture, MicrophonePermissionError } from "./audio-capture.js?v=20260826-permissions";
 import { DeepgramSocket, VoiceRateLimitedError } from "./deepgram-socket.js";
 import { WaveformCanvas } from "./waveform-canvas.js";
 import { AIOrb } from "./ai-orb.js?v=20260728-reactbits-orb";

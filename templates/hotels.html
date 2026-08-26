@@ -309,7 +309,7 @@
     window.SKAIR_API_BASE_URL = {{ (config.get("SKAIR_API_BASE_URL", "") if config else "") | tojson }};
   </script>
   <script type="module">
-    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260813-hotels-voice') }}";
+    import { initVoiceSearch } from "{{ url_for('static', filename='voice/voice-overlay.js', v='20260826-permissions') }}";
     initVoiceSearch({
       micButtonId: "stayVoiceMicBtn",
       textareaId: "nuAiText",

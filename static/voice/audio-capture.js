@@ -16,9 +16,24 @@ export class MicrophonePermissionError extends Error {
   }
 }
 
-function classifyGetUserMediaError(err) {
+async function classifyGetUserMediaError(err) {
   const name = (err && err.name) || "";
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    // `NotAllowedError` is also used for a restrictive Permissions-Policy or
+    // an OS-level privacy block. Do not tell someone to enable the site
+    // toggle when the browser already reports it as allowed.
+    const policy = document.permissionsPolicy || document.featurePolicy;
+    if (policy && typeof policy.allowsFeature === "function" && !policy.allowsFeature("microphone")) {
+      return new MicrophonePermissionError("unknown", "Voice is blocked by this page's microphone policy. Reload after the site update, then retry.");
+    }
+    try {
+      const permission = await navigator.permissions?.query?.({ name: "microphone" });
+      if (permission?.state === "granted") {
+        return new MicrophonePermissionError("unknown", "Microphone permission is allowed, but this browser or device could not start it. Check your device privacy settings or close another app using the mic.");
+      }
+    } catch (_ignored) {
+      // Not every browser exposes microphone state through Permissions API.
+    }
     return new MicrophonePermissionError("denied", "Microphone access was denied.");
   }
   if (name === "NotFoundError" || name === "DevicesNotFoundError") {
@@ -88,7 +103,7 @@ export class AudioCapture {
         video: false,
       });
     } catch (err) {
-      throw classifyGetUserMediaError(err);
+      throw await classifyGetUserMediaError(err);
     }
 
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;

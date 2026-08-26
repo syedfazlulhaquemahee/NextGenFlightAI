@@ -440,13 +440,12 @@ def _apply_security_headers(response: Response) -> Response:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    # Geolocation stays off everywhere except the Flights and Hotels landing
-    # pages, which use it for their nearby-hotel rails. Camera/mic remain
-    # blocked, and the browser still prompts for consent — this only stops the
-    # platform from refusing the request outright.
-    geolocation = "(self)" if request.endpoint in {"index", "hotels"} else "()"
+    # These permissions must be allowed by the response policy wherever a
+    # page can invoke them. A browser-level Allow setting cannot override a
+    # `feature=()` policy, which made supported devices look randomly denied.
+    # User consent is still required by the browser; camera remains disabled.
     response.headers.setdefault(
-        "Permissions-Policy", f"geolocation={geolocation}, camera=(), microphone=()"
+        "Permissions-Policy", "geolocation=(self), camera=(), microphone=(self)"
     )
     if os.getenv("NGF_SESSION_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes"}:
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
