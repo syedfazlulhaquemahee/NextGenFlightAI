@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -11,6 +12,8 @@ from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
 from typing import Any, Mapping, Sequence
+
+import requests
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -154,6 +157,65 @@ def _normalize_recipients(to_emails: str | Sequence[str]) -> list[str]:
     return out
 
 
+def resend_is_configured() -> bool:
+    return bool(str(os.getenv("RESEND_API_KEY", "")).strip())
+
+
+def _send_via_resend(
+    *,
+    recipients: list[str],
+    subject: str,
+    text_body: str,
+    html_body: str,
+    attachments: list[dict[str, Any]] | None,
+    from_email: str,
+    from_name: str,
+    reply_to: str,
+) -> tuple[bool, str]:
+    """Resend's HTTP API (port 443) instead of raw SMTP sockets (ports 25/
+    465/587) — Render's free tier blocks outbound traffic to SMTP ports
+    entirely (confirmed live: every send failed with smtp_error:OSError),
+    so this is the transport that actually works there, not just a nicer
+    API. Same From/Reply-To identity as the SMTP path (NGF_EMAIL_FROM*)."""
+    api_key = str(os.getenv("RESEND_API_KEY", "")).strip()
+    payload: dict[str, Any] = {
+        "from": formataddr((from_name, from_email)) if from_name else from_email,
+        "to": recipients,
+        "subject": subject,
+        "text": text_body,
+    }
+    if html_body.strip():
+        payload["html"] = html_body
+    if reply_to:
+        payload["reply_to"] = reply_to
+    if attachments:
+        payload["attachments"] = [
+            {
+                "filename": att.get("filename", "attachment"),
+                "content": base64.b64encode(att["data"]).decode("ascii"),
+            }
+            for att in attachments
+        ]
+
+    try:
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        return False, f"resend_error:{type(exc).__name__}"
+
+    if resp.status_code in (200, 201):
+        return True, "sent"
+    try:
+        detail = str(resp.json().get("message") or "").strip() or resp.text[:200]
+    except Exception:
+        detail = resp.text[:200]
+    return False, f"resend_error:{resp.status_code}:{detail}"
+
+
 def send_email(
     *,
     to_emails: str | Sequence[str],
@@ -172,6 +234,21 @@ def send_email(
     recipients = _normalize_recipients(to_emails)
     if not recipients:
         return False, "invalid_recipient"
+
+    if resend_is_configured():
+        from_email = _normalize_email(os.getenv("NGF_EMAIL_FROM", ""))
+        if not from_email:
+            return False, "email_not_configured"
+        return _send_via_resend(
+            recipients=recipients,
+            subject=str(subject or "Skairova"),
+            text_body=text_body,
+            html_body=html_body,
+            attachments=attachments,
+            from_email=from_email,
+            from_name=str(os.getenv("NGF_EMAIL_FROM_NAME", "Skairova")).strip() or "Skairova",
+            reply_to=_normalize_email(os.getenv("NGF_EMAIL_REPLY_TO", "")),
+        )
 
     conf = load_smtp_settings()
     if not smtp_is_configured(conf):
