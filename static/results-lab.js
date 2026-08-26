@@ -98,6 +98,8 @@
   var priceSlider = document.getElementById("labPriceMax");
   var priceLabel = document.getElementById("labPriceMaxLabel");
   var airlineListEl = document.getElementById("labAirlineFilterList");
+  var originListEl = document.getElementById("labOriginFilterList");
+  var destListEl = document.getElementById("labDestFilterList");
   var layoverListEl = document.getElementById("labLayoverFilterList");
   var nonstopQuick = root.querySelector('[data-lab-quick="nonstop"]');
   var stop1Quick = root.querySelector('[data-lab-quick="stop1"]');
@@ -136,6 +138,8 @@
     maxDuration: Infinity,
     maxPrice: Infinity,
     airlines: {},
+    originAirports: {},
+    destAirports: {},
     layovers: {},
   };
 
@@ -152,7 +156,8 @@
       return departureGroups.map(function (g) {
         return {
           key: g.key, price: g.best.price, duration: g.out.durationMin, stops: g.out.stops,
-          departIso: g.out.departIso, arriveIso: g.out.arriveIso, airlineName: g.airlineName, layovers: g.out.layovers, ref: g,
+          departIso: g.out.departIso, arriveIso: g.out.arriveIso, airlineName: g.airlineName, layovers: g.out.layovers,
+          originCode: g.out.originCode, destCode: g.out.destCode, ref: g,
         };
       });
     }
@@ -160,7 +165,8 @@
       return flow.chosenGroup.members.map(function (f) {
         return {
           key: f.id, price: f.price, duration: f.ret.durationMin, stops: f.ret.stops,
-          departIso: f.ret.departIso, arriveIso: f.ret.arriveIso, airlineName: f.airlineName, layovers: f.ret.layovers, ref: f,
+          departIso: f.ret.departIso, arriveIso: f.ret.arriveIso, airlineName: f.airlineName, layovers: f.ret.layovers,
+          originCode: f.ret.originCode, destCode: f.ret.destCode, ref: f,
         };
       });
     }
@@ -169,7 +175,8 @@
         return {
           key: f.id, price: f.price, duration: f.totalDurationMin, stops: f.totalStops,
           departIso: f.out ? f.out.departIso : "", arriveIso: f.out ? f.out.arriveIso : "", airlineName: f.airlineName,
-          layovers: (f.out ? f.out.layovers : []).concat(f.ret ? f.ret.layovers : []), ref: f,
+          layovers: (f.out ? f.out.layovers : []).concat(f.ret ? f.ret.layovers : []),
+          originCode: f.out ? f.out.originCode : "", destCode: f.out ? f.out.destCode : "", ref: f,
         };
       });
     }
@@ -510,6 +517,8 @@
     if (filterState.minPrice && item.price < filterState.minPrice) return false;
     if (!passesNlHourFilter(item)) return false;
     if (anyChecked(filterState.airlines) && !airlineTokens(item.airlineName).some(function (n) { return filterState.airlines[n]; })) return false;
+    if (anyChecked(filterState.originAirports) && !filterState.originAirports[item.originCode]) return false;
+    if (anyChecked(filterState.destAirports) && !filterState.destAirports[item.destCode]) return false;
     if (anyChecked(filterState.layovers) && item.layovers.length && !item.layovers.some(function (l) { return filterState.layovers[l.code]; })) return false;
     if (anyChecked(filterState.layovers) && !item.layovers.length && item.stops > 0) return false;
     return true;
@@ -542,6 +551,34 @@
      instant they were set. Stage transitions still fully reset via
      clearFilterInputs(), which runs on every departure/return/review
      transition. */
+  /* Departure/arrival airport checklists, built the same way as the
+     airline/layover ones below. Hidden when there's only one (or zero)
+     distinct airport in the current stage's items — a checklist offering
+     just the one airport every result already uses can't filter anything. */
+  function buildAirportChecklist(listEl, stateKey, codes, dataAttr) {
+    var distinctCodes = Array.from(new Set(codes.filter(Boolean))).sort();
+    var group = listEl.closest(".lab-rail-group");
+    group.hidden = distinctCodes.length < 2;
+    var prev = filterState[stateKey] || {};
+    filterState[stateKey] = {};
+    listEl.innerHTML = "";
+    distinctCodes.forEach(function (code) {
+      filterState[stateKey][code] = !!prev[code];
+      var label = document.createElement("label");
+      label.className = "lab-check";
+      label.innerHTML = '<input type="checkbox" ' + dataAttr + '="' + esc(code) + '" /> <span></span>';
+      label.querySelector("span").textContent = code.toUpperCase();
+      label.querySelector("input").checked = filterState[stateKey][code];
+      listEl.appendChild(label);
+    });
+    Array.from(listEl.querySelectorAll("[" + dataAttr + "]")).forEach(function (input) {
+      input.addEventListener("change", function () {
+        filterState[stateKey][input.getAttribute(dataAttr)] = input.checked;
+        renderStage();
+      });
+    });
+  }
+
   function rebuildRailBounds(items) {
     if (!items.length) return;
     var durations = items.map(function (i) { return i.duration; });
@@ -580,6 +617,9 @@
         renderStage();
       });
     });
+
+    buildAirportChecklist(originListEl, "originAirports", items.map(function (i) { return i.originCode; }), "data-lab-filter-origin");
+    buildAirportChecklist(destListEl, "destAirports", items.map(function (i) { return i.destCode; }), "data-lab-filter-dest");
 
     var layoverCodes = Array.from(new Set(items.reduce(function (acc, i) { return acc.concat(i.layovers.map(function (l) { return l.code; })); }, []))).sort();
     var prevLayovers = filterState.layovers || {};
@@ -622,6 +662,8 @@
         if (i.duration > filterState.maxDuration) return false;
         if (i.price > filterState.maxPrice) return false;
         if (anyChecked(filterState.airlines) && !airlineTokens(i.airlineName).some(function (n) { return filterState.airlines[n]; })) return false;
+        if (anyChecked(filterState.originAirports) && !filterState.originAirports[i.originCode]) return false;
+        if (anyChecked(filterState.destAirports) && !filterState.destAirports[i.destCode]) return false;
         return true;
       });
       el.textContent = candidates.length ? "from " + money(Math.min.apply(null, candidates.map(function (i) { return i.price; }))) : "";
@@ -837,6 +879,8 @@
     filterState.departAfterHour = null;
     filterState.departBeforeHour = null;
     Object.keys(filterState.airlines).forEach(function (k) { filterState.airlines[k] = false; });
+    Object.keys(filterState.originAirports).forEach(function (k) { filterState.originAirports[k] = false; });
+    Object.keys(filterState.destAirports).forEach(function (k) { filterState.destAirports[k] = false; });
     Object.keys(filterState.layovers).forEach(function (k) { filterState.layovers[k] = false; });
     appliedNlFilters = [];
     if (aiFilterInput) aiFilterInput.value = "";

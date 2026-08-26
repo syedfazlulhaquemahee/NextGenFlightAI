@@ -481,17 +481,22 @@ def send_welcome_email(
 
     text_body = (
         f"Hi {greeting},\n\n"
-        f"Welcome to {brand}. Your account is ready.\n\n"
+        f"Welcome to {brand}. Your account is ready — let's find your next flight.\n\n"
         "What you can do:\n"
-        "  - AI-powered search: ask in plain English, we find the best flights\n"
-        "  - Real-time pricing: live fares with no hidden fees\n"
-        "  - All your bookings in one place\n"
+        "  - Search in plain English: \"cheapest week to Lisbon in June\" works\n"
+        "  - See the real price upfront: live fares, no hidden fees\n"
+        "  - Every trip saved automatically to your account\n"
     )
-    if portal_url:
+    if search_url:
+        text_body += f"\nSearch flights: {search_url}\n"
+    elif portal_url:
         text_body += f"\nOpen your account: {portal_url}\n"
-    text_body += f"\nThanks for joining {brand}.\n"
+    text_body += f"\nHappy travels — the {brand} team.\n"
 
-    cta = _cta_button("Open your account", portal_url or search_url or "#", "#4f6fff") if (portal_url or search_url) else ""
+    # The "aha moment" for a flight-search product is searching, not visiting
+    # the account page — so that's the primary CTA target whenever we have it.
+    cta_url = search_url or portal_url
+    cta = _cta_button("Search flights", cta_url or "#", "#4f6fff") if cta_url else ""
 
     features_html = "".join(
         f"<tr><td style=\"padding:16px 0;border-bottom:1px solid {_C_RULE};\">"
@@ -501,12 +506,12 @@ def send_welcome_email(
         f"line-height:1.55;\">{escape(desc)}</div>"
         f"</td></tr>"
         for title, desc in [
-            ("AI-powered search",
-             "Ask in plain English and get the best flight options instantly."),
-            ("Real-time pricing",
-             "Live fares with no hidden fees or markups, ever."),
-            ("All your bookings in one place",
-             "Manage every trip from your personal portal."),
+            ("Search in plain English",
+             "Tell us where and when — \"cheapest week to Lisbon in June\" works just as well as picking dates from a calendar."),
+            ("See the real price, upfront",
+             "Live fares straight from the airlines. The price you're quoted is the price you pay — no hidden fees."),
+            ("Every trip, saved automatically",
+             "Itineraries and receipts land in your account the moment you book, ready whenever you need them."),
         ]
     )
 
@@ -514,8 +519,7 @@ def send_welcome_email(
         f"<p style=\"margin:0 0 28px;font-family:{_FONT};font-size:15px;"
         f"color:{_C_BODY};line-height:1.65;\">"
         f"Hi <strong style=\"color:{_C_HEAD};\">{escape(greeting)}</strong>, "
-        f"welcome to {escape(brand)}. Your account is live. "
-        f"Here is what is waiting for you.</p>"
+        f"your account is ready. Here is what is waiting for you.</p>"
         f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\""
         f" border=\"0\" width=\"100%\" style=\"margin-bottom:32px;\">"
         f"<tr><td style=\"border-top:1px solid {_C_RULE};\">"
@@ -523,6 +527,8 @@ def send_welcome_email(
         f" border=\"0\" width=\"100%\">{features_html}</table>"
         f"</td></tr></table>"
         f"{cta}"
+        f"<p style=\"margin:20px 0 0;font-family:{_FONT};font-size:13px;"
+        f"color:{_C_MUTED};\">Happy travels &mdash; the {escape(brand)} team.</p>"
     )
 
     html_body = _render_react_email("welcome", {
@@ -532,10 +538,10 @@ def send_welcome_email(
         "supportEmail": _normalize_email(os.getenv("NGF_EMAIL_REPLY_TO", "")) or _normalize_email(os.getenv("NGF_EMAIL_FROM", "")),
         "brand": brand,
     }) or _wrap_email(
-        preheader=f"Welcome to {brand} — your account is ready. Start searching for flights today.",
+        preheader=f"Welcome to {brand} — your account is ready. Let's find your next flight.",
         accent_color="#4f46e5",
         title=f"Welcome, {greeting}.",
-        subtitle=f"Your {escape(brand)} account has been created and is ready to use.",
+        subtitle="Your account is ready. Let's find your next flight.",
         body_html=body_html,
     )
 
@@ -836,7 +842,7 @@ def send_cancellation_email(
     order_summary: Mapping[str, Any],
     refund_amount: str = "",
     refund_currency: str = "USD",
-    manage_url: str = "",
+    search_url: str = "",
 ) -> tuple[bool, str]:
     booking_reference = str(order_summary.get("booking_reference") or "").strip()
     order_id          = str(order_summary.get("order_id") or "").strip()
@@ -865,8 +871,8 @@ def send_cancellation_email(
         )
     else:
         text_body += "This booking was non-refundable. No refund will be issued.\n"
-    if manage_url:
-        text_body += f"\nSearch new flights: {manage_url}\n"
+    if search_url:
+        text_body += f"\nSearch new flights: {search_url}\n"
 
     # Reference block
     ref_block = _highlight_box(
@@ -920,9 +926,9 @@ def send_cancellation_email(
             f"</td></tr></table>"
         )
 
-    base_url   = _public_base_url()
-    search_url = manage_url or (f"{base_url}/" if base_url else "")
-    cta        = _cta_button("Search new flights", search_url, _C_LINK) if search_url else ""
+    base_url        = _public_base_url()
+    resolved_search = search_url or (f"{base_url}/" if base_url else "")
+    cta             = _cta_button("Search new flights", resolved_search, _C_LINK) if resolved_search else ""
 
     hero_sub = (
         f"A refund of {escape(refund_ccy)} {escape(refund_amount)} will be returned "
@@ -939,7 +945,7 @@ def send_cancellation_email(
         "hasRefund": has_refund,
         "refundAmount": refund_amount if has_refund else "",
         "refundCurrency": refund_ccy,
-        "searchUrl": search_url or "",
+        "searchUrl": resolved_search or "",
         "supportEmail": _normalize_email(os.getenv("NGF_EMAIL_REPLY_TO", "")) or _normalize_email(os.getenv("NGF_EMAIL_FROM", "")),
         "brand": brand,
     }) or _wrap_email(

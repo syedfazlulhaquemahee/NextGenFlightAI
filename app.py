@@ -8478,13 +8478,13 @@ def _format_flex_no_results_error(params: dict[str, Any]) -> str:
             "Try another month, broader airports, or remove constraints like nonstop."
         )
     if DUFFEL_ENV == "test":
-        message += " This app is currently using Duffel test data, so some routes or prices may differ from live inventory."
+        message += " Prices and routes shown here may not reflect live availability right now."
     return message
 
 
 def _booking_lookup_error() -> str | None:
     if not DUFFEL_ACCESS_TOKEN:
-        return "Booking lookup is not configured yet. Add DUFFEL_ACCESS_TOKEN to your .env file and try again."
+        return "Booking lookup isn't available right now. Please try again in a moment, or contact support if this keeps happening."
     return None
 
 
@@ -8521,10 +8521,17 @@ def _demo_checkout_lock_error() -> str | None:
 
 
 def _booking_mode_error() -> str | None:
+    """Hard safety interlock: never let a real order post to Duffel's live
+    API from here (only a duffel_test_ token may create orders). This is a
+    developer-facing guard, not the customer-facing demo message — callers
+    should check _demo_checkout_lock_error() first wherever both apply, so
+    that friendlier copy wins whenever this fires for the same underlying
+    reason (checkout intentionally disabled). This return value is what a
+    guest sees if it's ever reached on its own, so it stays generic."""
     if not DUFFEL_ACCESS_TOKEN:
-        return "Duffel booking is not configured yet. Add DUFFEL_ACCESS_TOKEN to your .env file and try again."
+        return "Booking isn't available right now. Please try again in a moment, or contact support if this keeps happening."
     if DUFFEL_ENV != "test":
-        return "Booking is locked to Duffel test mode for this prototype. Switch back to a duffel_test_ token before creating orders."
+        return "Booking isn't available right now. Please check back soon, or contact support if you need help."
     return None
 
 
@@ -12232,7 +12239,7 @@ def _oauth_login_or_create(
 @app.route("/auth/google")
 def oauth_google_start():
     if not GOOGLE_OAUTH_CLIENT_ID or not GOOGLE_OAUTH_CLIENT_SECRET:
-        _set_manage_account_notice(error="Google sign-in is not configured yet.")
+        _set_manage_account_notice(error="Google sign-in isn't available right now — please sign in with your email instead.")
         return redirect(url_for("auth_page"))
     state = secrets.token_urlsafe(32)
     session["oauth_google_state"] = state
@@ -12310,7 +12317,7 @@ def oauth_google_callback():
 @app.route("/auth/apple")
 def oauth_apple_start():
     if not APPLE_OAUTH_CLIENT_ID or not APPLE_OAUTH_TEAM_ID or not APPLE_OAUTH_KEY_ID or not APPLE_OAUTH_PRIVATE_KEY:
-        _set_manage_account_notice(error="Apple sign-in is not configured yet.")
+        _set_manage_account_notice(error="Apple sign-in isn't available right now — please sign in with your email instead.")
         return redirect(url_for("auth_page"))
     state = secrets.token_urlsafe(32)
     session["oauth_apple_state"] = state
@@ -12692,14 +12699,14 @@ def manage_booking_cancel(order_id: str):
         acct_email = _session_account_email()
         if acct_email and acct_email not in recipients:
             recipients.append(acct_email)
-        manage_url = url_for("manage_booking", _external=True)
+        search_url = url_for("index", _external=True)
         for recipient in recipients:
             email_service.send_cancellation_email(
                 to_email=recipient,
                 order_summary=summary,
                 refund_amount=refund_amount,
                 refund_currency=refund_currency,
-                manage_url=manage_url,
+                search_url=search_url,
             )
     except Exception:
         pass
@@ -16505,7 +16512,7 @@ def _build_ai_insight_prompt(context: dict, account: dict[str, Any] | None = Non
 @app.route("/api/ai/insight", methods=["POST"])
 def ai_insight():
     if not model:
-        return jsonify({"error": "AI not configured"}), 503
+        return jsonify({"error": "AI assistant isn't available right now."}), 503
     try:
         data = request.get_json(silent=True) or {}
         account_email = _session_account_email()
@@ -16525,13 +16532,14 @@ def ai_insight():
             return jsonify({"error": "No response"}), 500
         return jsonify({"insight": text})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("AI INSIGHT ERROR:", repr(e))
+        return jsonify({"error": "Couldn't generate an insight right now. Please try again."}), 500
 
 
 @app.route("/api/ai/chat", methods=["POST"])
 def ai_chat():
     if not model:
-        return jsonify({"error": "AI not configured"}), 503
+        return jsonify({"error": "AI assistant isn't available right now."}), 503
     try:
         data = request.get_json(silent=True) or {}
         user_message = str(data.get("message", "")).strip()[:500]
@@ -16571,13 +16579,14 @@ def ai_chat():
             return jsonify({"error": "No response"}), 500
         return jsonify({"reply": text})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("AI CHAT ERROR:", repr(e))
+        return jsonify({"error": "I'm sorry, I couldn't process that. Please try again."}), 500
 
 
 @app.route("/api/ai/filter", methods=["POST"])
 def ai_filter():
     if not model:
-        return jsonify({"error": "AI not configured"}), 503
+        return jsonify({"error": "AI assistant isn't available right now."}), 503
     try:
         data = request.get_json(silent=True) or {}
         user_text = str(data.get("query", "")).strip()[:300]
@@ -16616,7 +16625,8 @@ def ai_filter():
         parsed = json.loads(text)
         return jsonify({"filters": parsed})
     except Exception as e:
-        return jsonify({"error": str(e), "filters": {}}), 200
+        print("AI FILTER ERROR:", repr(e))
+        return jsonify({"error": "Couldn't parse that filter. Please try rephrasing it.", "filters": {}}), 200
 
 
 # ---------------------------------------------------------------------------
@@ -16713,7 +16723,8 @@ def mobile_search():
     try:
         flights = search_flights(params)
     except Exception as exc:
-        return jsonify({"error": str(exc), "flights": []}), 502
+        print("MOBILE SEARCH ERROR:", repr(exc))
+        return jsonify({"error": "Search isn't available right now. Please try again.", "flights": []}), 502
 
     safe_flights = []
     for f in flights:
@@ -16746,6 +16757,43 @@ def mobile_airports():
     if len(q) < 2:
         return jsonify([])
     return airports()
+
+
+@app.errorhandler(404)
+def not_found_page(_error):
+    return render_template(
+        "error_page.html",
+        page_title="Page not found",
+        kicker="404",
+        heading_line1="We can't find",
+        heading_line2="that page.",
+        description="The link you followed may be broken, or the page may have moved. Let's get you back on track.",
+        footer_note="Double-check the address, or start a new search below.",
+    ), 404
+
+
+@app.errorhandler(500)
+def server_error_page(error):
+    print("UNHANDLED SERVER ERROR:", repr(error))
+    try:
+        return render_template(
+            "error_page.html",
+            page_title="Something went wrong",
+            kicker="Unexpected error",
+            heading_line1="Something went",
+            heading_line2="wrong on our end.",
+            description="This wasn't your fault — please try again in a moment.",
+            footer_note="If this keeps happening, our team is already on it.",
+        ), 500
+    except Exception:
+        # Last-resort fallback if the branded page itself can't render (e.g.
+        # the failure that triggered this handler also breaks a shared
+        # template dependency like account/session lookup) — still no raw
+        # traceback reaches a guest.
+        return (
+            "<!doctype html><title>Skairova</title>"
+            "<p>Something went wrong on our end. Please try again in a moment.</p>"
+        ), 500
 
 
 if __name__ == "__main__":
