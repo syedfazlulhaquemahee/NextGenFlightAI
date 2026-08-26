@@ -10,10 +10,16 @@ from typing import Any
 from agent_security import generate_password_salt, hash_password, normalize_role, resolve_effective_role
 
 BASE_DIR = os.path.dirname(__file__)
-AGENT_DB_PATH = (
-    os.getenv("NGF_AGENT_DB_PATH", os.path.join(BASE_DIR, "data", "agent_portal.db")).strip()
-    or os.path.join(BASE_DIR, "data", "agent_portal.db")
-)
+# Vercel Functions mount the deployed project read-only — os.makedirs() and
+# the sqlite3.connect() below both crash with "unable to open database
+# file" against a path under BASE_DIR there. Mirrors app.py's
+# _SERVERLESS_SCRATCH_DIR fallback for ACCOUNT_DB_PATH/ANALYTICS_DB_PATH:
+# /tmp is writable but ephemeral (wiped on cold start), so this is only a
+# crash-prevention fallback, not durable storage — override
+# NGF_AGENT_DB_PATH with a persistent path in production.
+_AGENT_SERVERLESS_SCRATCH_DIR = "/tmp/nextgenflightai" if os.getenv("VERCEL") else os.path.join(BASE_DIR, "data")
+_DEFAULT_AGENT_DB_PATH = os.path.join(_AGENT_SERVERLESS_SCRATCH_DIR, "agent_portal.db")
+AGENT_DB_PATH = os.getenv("NGF_AGENT_DB_PATH", "").strip() or _DEFAULT_AGENT_DB_PATH
 _AGENT_DB_READY = False
 _DB_LOCK = threading.Lock()
 
