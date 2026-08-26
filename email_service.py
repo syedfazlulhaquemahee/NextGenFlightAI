@@ -334,12 +334,14 @@ def _wrap_email(
     *,
     preheader: str,
     accent_color: str,
+    accent_tint: str = "",
     title: str,
     subtitle: str,
     body_html: str,
     footer_extra: str = "",
     support_email: str = "",
 ) -> str:
+    header_bg = accent_tint or _C_OUTER
     brand = str(os.getenv("NGF_EMAIL_BRAND_NAME", "Skairova")).strip() or "Skairova"
     sup = support_email or (
         _normalize_email(os.getenv("NGF_EMAIL_REPLY_TO", ""))
@@ -396,25 +398,15 @@ def _wrap_email(
                            font-size:0;line-height:0;">&nbsp;</td>
               </tr>
 
-              <!-- Logo -->
+              <!-- Header: logo + heading together in a tinted block -->
               <tr>
-                <td class="em-pad" style="padding:26px 36px 22px;">
-                  {_logo_html()}
-                </td>
-              </tr>
-
-              <!-- Divider -->
-              <tr>
-                <td style="height:1px;background:{_C_BORDER};
-                           font-size:0;line-height:0;">&nbsp;</td>
-              </tr>
-
-              <!-- Heading -->
-              <tr>
-                <td class="em-pad" style="padding:36px 36px 4px;">
-                  <h1 style="margin:0 0 12px;font-family:{_FONT};
-                              font-size:26px;font-weight:700;color:{_C_HEAD};
-                              line-height:1.3;letter-spacing:-0.02em;">
+                <td class="em-pad" style="background:{header_bg};
+                           border-bottom:1px solid {_C_BORDER};
+                           padding:28px 36px 32px;">
+                  <div style="margin-bottom:28px;">{_logo_html()}</div>
+                  <h1 style="margin:0 0 10px;font-family:{_FONT};
+                              font-size:28px;font-weight:700;color:{_C_HEAD};
+                              line-height:1.25;letter-spacing:-0.025em;">
                     {escape(title)}
                   </h1>
                   <p style="margin:0;font-family:{_FONT};font-size:15px;
@@ -426,7 +418,7 @@ def _wrap_email(
 
               <!-- Body -->
               <tr>
-                <td class="em-pad" style="padding:28px 36px 36px;">
+                <td class="em-pad" style="padding:32px 36px 36px;">
                   {body_html}
                 </td>
               </tr>
@@ -498,34 +490,38 @@ def send_welcome_email(
     cta_url = search_url or portal_url
     cta = _cta_button("Search flights", cta_url or "#", "#4f6fff") if cta_url else ""
 
+    _welcome_features = [
+        ("01", "Search in plain English",
+         "Tell us where and when — \"cheapest week to Lisbon in June\" works just as well as picking dates from a calendar."),
+        ("02", "See the real price, upfront",
+         "Live fares straight from the airlines. The price you're quoted is the price you pay — no hidden fees."),
+        ("03", "Every trip, saved automatically",
+         "Itineraries and receipts land in your account the moment you book, ready whenever you need them."),
+    ]
     features_html = "".join(
-        f"<tr><td style=\"padding:16px 0;border-bottom:1px solid {_C_RULE};\">"
-        f"<div style=\"font-family:{_FONT};font-size:14px;font-weight:600;"
-        f"color:{_C_HEAD};margin-bottom:3px;\">{escape(title)}</div>"
-        f"<div style=\"font-family:{_FONT};font-size:13px;color:{_C_MUTED};"
-        f"line-height:1.55;\">{escape(desc)}</div>"
+        f"<tr><td style=\"padding-bottom:{'0' if i == len(_welcome_features) - 1 else '20px'};\">"
+        f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\">"
+        f"<tr>"
+        f"<td style=\"width:3px;background:#4f46e5;border-radius:2px;\"></td>"
+        f"<td style=\"width:16px;\"></td>"
+        f"<td style=\"vertical-align:top;\">"
+        f"<div style=\"font-family:{_MONO};font-size:11px;font-weight:700;color:#4f46e5;"
+        f"letter-spacing:0.06em;margin-bottom:4px;\">{num}</div>"
+        f"<div style=\"font-family:{_FONT};font-size:14px;font-weight:600;color:{_C_HEAD};"
+        f"margin-bottom:4px;line-height:1.4;\">{escape(title)}</div>"
+        f"<div style=\"font-family:{_FONT};font-size:13px;color:{_C_MUTED};line-height:1.6;\">"
+        f"{escape(desc)}</div>"
+        f"</td></tr></table>"
         f"</td></tr>"
-        for title, desc in [
-            ("Search in plain English",
-             "Tell us where and when — \"cheapest week to Lisbon in June\" works just as well as picking dates from a calendar."),
-            ("See the real price, upfront",
-             "Live fares straight from the airlines. The price you're quoted is the price you pay — no hidden fees."),
-            ("Every trip, saved automatically",
-             "Itineraries and receipts land in your account the moment you book, ready whenever you need them."),
-        ]
+        for i, (num, title, desc) in enumerate(_welcome_features)
     )
 
     body_html = (
-        f"<p style=\"margin:0 0 28px;font-family:{_FONT};font-size:15px;"
-        f"color:{_C_BODY};line-height:1.65;\">"
-        f"Hi <strong style=\"color:{_C_HEAD};\">{escape(greeting)}</strong>, "
-        f"your account is ready. Here is what is waiting for you.</p>"
         f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\""
-        f" border=\"0\" width=\"100%\" style=\"margin-bottom:32px;\">"
-        f"<tr><td style=\"border-top:1px solid {_C_RULE};\">"
-        f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\""
-        f" border=\"0\" width=\"100%\">{features_html}</table>"
-        f"</td></tr></table>"
+        f" border=\"0\" width=\"100%\" style=\"margin-bottom:32px;\">{features_html}</table>"
+        f"<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\""
+        f" style=\"margin-bottom:24px;\"><tr><td style=\"height:1px;background:{_C_BORDER};"
+        f"font-size:0;line-height:0;\">&nbsp;</td></tr></table>"
         f"{cta}"
         f"<p style=\"margin:20px 0 0;font-family:{_FONT};font-size:13px;"
         f"color:{_C_MUTED};\">Happy travels &mdash; the {escape(brand)} team.</p>"
@@ -540,6 +536,7 @@ def send_welcome_email(
     }) or _wrap_email(
         preheader=f"Welcome to {brand} — your account is ready. Let's find your next flight.",
         accent_color="#4f46e5",
+        accent_tint="#f5f4ff",
         title=f"Welcome, {greeting}.",
         subtitle="Your account is ready. Let's find your next flight.",
         body_html=body_html,
@@ -714,6 +711,7 @@ def send_itinerary_email(
     }) or _wrap_email(
         preheader=f"Your booking {ref_display} is confirmed. Have a great flight.",
         accent_color="#059669",
+        accent_tint="#f0fdf8",
         title="Your booking is confirmed.",
         subtitle=f"Your flight with {escape(airline_name)} is booked. Keep this email for your records.",
         body_html=body_html,
@@ -824,6 +822,7 @@ def send_hotel_confirmation_email(
     }) or _wrap_email(
         preheader=f"Your stay at {hotel_name} ({ref_display}) is confirmed.",
         accent_color="#059669",
+        accent_tint="#f0fdf8",
         title="Your hotel is booked.",
         subtitle=f"Your stay at {escape(hotel_name)} is confirmed. Keep this email for your records.",
         body_html=body_html,
@@ -954,6 +953,7 @@ def send_cancellation_email(
             + (f" Refund of {refund_ccy} {refund_amount} is on its way." if has_refund else "")
         ),
         accent_color="#dc2626",
+        accent_tint="#fff8f8",
         title="Your booking has been cancelled.",
         subtitle=hero_sub,
         body_html=body_html,
@@ -1028,6 +1028,7 @@ def send_password_reset_code_email(
     }) or _wrap_email(
         preheader=f"Your verification code is {code}. Expires in {expiry} minutes.",
         accent_color="#2563eb",
+        accent_tint="#f0f6ff",
         title="Verify your identity.",
         subtitle="Use the code below to complete your password reset on Skairova.",
         body_html=body_html,
