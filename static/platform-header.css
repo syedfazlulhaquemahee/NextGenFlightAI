@@ -1223,6 +1223,17 @@ html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger svg {
     line-height: 1 !important;
   }
 
+  /* USD is currently informational, so it must not resemble a dropdown. */
+  .topbar.platform-header .hdr-currency.hdr-currency--static {
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #667085 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
+
   .topbar.platform-header .hdr-currency .hdr-svg {
     width: 15px !important;
     height: 15px !important;

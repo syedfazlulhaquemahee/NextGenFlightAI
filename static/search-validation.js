@@ -3,12 +3,21 @@
   const monthPattern = /^\d{4}-\d{2}$/;
 
   function clearFieldError(field) {
-    if (field) field.setCustomValidity("");
+    if (!field) return;
+    if (typeof field.setCustomValidity === "function") field.setCustomValidity("");
+    field.removeAttribute("aria-invalid");
+    field.removeAttribute("title");
+    field.classList?.remove("is-invalid");
   }
 
   function setFieldError(field, message) {
     if (!field) return null;
-    field.setCustomValidity(message || "");
+    if (typeof field.setCustomValidity === "function") field.setCustomValidity(message || "");
+    else {
+      field.setAttribute("aria-invalid", "true");
+      field.setAttribute("title", message || "");
+      field.classList?.add("is-invalid");
+    }
     return field;
   }
 

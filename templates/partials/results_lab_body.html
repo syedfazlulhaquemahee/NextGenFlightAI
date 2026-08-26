@@ -1,19 +1,15 @@
 {# ==========================================================================
-   Skairova Flight Results — "Lab" experience (experimental redesign, v2)
+   Skairova Flight Results — the only results page (formerly the "Lab"
+   redesign, now the sole rendering path; the classic markup it used to
+   coexist with, and the toggle between them, have been removed).
 
-   Renders from the exact same `flights` / `query` context as the classic
-   results.html — no separate route, no separate data fetch. This file only
-   emits a compact JSON payload + empty containers; static/results-lab.js
-   owns all card rendering, the departure/return/review staging, tabs and
-   filters. Moving rendering to JS is what makes the staged round-trip flow
-   possible without touching the search backend: departure and return
-   "steps" are just client-side groupings of the same bundled round-trip
-   `flights` list Duffel already returned.
-
-   Scope for this pass: the standard search-results flow only (a plain
-   `flights` list). Manual outbound/return pairing and the AI flex-date
-   streaming flow are intentionally left to the classic page — the toggle
-   itself is hidden for those flows (see results_view_toggle.html).
+   Renders from the `flights` / `query` context results.html passes down —
+   this file only emits a compact JSON payload + empty containers;
+   static/results-lab.js owns all card rendering, the departure/return/
+   review staging, tabs and filters. Moving rendering to JS is what makes
+   the staged round-trip flow possible without touching the search backend:
+   departure and return "steps" are just client-side groupings of the same
+   bundled round-trip `flights` list Duffel already returned.
 
    Deliberately deferred vs. the full build spec, because the app has no
    reliable backing data for them yet:
@@ -27,87 +23,7 @@
 {% set cabin_label = query.get('cabin', 'ECONOMY').replace('_', ' ')|title %}
 {% set trip_intent_active = trip_intent and trip_intent.wants_hotel %}
 
-{% set lab_flights_data = [] %}
-{% for f in flights %}
-  {% set tiers = f.tiers | default([]) %}
-  {% set selected_tier = tiers[0] if tiers else None %}
-  {% set price_label = selected_tier.price_label if (selected_tier and selected_tier.price_label) else ('$' ~ '%.2f'|format(f.price or 0)) %}
-  {% set effective_offer_id = selected_tier.offer_id if (selected_tier and selected_tier.offer_id) else f.offer_id %}
-  {% set checkout_url = url_for('trip_select_flight', offer_id=effective_offer_id) if (effective_offer_id and trip_intent_active) else (url_for('checkout_offer', offer_id=effective_offer_id) if effective_offer_id else None) %}
-  {% set total_duration = f.total_duration_min if f.total_duration_min is defined else ((f.out_duration_min or 0) + (f.in_duration_min or 0)) %}
-  {% set total_stops = f.total_stop_count if f.total_stop_count is defined else ((f.out_stops or 0) + (f.in_stops or 0)) %}
-  {% set out_seg = f.segments_ui[0] if (f.segments_ui and f.segments_ui|length > 0) else None %}
-  {% set ret_seg = f.segments_ui[1] if (f.segments_ui and f.segments_ui|length > 1) else None %}
-
-  {% set out_layovers = [] %}
-  {% if out_seg %}
-    {% for lay in (out_seg.layovers or []) %}
-      {% set _ = out_layovers.append({'code': lay.code or '', 'name': lay.name or '', 'durationLabel': lay.duration_label or ''}) %}
-    {% endfor %}
-  {% endif %}
-  {% set ret_layovers = [] %}
-  {% if ret_seg %}
-    {% for lay in (ret_seg.layovers or []) %}
-      {% set _ = ret_layovers.append({'code': lay.code or '', 'name': lay.name or '', 'durationLabel': lay.duration_label or ''}) %}
-    {% endfor %}
-  {% endif %}
-
-  {% set _ = lab_flights_data.append({
-      'id': f.offer_id or ('idx-' ~ loop.index0),
-      'checkoutUrl': checkout_url,
-      'tripCombo': trip_intent_active,
-      'price': f.price or 0,
-      'priceLabel': price_label,
-      'pax': [(f.passenger_count | default(passenger_count, true)) | int, 1] | max,
-      'badge': f.smart_badge or None,
-      'badgeReasoning': f.badge_reasoning or None,
-      'metricBest': f.metric_is_best or False,
-      'metricCheapest': f.metric_is_cheapest or False,
-      'metricFastest': f.metric_is_fastest or False,
-      'priceVsCheapest': f.price_vs_cheapest or 0,
-      'totalDurationMin': total_duration,
-      'totalStops': total_stops,
-      'airlineName': f.airline_summary or '',
-      'airlineLogoUrl': f.airline_logo_url or '',
-      'airlineMix': f.airline_mix_label or '',
-      'out': ({
-          'label': out_seg.label or 'Departure',
-          'originCode': out_seg.origin or '',
-          'originName': out_seg.origin_name or '',
-          'destCode': out_seg.destination or '',
-          'destName': out_seg.destination_name or '',
-          'departTime': out_seg.depart_time or '',
-          'departDay': out_seg.depart_day or '',
-          'departIso': f.out_depart_at or f.first_depart_at or '',
-          'arriveTime': out_seg.arrive_time or '',
-          'arriveDay': out_seg.arrive_day or '',
-          'arriveIso': f.out_arrive_at or '',
-          'durationLabel': out_seg.duration or '',
-          'durationMin': f.out_duration_min if f.out_duration_min is defined else total_duration,
-          'stops': f.out_stops if f.out_stops is defined else 0,
-          'stopsLabel': out_seg.stops_label or '',
-          'layovers': out_layovers,
-      }) if out_seg else None,
-      'ret': ({
-          'label': ret_seg.label or 'Return',
-          'originCode': ret_seg.origin or '',
-          'originName': ret_seg.origin_name or '',
-          'destCode': ret_seg.destination or '',
-          'destName': ret_seg.destination_name or '',
-          'departTime': ret_seg.depart_time or '',
-          'departDay': ret_seg.depart_day or '',
-          'departIso': f.in_depart_at or '',
-          'arriveTime': ret_seg.arrive_time or '',
-          'arriveDay': ret_seg.arrive_day or '',
-          'arriveIso': f.in_arrive_at or f.final_arrive_at or '',
-          'durationLabel': ret_seg.duration or '',
-          'durationMin': f.in_duration_min if f.in_duration_min is defined else 0,
-          'stops': f.in_stops if f.in_stops is defined else 0,
-          'stopsLabel': ret_seg.stops_label or '',
-          'layovers': ret_layovers,
-      }) if ret_seg else None,
-  }) %}
-{% endfor %}
+{% set lab_flights_data = build_lab_flights_data(flights, trip_intent_active, passenger_count) %}
 
 {% set lab_payload = {
     'tripMode': trip_mode,
@@ -140,6 +56,17 @@
   <div class="lab-shell">
 
     {% include "partials/lab_summary_header.html" %}
+
+    {% if trip_intent_active %}
+    <div class="lab-trip-combo-banner" role="status">
+      <span>
+        <strong>Booking a trip:</strong> pick a flight below, then we'll show hotels
+        {% if trip_intent.hotel_destination_text %}in {{ trip_intent.hotel_destination_text }}{% endif %}
+        for the same dates.
+      </span>
+      <a href="{{ url_for('trip_skip_hotel', next=request.path) }}">Just book the flight</a>
+    </div>
+    {% endif %}
 
     {# Lab owns this editor. It deliberately does not share the classic
        results editor's progressive panels or mobile sheet. #}
@@ -236,7 +163,7 @@
 
       <div class="lab-pinned" id="labPinnedDeparture" hidden></div>
 
-      {% if query.get('depart_date') and not manual_flow %}
+      {% if query.get('depart_date') %}
       <div class="lab-datestrip" id="labDateStrip" aria-label="Nearby dates">
         <button type="button" class="lab-datestrip-nav" id="labDateStripPrev" aria-label="Earlier dates">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
@@ -298,7 +225,7 @@
 </div>
 
 <script type="application/json" id="labFlightsData">{{ lab_payload | tojson }}</script>
-<script src="{{ url_for('static', filename='results-lab.js', v='20260826-airport-filters') }}" defer></script>
+<script src="{{ url_for('static', filename='results-lab.js', v='20260826-liteapi-supplement') }}" defer></script>
 
 {# This is the Lab results page real users actually land on (see the file
    header above) — it had no #skairPageCtx at all, so the AI chat assistant

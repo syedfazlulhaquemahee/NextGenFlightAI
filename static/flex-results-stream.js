@@ -14,20 +14,25 @@
   const statusDetailEl = document.getElementById("resultsFlexLiveDetail");
   const chipsEl = document.getElementById("resultsFlexDateChips");
   const headDatesEl = document.getElementById("resultsFlexHeadDates");
+  // #resultsCards was the classic skeleton's card container — classic markup
+  // (and its whole progressive "replace shimmer slots with classic-shaped
+  // live preview cards" enhancement, built entirely out of classic .flight-
+  // card/fc-row HTML via buildResultsFlightCardHtml() below) is gone now, so
+  // this is always null. Every downstream use is guarded rather than a hard
+  // return here, because the status text / progress bar / final
+  // swapInFinalResults() below don't depend on it at all and must keep
+  // working regardless.
   const cardsEl = document.getElementById("resultsCards");
-  if (!cardsEl) return;
 
-  // When the Lab-styled skeleton is showing (search_shell.html sets
-  // show_lab_skeleton and hides <main class="wrap">, the classic markup's
-  // container), skip populating classic skeleton cards nobody will ever
-  // see — real work still happens (status text/progress bar), just no
-  // wasted DOM churn on hidden nodes.
-  const classicMainEl = document.querySelector("main.wrap");
-  const classicHidden = Boolean(classicMainEl && classicMainEl.hidden);
+  // Always true now — there is no classic markup left to populate. Kept as
+  // a named constant (rather than deleting the `if (!classicHidden)` guard
+  // below) so the intent stays obvious if a classic-shaped preview card
+  // ever comes back.
+  const classicHidden = true;
 
   const progressFill = document.getElementById("resultsFlexProgressFill");
 
-  const skeletonSlots = Array.from(cardsEl.querySelectorAll(".flex-live-skeleton"));
+  const skeletonSlots = cardsEl ? Array.from(cardsEl.querySelectorAll(".flex-live-skeleton")) : [];
   let standardFlightTotal = 0;
   const maxChips = 18;
   const provisionalRows = new Map();
@@ -753,6 +758,9 @@
   }
 
   function ensureProvisionalWrap() {
+    // No classic #resultsCards left to anchor next to — this classic-shaped
+    // preview feature (see the cardsEl comment above) has nowhere to mount.
+    if (!cardsEl) return null;
     if (provisionalWrap) return provisionalWrap;
     provisionalWrap = document.createElement("section");
     provisionalWrap.className = "results-provisional-wrap";
@@ -1052,6 +1060,7 @@
     }
     if (obj.type === "provisional_flight") {
       const wrap = ensureProvisionalWrap();
+      if (!wrap) return;
       wrap.style.display = "";
       const bucket = document.getElementById("resultsProvisionalCards");
       if (!bucket) return;

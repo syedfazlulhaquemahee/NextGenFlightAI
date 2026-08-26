@@ -249,7 +249,7 @@ RECOMMENDED_INTL_TOP20_MAX_PER_AIRLINE = 8
 VALID_TRIP_TYPES = {"roundtrip", "oneway", "multicity"}
 VALID_CABINS = {"ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"}
 VALID_SORTS = {"recommended", "cheapest", "fastest", "earliest_departure", "earliest_arrival", "fewest_stops"}
-VALID_COMBINATION_MODES = {"auto", "manual"}
+VALID_COMBINATION_MODES = {"auto"}
 DEFAULT_PASSENGERS = 1
 MIN_PASSENGERS = 1
 MAX_PASSENGERS = 9
@@ -1171,6 +1171,27 @@ def _is_past_flex_month(value: str | None) -> bool:
     month_start, _ = _month_bounds(str(value).strip())
     return month_start < date.today().replace(day=1)
 
+def _coerce_flex_months(value: Any, fallback: Any = None) -> list[str]:
+    """Read the UI's comma-separated month choices, preserving calendar order.
+
+    `value` is usually a raw form string ("2026-08,2026-09"), but this also
+    has to round-trip a previous call's own `list[str]` return value
+    (_validate_flex_search_params stores it back onto `normalized["flex_months"]`,
+    and callers like _flex_stream_shell_hidden_fields re-coerce that dict) —
+    str()'ing a list gives Python's repr ("['2026-08']"), not a clean string,
+    which then fails _is_valid_flex_month downstream. Handle both shapes."""
+    source = value if value else fallback
+    if isinstance(source, (list, tuple)):
+        raw = ",".join(str(item) for item in source)
+    else:
+        raw = str(source or "")
+    months: list[str] = []
+    for item in raw.split(","):
+        month = item.strip()
+        if month and month not in months:
+            months.append(month)
+    return months[:6]
+
 def _coerce_trip_type(value: Any, *, fallback: str = "roundtrip") -> str:
     trip_type = (value or "").strip().lower()
     return trip_type if trip_type in VALID_TRIP_TYPES else fallback
@@ -1361,17 +1382,6 @@ def _route_invalid_error(which: str, *, ai: bool = False) -> str:
         )
     return f"Please choose a valid {label} airport or city."
 
-def _manual_combination_unavailable_error(*, ai: bool = False) -> str:
-    if ai:
-        return (
-            "Choosing flights separately is only available for fixed-date round trips right now. "
-            "Please include exact departure and return dates, or let us choose the combination for flexible trips."
-        )
-    return (
-        "Choose-your-own flight combinations are only available for fixed-date round trips. "
-        "For cheapest-week or custom-duration trips, we currently choose the best pairing for you."
-    )
-
 def _validate_route_inputs(params: dict[str, Any], *, ai: bool = False) -> tuple[dict[str, Any], str | None]:
     normalized = dict(params)
     origin_raw = (normalized.get("origin") or "").strip()
@@ -1556,22 +1566,20 @@ def _validate_flex_search_params(params: dict[str, Any], *, ai: bool = False) ->
     if route_error:
         return normalized, route_error
 
-    if normalized["combination_mode"] == "manual":
-        return normalized, _manual_combination_unavailable_error(ai=ai)
-
-    flex_month = (normalized.get("flex_month") or "").strip()
-    if not flex_month:
+    flex_months = _coerce_flex_months(normalized.get("flex_months"), normalized.get("flex_month"))
+    if not flex_months:
         if ai:
             return normalized, "Please include a target month like 'in July' or 'in 2026-07'."
-        return normalized, "Please choose a month in YYYY-MM format (e.g., 2026-05)."
+        return normalized, "Please choose at least one travel month."
 
-    if not _is_valid_flex_month(flex_month):
-        return normalized, "Please choose a valid month in YYYY-MM format (e.g., 2026-05)."
+    if any(not _is_valid_flex_month(month) for month in flex_months):
+        return normalized, "Please choose valid months in YYYY-MM format (e.g., 2026-05)."
 
-    if _is_past_flex_month(flex_month):
+    if any(_is_past_flex_month(month) for month in flex_months):
         return normalized, "Please choose the current month or a future month."
 
-    normalized["flex_month"] = flex_month
+    normalized["flex_months"] = flex_months
+    normalized["flex_month"] = flex_months[0]
 
     if normalized["trip_type"] == "oneway":
         normalized["return_date"] = None
@@ -2564,30 +2572,6 @@ def _extract_ai_trip_type(user_text: str, parsed: dict[str, Any] | None = None) 
         return "roundtrip"
     if _extract_ai_trip_length_days(txt) is not None:
         return "roundtrip"
-    return None
-
-def _extract_ai_combination_mode(user_text: str) -> str | None:
-    txt = (user_text or "").strip().lower()
-    if not txt:
-        return None
-
-    manual_patterns = [
-        r"\bgoogle flights\b",
-        r"\bchoose (?:my|our|the)?\s*own (?:combination|combinations|flights?)\b",
-        r"\bpick (?:my|our|the)?\s*own (?:combination|combinations|flights?)\b",
-        r"\bchoose flights separately\b",
-        r"\bpick flights separately\b",
-        r"\bchoose departure first\b",
-        r"\bshow departure flights first\b",
-        r"\boutbound first\b",
-        r"\breturn second\b",
-        r"\blet me choose (?:the )?(?:departure|outbound|return|combination|flights?)\b",
-        r"\bi want to choose (?:the )?(?:departure|outbound|return|combination|flights?)\b",
-        r"\bseparate(?:ly)?\s+(?:choose|pick|select)\b",
-    ]
-    if any(re.search(pattern, txt) for pattern in manual_patterns):
-        return "manual"
-
     return None
 
 def _looks_like_ai_flex_request(user_text: str, parsed: dict[str, Any] | None = None) -> bool:
@@ -3645,10 +3629,6 @@ def _normalize_flight_parse(parsed: dict, user_text: str) -> dict:
         parsed["return_date"] = ret_iso
         parsed["trip_type"] = "roundtrip"
         holiday_dates_applied = True
-
-    combination_mode = _extract_ai_combination_mode(user_text)
-    if combination_mode:
-        parsed["combination_mode"] = combination_mode
 
     traveler_context = _extract_ai_traveler_context(user_text)
     if traveler_context.get("companion_labels") or traveler_context.get("prefers_longer_layover") or traveler_context.get("prefers_shorter_layover"):
@@ -5560,6 +5540,159 @@ def _merge_unique_offers(existing: list[dict[str, Any]], incoming: list[dict[str
         merged.append(offer)
     return merged
 
+def _build_lab_flight_leg(
+    seg: Mapping[str, Any] | None,
+    *,
+    default_label: str,
+    depart_iso: str,
+    arrive_iso: str,
+    duration_min: int,
+    stops: int,
+) -> dict[str, Any] | None:
+    if not seg:
+        return None
+    layovers = [
+        {
+            "code": str(lay.get("code") or ""),
+            "name": str(lay.get("name") or ""),
+            "durationLabel": str(lay.get("duration_label") or ""),
+        }
+        for lay in (seg.get("layovers") or [])
+    ]
+    return {
+        "label": seg.get("label") or default_label,
+        "originCode": seg.get("origin") or "",
+        "originName": seg.get("origin_name") or "",
+        "destCode": seg.get("destination") or "",
+        "destName": seg.get("destination_name") or "",
+        "departTime": seg.get("depart_time") or "",
+        "departDay": seg.get("depart_day") or "",
+        "departIso": depart_iso,
+        "arriveTime": seg.get("arrive_time") or "",
+        "arriveDay": seg.get("arrive_day") or "",
+        "arriveIso": arrive_iso,
+        "durationLabel": seg.get("duration") or "",
+        "durationMin": duration_min,
+        "stops": stops,
+        "stopsLabel": seg.get("stops_label") or "",
+        "layovers": layovers,
+    }
+
+
+def _build_lab_flight_json(
+    f: Mapping[str, Any],
+    index: int,
+    *,
+    trip_intent_active: bool,
+    default_passengers: int,
+) -> dict[str, Any]:
+    """One flight -> the exact JSON shape static/results-lab.js expects.
+    The single source of truth for that shape: templates/partials/
+    results_lab_body.html's initial render and /search/liteapi-supplement's
+    merged-results response both call this, so the two can never drift."""
+    tiers = f.get("tiers") or []
+    selected_tier = tiers[0] if tiers else None
+    price_label = (selected_tier or {}).get("price_label") or f"${float(f.get('price') or 0):.2f}"
+    effective_offer_id = (selected_tier or {}).get("offer_id") or f.get("offer_id")
+
+    checkout_url = None
+    if effective_offer_id and trip_intent_active:
+        checkout_url = url_for("trip_select_flight", offer_id=effective_offer_id)
+    elif effective_offer_id:
+        checkout_url = url_for("checkout_offer", offer_id=effective_offer_id)
+
+    # Fare-tier picker: data + rendering exist end to end, but the picker UI
+    # is feature-flagged off client-side (LAB_FARE_TIER_PICKER_ENABLED in
+    # results-lab.js) — mirrors the classic page's has_tier_picker=false,
+    # which was already dormant with no recorded reason. Still ship real
+    # per-tier checkout URLs so turning the flag on needs no server change.
+    tier_list: list[dict[str, Any]] = []
+    for tier in tiers:
+        tier_offer_id = str(tier.get("offer_id") or "").strip()
+        tier_checkout_url = None
+        if tier_offer_id and trip_intent_active:
+            tier_checkout_url = url_for("trip_select_flight", offer_id=tier_offer_id)
+        elif tier_offer_id:
+            tier_checkout_url = url_for("checkout_offer", offer_id=tier_offer_id)
+        tier_list.append({
+            "offerId": tier_offer_id,
+            "name": tier.get("name") or "Standard fare",
+            "fareBrand": tier.get("fare_brand") or "",
+            "cabinLabel": tier.get("cabin_label") or "",
+            "price": tier.get("price") or 0,
+            "currency": tier.get("currency") or "USD",
+            "priceLabel": tier.get("price_label") or "",
+            "features": list(tier.get("features") or []),
+            "checkoutUrl": tier_checkout_url,
+        })
+
+    total_duration = f.get("total_duration_min")
+    if total_duration is None:
+        total_duration = int(f.get("out_duration_min") or 0) + int(f.get("in_duration_min") or 0)
+    total_stops = f.get("total_stop_count")
+    if total_stops is None:
+        total_stops = int(f.get("out_stops") or 0) + int(f.get("in_stops") or 0)
+
+    segments_ui = f.get("segments_ui") or []
+    out_seg = segments_ui[0] if len(segments_ui) > 0 else None
+    ret_seg = segments_ui[1] if len(segments_ui) > 1 else None
+
+    out_duration_min = f.get("out_duration_min")
+    out_duration_min = total_duration if out_duration_min is None else out_duration_min
+    ret_duration_min = f.get("in_duration_min") or 0
+
+    pax_val = f.get("passenger_count") or default_passengers
+    pax = max(int(pax_val or 1), 1)
+
+    return {
+        "id": f.get("offer_id") or f"idx-{index}",
+        "checkoutUrl": checkout_url,
+        "tripCombo": trip_intent_active,
+        "price": f.get("price") or 0,
+        "priceLabel": price_label,
+        "pax": pax,
+        "badge": f.get("smart_badge"),
+        "badgeReasoning": f.get("badge_reasoning"),
+        "metricBest": bool(f.get("metric_is_best")),
+        "metricCheapest": bool(f.get("metric_is_cheapest")),
+        "metricFastest": bool(f.get("metric_is_fastest")),
+        "priceVsCheapest": f.get("price_vs_cheapest") or 0,
+        "totalDurationMin": total_duration,
+        "totalStops": total_stops,
+        "airlineName": f.get("airline_summary") or "",
+        "airlineLogoUrl": f.get("airline_logo_url") or "",
+        "airlineMix": f.get("airline_mix_label") or "",
+        "tiers": tier_list,
+        "out": _build_lab_flight_leg(
+            out_seg,
+            default_label="Departure",
+            depart_iso=f.get("out_depart_at") or f.get("first_depart_at") or "",
+            arrive_iso=f.get("out_arrive_at") or "",
+            duration_min=out_duration_min,
+            stops=f.get("out_stops") or 0,
+        ),
+        "ret": _build_lab_flight_leg(
+            ret_seg,
+            default_label="Return",
+            depart_iso=f.get("in_depart_at") or "",
+            arrive_iso=f.get("in_arrive_at") or f.get("final_arrive_at") or "",
+            duration_min=ret_duration_min,
+            stops=f.get("in_stops") or 0,
+        ),
+    }
+
+
+def _build_lab_flights_data(
+    flights: list[dict[str, Any]] | None,
+    trip_intent_active: bool,
+    default_passengers: int = 1,
+) -> list[dict[str, Any]]:
+    return [
+        _build_lab_flight_json(f, i, trip_intent_active=trip_intent_active, default_passengers=default_passengers)
+        for i, f in enumerate(flights or [])
+    ]
+
+
 def _collect_best_presentations(raw: list[dict[str, Any]], params: dict[str, Any], *, detailed: bool) -> list[dict[str, Any]]:
     grouped_offers: OrderedDict[tuple[Any, ...], list[dict[str, Any]]] = OrderedDict()
     seen_identity: set[tuple[Any, ...]] = set()
@@ -7183,6 +7316,9 @@ def _flex_stream_flight_preview(flight: dict[str, Any]) -> dict[str, Any]:
 def _query_params_from_flex_best(base: dict[str, Any], best: dict[str, Any]) -> dict[str, Any]:
     params = dict(base)
     params["depart_date"] = best["depart_date"]
+    # The result can come from any selected month; display the one that won.
+    if isinstance(best.get("depart_date"), str) and len(best["depart_date"]) >= 7:
+        params["flex_month"] = best["depart_date"][:7]
     if params.get("trip_type") == "oneway":
         params["return_date"] = None
         params["best_week"] = None
@@ -7285,6 +7421,32 @@ def _iter_flex_search_ndjson(params: dict[str, Any]) -> Iterator[str]:
         "query": dict(params),
         "mode": _refresh_mode,
     }
+
+    selected_months = _coerce_flex_months(params.get("flex_months"), params.get("flex_month"))
+    if len(selected_months) > 1:
+        yield emit({
+            "type": "start",
+            "trip_oneway": params.get("trip_type") == "oneway",
+            "origin": str(params.get("origin") or "").strip().upper(),
+            "destination": str(params.get("destination") or "").strip().upper(),
+            "flex_months": selected_months,
+        })
+        yield emit({
+            "type": "phase",
+            "phase": 1,
+            "label": f"Comparing the best fares across {len(selected_months)} selected months",
+            "dates_planned": len(selected_months),
+        })
+        best = find_best_flex_window(params)
+        if not best:
+            yield emit({"type": "error", "message": _format_flex_no_results_error(params)})
+            return
+        query_params = _query_params_from_flex_best(params, best)
+        for idx, fl in enumerate(best["offers"]):
+            yield emit({"type": "flight_row", "rank": idx + 1, "flight": _flex_stream_flight_preview(fl)})
+        html = render_template("results.html", query=query_params, flights=best["offers"], error="", minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
+        yield emit(_results_complete_stream_event(html, refresh=refresh_meta))
+        return
 
     trip_oneway = params.get("trip_type") == "oneway"
     if trip_oneway:
@@ -7573,247 +7735,6 @@ def _clone_flight_for_manual(
     cloned.pop("manual_price_delta", None)
     cloned.pop("manual_price_delta_label", None)
     return cloned
-
-def _find_flight_by_selection_token(flights: list[dict[str, Any]], token: str | None) -> dict[str, Any] | None:
-    token_value = (token or "").strip()
-    if not token_value:
-        return None
-    for flight in flights:
-        if flight.get("selection_token") == token_value:
-            return flight
-    return None
-
-def _manual_combination_base_fields(params: dict[str, Any]) -> dict[str, str]:
-    fields = {
-        "mode": "standard",
-        "origin": params.get("origin", ""),
-        "destination": params.get("destination", ""),
-        "trip_type": "roundtrip",
-        "depart_date": params.get("depart_date", "") or "",
-        "return_date": params.get("return_date", "") or "",
-        "passengers": str(int(params.get("passengers", 1) or 1)),
-        "cabin": params.get("cabin", "ECONOMY"),
-        "sort": params.get("sort", "recommended"),
-        "combination_mode": "manual",
-    }
-    if params.get("nonstop"):
-        fields["nonstop"] = "on"
-    return fields
-
-def _manual_combination_price_label(amount: float) -> str | None:
-    delta = round(float(amount or 0.0), 2)
-    if delta <= 0:
-        return None
-    return f"+${delta:.2f}"
-
-def _manual_leg_signature(flight: dict[str, Any], *, leg: str) -> tuple[Any, ...]:
-    segments = flight.get("segments_ui") or []
-    if leg == "outbound":
-        segment = segments[0] if segments else {}
-        return (
-            flight.get("out_depart_at"),
-            flight.get("out_arrive_at"),
-            flight.get("out_airline_code"),
-            int(flight.get("out_stops", 0) or 0),
-            segment.get("route_chip"),
-            segment.get("duration"),
-        )
-
-    segment = segments[1] if len(segments) > 1 else {}
-    return (
-        flight.get("in_depart_at"),
-        flight.get("in_arrive_at"),
-        flight.get("in_airline_code"),
-        int(flight.get("in_stops", 0) or 0),
-        segment.get("route_chip"),
-        segment.get("duration"),
-    )
-
-def _build_manual_leg_option(
-    flight: dict[str, Any],
-    *,
-    leg: str,
-    smart_badge: str | None = None,
-) -> dict[str, Any]:
-    cloned = _clone_flight_for_manual(flight, smart_badge=smart_badge)
-    source_segments = flight.get("segments_ui") or []
-    if leg == "outbound":
-        segment = source_segments[:1]
-        fallback_airline = flight.get("out_airline") or flight.get("airline_summary")
-        label = "Outbound"
-    else:
-        segment = source_segments[1:2]
-        fallback_airline = flight.get("in_airline") or flight.get("airline_summary")
-        label = "Return"
-
-    cloned["segments_ui"] = _clone_segments_ui(segment, first_label=label)
-    cloned["airline_summary"] = (cloned["segments_ui"][0].get("airline") if cloned["segments_ui"] else None) or fallback_airline or "Selected flight"
-    seg0 = cloned["segments_ui"][0] if cloned["segments_ui"] else {}
-    cloned["airline_logo_url"] = seg0.get("airline_logo_url") or cloned.get("airline_logo_url")
-    return cloned
-
-def _group_manual_roundtrip_offers(flights: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    groups: OrderedDict[tuple[Any, ...], dict[str, Any]] = OrderedDict()
-    for flight in flights:
-        group_key = _manual_leg_signature(flight, leg="outbound")
-        group = groups.get(group_key)
-        if group is None:
-            group = {
-                "key": group_key,
-                "offers": [],
-                "tokens": set(),
-            }
-            groups[group_key] = group
-        group["offers"].append(flight)
-        group["tokens"].add(flight.get("selection_token"))
-
-    grouped = list(groups.values())
-    for group in grouped:
-        group["offers"].sort(key=lambda item: (float(item.get("price", 0.0) or 0.0), item.get("selection_token", "")))
-        group["best_offer"] = group["offers"][0] if group["offers"] else None
-        group["group_token"] = (group["best_offer"] or {}).get("selection_token")
-    return grouped
-
-def _find_manual_group_by_token(groups: list[dict[str, Any]], token: str | None) -> dict[str, Any] | None:
-    token_value = (token or "").strip()
-    if not token_value:
-        return None
-    for group in groups:
-        if token_value in group.get("tokens", set()):
-            return group
-    return None
-
-def _manual_offer_pool(params: dict[str, Any]) -> list[dict[str, Any]]:
-    # Build a richer pool than a single ranked pass so manual leg selection
-    # can surface many return options for a selected outbound.
-    cheapest_params = dict(params)
-    cheapest_params["sort"] = "cheapest"
-    fastest_params = dict(params)
-    fastest_params["sort"] = "fastest"
-
-    candidates = [*search_flights(cheapest_params, detailed=True), *search_flights(fastest_params, detailed=True)]
-    deduped: list[dict[str, Any]] = []
-    seen_tokens: set[str] = set()
-    for flight in candidates:
-        token = str(flight.get("selection_token") or "").strip()
-        if not token or token in seen_tokens:
-            continue
-        seen_tokens.add(token)
-        deduped.append(flight)
-    deduped.sort(key=lambda item: (float(item.get("price", 0.0) or 0.0), item.get("selection_token", "")))
-    return deduped[:max(RESULTS_PAGE_LIMIT * 2, 50)]
-
-def build_manual_combination_flow(params: dict[str, Any]) -> dict[str, Any]:
-    base_fields = _manual_combination_base_fields(params)
-    roundtrip_offers = _manual_offer_pool(params)
-    outbound_groups = _group_manual_roundtrip_offers(roundtrip_offers)
-
-    overall_cheapest_total = min(
-        (float(flight.get("price", 0.0) or 0.0) for flight in roundtrip_offers if float(flight.get("price", 0.0) or 0.0) > 0),
-        default=0.0,
-    )
-
-    outbound_options: list[dict[str, Any]] = []
-    for group in outbound_groups:
-        best_offer = group.get("best_offer")
-        if not best_offer:
-            continue
-        option = _build_manual_leg_option(best_offer, leg="outbound")
-        delta = max(0.0, round(float(option.get("price", 0.0) or 0.0) - overall_cheapest_total, 2))
-        option["manual_price_delta"] = delta
-        option["manual_price_delta_label"] = _manual_combination_price_label(delta)
-        option["manual_total_price"] = float(option.get("price", 0.0) or 0.0)
-        option["manual_total_label"] = f"{option.get('currency', 'USD')} ${float(option.get('price', 0.0) or 0.0):.2f}"
-        option["manual_action_fields"] = {
-            **base_fields,
-            "selected_outbound_token": group.get("group_token", "") or "",
-        }
-        outbound_options.append(option)
-
-    selected_group = _find_manual_group_by_token(outbound_groups, params.get("selected_outbound_token"))
-    if not selected_group:
-        return {
-            "stage": "outbound",
-            "base_fields": base_fields,
-            "outbound_options": outbound_options,
-            "outbound_cheapest_delta_label": _manual_combination_price_label(0),
-        }
-
-    selected_outbound_offer = selected_group.get("best_offer")
-    selected_outbound = _build_manual_leg_option(
-        selected_outbound_offer,
-        leg="outbound",
-        smart_badge="Selected outbound",
-    ) if selected_outbound_offer else None
-
-    grouped_returns: OrderedDict[tuple[Any, ...], dict[str, Any]] = OrderedDict()
-    for offer in selected_group.get("offers", []):
-        return_key = _manual_leg_signature(offer, leg="return")
-        current = grouped_returns.get(return_key)
-        if current is None or float(offer.get("price", 0.0) or 0.0) < float(current.get("price", 0.0) or 0.0):
-            grouped_returns[return_key] = offer
-
-    return_source_offers = sorted(
-        grouped_returns.values(),
-        key=lambda item: (float(item.get("price", 0.0) or 0.0), item.get("selection_token", "")),
-    )
-    cheapest_return_total = min(
-        (float(flight.get("price", 0.0) or 0.0) for flight in return_source_offers if float(flight.get("price", 0.0) or 0.0) > 0),
-        default=0.0,
-    )
-
-    inbound_options: list[dict[str, Any]] = []
-    for offer in return_source_offers:
-        option = _build_manual_leg_option(offer, leg="return")
-        delta = max(0.0, round(float(option.get("price", 0.0) or 0.0) - cheapest_return_total, 2))
-        option["manual_price_delta"] = delta
-        option["manual_price_delta_label"] = _manual_combination_price_label(delta)
-        option["manual_total_price"] = float(option.get("price", 0.0) or 0.0)
-        option["manual_total_label"] = f"{option.get('currency', 'USD')} ${float(option.get('price', 0.0) or 0.0):.2f}"
-        option["manual_action_fields"] = {
-            **base_fields,
-            "selected_outbound_token": selected_group.get("group_token", "") or "",
-            "selected_return_token": option.get("selection_token", ""),
-        }
-        inbound_options.append(option)
-
-    selected_return_offer = _find_flight_by_selection_token(
-        return_source_offers,
-        params.get("selected_return_token"),
-    )
-    if not selected_return_offer:
-        return {
-            "stage": "return",
-            "base_fields": base_fields,
-            "outbound_options": outbound_options,
-            "selected_outbound": selected_outbound,
-            "return_options": inbound_options,
-            "reset_outbound_fields": base_fields,
-            "return_cheapest_delta_label": _manual_combination_price_label(0),
-        }
-
-    selected_return = _build_manual_leg_option(
-        selected_return_offer,
-        leg="return",
-        smart_badge="Selected return",
-    )
-    combined_summary = _clone_flight_for_manual(selected_return_offer, smart_badge="Your combination")
-
-    return {
-        "stage": "complete",
-        "base_fields": base_fields,
-        "outbound_options": outbound_options,
-        "selected_outbound": selected_outbound,
-        "return_options": inbound_options,
-        "selected_return": selected_return,
-        "combined_summary": combined_summary,
-        "reset_outbound_fields": base_fields,
-        "reset_return_fields": {
-            **base_fields,
-            "selected_outbound_token": selected_group.get("group_token", "") or "",
-        },
-        "return_cheapest_delta_label": _manual_combination_price_label(0),
-    }
 
 # ------------------------------------------------------------
 # Flex search
@@ -8459,11 +8380,45 @@ def find_best_oneway_day_in_month(params: dict[str, Any]) -> dict[str, Any] | No
     FLEX_RESULT_CACHE.set(cache_key, result)
     return result
 
+
+def find_best_flex_window(params: dict[str, Any]) -> dict[str, Any] | None:
+    """Compare the selected months and return the lowest live-priced option.
+
+    A single-month request still calls the original scanner directly, keeping
+    its cache and progressive-search behavior unchanged.
+    """
+    months = _coerce_flex_months(params.get("flex_months"), params.get("flex_month"))
+    if len(months) <= 1:
+        return (
+            find_best_oneway_day_in_month(params)
+            if params.get("trip_type") == "oneway"
+            else find_best_week_in_month(params)
+        )
+
+    best: dict[str, Any] | None = None
+    for month in months:
+        month_params = dict(params)
+        month_params["flex_month"] = month
+        month_params["flex_months"] = [month]
+        candidate = (
+            find_best_oneway_day_in_month(month_params)
+            if params.get("trip_type") == "oneway"
+            else find_best_week_in_month(month_params)
+        )
+        if candidate and (best is None or float(candidate.get("scan_price_total") or float("inf")) < float(best.get("scan_price_total") or float("inf"))):
+            best = candidate
+    return best
+
 def _format_flex_no_results_error(params: dict[str, Any]) -> str:
     origin = (params.get("origin") or "").strip().upper()
     destination = (params.get("destination") or "").strip().upper()
     route = f"{origin} → {destination}" if origin and destination else "that route"
-    flex_month = params.get("flex_month") or "that month"
+    selected_months = _coerce_flex_months(params.get("flex_months"), params.get("flex_month"))
+    flex_month = (
+        f"the selected months ({', '.join(selected_months)})"
+        if len(selected_months) > 1
+        else (params.get("flex_month") or "that month")
+    )
     trip_type = params.get("trip_type", "roundtrip")
 
     if trip_type == "oneway":
@@ -9605,6 +9560,7 @@ def inject_portal_account_context() -> dict[str, Any]:
     account = _account_lookup(account_email) if account_email else None
     base = {
         "airport_header_label_local": _airport_header_label_local,
+        "build_lab_flights_data": _build_lab_flights_data,
     }
     if not account:
         return {
@@ -15106,6 +15062,7 @@ def _flex_stream_shell_hidden_fields(mode: str, params: dict[str, Any], *, ai_te
         "destination": str(params.get("destination") or ""),
         "trip_type": str(params.get("trip_type") or "roundtrip"),
         "flex_month": str(params.get("flex_month") or ""),
+        "flex_months": ",".join(_coerce_flex_months(params.get("flex_months"), params.get("flex_month"))),
         "trip_length_days": str(params.get("trip_length_days") or DEFAULT_FLEX_TRIP_LENGTH_DAYS),
         "passengers": str(params.get("passengers") or DEFAULT_PASSENGERS),
         "cabin": str(params.get("cabin") or "ECONOMY"),
@@ -15132,6 +15089,7 @@ def search_flex_shell():
             "destination": request.form.get("destination", "").strip().upper(),
             "trip_type": request.form.get("trip_type", "roundtrip"),
             "flex_month": (request.form.get("flex_month", "").strip() or None),
+            "flex_months": request.form.get("flex_months", "").strip(),
             "trip_length_days": request.form.get("trip_length_days", str(DEFAULT_FLEX_TRIP_LENGTH_DAYS)),
             "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
             "cabin": request.form.get("cabin", "ECONOMY"),
@@ -15217,6 +15175,7 @@ def search_flex_stream():
             "destination": request.form.get("destination", "").strip().upper(),
             "trip_type": request.form.get("trip_type", "roundtrip"),
             "flex_month": (request.form.get("flex_month", "").strip() or None),
+            "flex_months": request.form.get("flex_months", "").strip(),
             "trip_length_days": request.form.get("trip_length_days", str(DEFAULT_FLEX_TRIP_LENGTH_DAYS)),
             "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
             "cabin": request.form.get("cabin", "ECONOMY"),
@@ -15501,10 +15460,7 @@ def _iter_standard_search_ndjson() -> Iterator[str]:
 
             _record_search_for_signed_in_account("ai", params)
             params.setdefault("nonstop", False)
-            if params.get("trip_type") == "oneway":
-                best = find_best_oneway_day_in_month(params)
-            else:
-                best = find_best_week_in_month(params)
+            best = find_best_flex_window(params)
             if not best:
                 html = render_template(
                     "results.html",
@@ -15587,24 +15543,6 @@ def _iter_standard_search_ndjson() -> Iterator[str]:
 
     assert params is not None
     _record_search_for_signed_in_account("ai" if mode == "ai" else "standard", params)
-    if params.get("combination_mode") == "manual" and params.get("trip_type") == "roundtrip":
-        manual_flow = build_manual_combination_flow(params)
-        manual_error = ""
-        if not manual_flow.get("outbound_options"):
-            manual_error = "No departure flights found. Try different dates or remove constraints like nonstop."
-        elif manual_flow.get("stage") in {"return", "complete"} and not manual_flow.get("return_options"):
-            manual_error = "No return flights found for that outbound choice. Try a different outbound or loosen the filters."
-        html = render_template(
-            "results.html",
-            query=params,
-            flights=[],
-            manual_flow=manual_flow,
-            error=manual_error,
-            minutes_to_hm=minutes_to_hm,
-            fmt_dt=fmt_dt,
-        )
-        yield from complete_html(html)
-        return
 
     force_refresh = form.get("force_refresh") == "1"
     search_detailed = not instant_mode
@@ -15679,10 +15617,12 @@ def search_stream():
 def search_liteapi_supplement():
     """Fetch LiteAPI's slower results after the fast Duffel-only page has
     already rendered, merge with that fast pass's cached results, and
-    return a fresh results.html render for the client to pull updated
-    cards from. LiteAPI's real search aggregation genuinely takes ~15-20s
-    (confirmed live, not a bug — see plan doc) so it's deliberately left
-    out of the initial instant/fast render (search_flights(...,
+    return the merged flights in the same JSON shape results-lab.js already
+    renders from (build_lab_flights_data — the same function the initial
+    Lab page render uses), so the client can merge and re-render without a
+    second HTML parse. LiteAPI's real search aggregation genuinely takes
+    ~15-20s (confirmed live, not a bug — see plan doc) so it's deliberately
+    left out of the initial instant/fast render (search_flights(...,
     include_liteapi=False) at the two instant-pass call sites) and fetched
     here instead, non-blocking to the page the user already sees."""
     if not LITE_FLIGHTS_ENABLED:
@@ -15724,8 +15664,11 @@ def search_liteapi_supplement():
     if not flights:
         return jsonify({"updated": False})
 
-    html = render_template("results.html", query=params, flights=flights, error="", minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
-    return jsonify({"updated": True, "html": html})
+    trip_intent = _get_trip_intent()
+    trip_intent_active = bool(trip_intent and trip_intent.get("wants_hotel"))
+    default_passengers = int(params.get("passengers") or DEFAULT_PASSENGERS)
+    lab_flights = _build_lab_flights_data(flights, trip_intent_active, default_passengers)
+    return jsonify({"updated": True, "flights": lab_flights})
 
 
 @app.route("/search/shell", methods=["POST"])
@@ -15796,6 +15739,7 @@ def search():
             "destination": request.form.get("destination", "").strip().upper(),
             "trip_type": request.form.get("trip_type", "roundtrip"),
             "flex_month": (request.form.get("flex_month", "").strip() or None),
+            "flex_months": request.form.get("flex_months", "").strip(),
             "trip_length_days": request.form.get("trip_length_days", str(DEFAULT_FLEX_TRIP_LENGTH_DAYS)),
             "passengers": request.form.get("passengers", str(DEFAULT_PASSENGERS)),
             "cabin": request.form.get("cabin", "ECONOMY"),
@@ -15818,10 +15762,7 @@ def search():
             return render_template("results.html", query=params, flights=[], error=error, minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
 
         _record_search_for_signed_in_account("flex", params)
-        if params.get("trip_type") == "oneway":
-            best = find_best_oneway_day_in_month(params)
-        else:
-            best = find_best_week_in_month(params)
+        best = find_best_flex_window(params)
         if not best:
             no_results_error = _format_flex_no_results_error(params)
             if real_search_submission:
@@ -15913,10 +15854,7 @@ def search():
 
             _record_search_for_signed_in_account("ai", params)
             params.setdefault("nonstop", False)
-            if params.get("trip_type") == "oneway":
-                best = find_best_oneway_day_in_month(params)
-            else:
-                best = find_best_week_in_month(params)
+            best = find_best_flex_window(params)
             if not best:
                 no_results_error = _format_flex_no_results_error(params)
                 if real_search_submission:
@@ -16015,33 +15953,6 @@ def search():
             return render_template("results.html", query=params, flights=[], error=error, minutes_to_hm=minutes_to_hm, fmt_dt=fmt_dt)
 
     _record_search_for_signed_in_account("ai" if mode == "ai" else "standard", params)
-    if params.get("combination_mode") == "manual" and params.get("trip_type") == "roundtrip":
-        manual_flow = build_manual_combination_flow(params)
-        manual_error = ""
-        if not manual_flow.get("outbound_options"):
-            manual_error = "No departure flights found. Try different dates or remove constraints like nonstop."
-        elif manual_flow.get("stage") in {"return", "complete"} and not manual_flow.get("return_options"):
-            manual_error = "No return flights found for that outbound choice. Try a different outbound or loosen the filters."
-        manual_result_count = len(manual_flow.get("outbound_options") or []) + len(manual_flow.get("return_options") or [])
-        if real_search_submission:
-            _track_search_completed_event(
-                source="search",
-                search_mode=("ai" if mode == "ai" else "standard"),
-                params=params,
-                result_count=manual_result_count,
-                success=bool(manual_result_count) and not manual_error,
-                error=manual_error,
-                metadata={"manual_mode": True, "manual_stage": str(manual_flow.get("stage") or "")},
-            )
-        return render_template(
-            "results.html",
-            query=params,
-            flights=[],
-            manual_flow=manual_flow,
-            error=manual_error,
-            minutes_to_hm=minutes_to_hm,
-            fmt_dt=fmt_dt,
-        )
 
     force_refresh = request.form.get("force_refresh") == "1"
     # Fast-first render for initial shell requests; refine/update/search refreshes

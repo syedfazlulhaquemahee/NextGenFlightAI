@@ -16,7 +16,6 @@
      marketing nav (logo-left / nav-center / CTA-right). #}
   <div class="brand platform-header-inner">
     <a class="brand-link" href="{{ url_for('index') }}">
-      <span class="brand-mark" aria-hidden="true">S</span>
       SKAIROVA
     </a>
 
@@ -38,13 +37,8 @@
 
     <div class="topbar-utility">
       <div class="topbar-links">
-        {# Static display, not a real control — the app is USD-only, so a
-           chevron with no menu behind it would be dishonest; this one is
-           purely visual to match the reference, cursor stays default. #}
-        <span class="hdr-currency hdr-desktop-only" aria-label="Currency: US Dollar" title="US Dollar">
-          USD
-          {{ header_icon('chevron-down', 'hdr-currency-chevron') }}
-          <span class="hdr-currency-flag" aria-hidden="true">🇺🇸</span>
+        <span class="hdr-currency hdr-currency--static hdr-desktop-only" aria-label="Prices are displayed in US dollars">
+          Prices in USD
         </span>
         <span class="hdr-divider hdr-desktop-only" aria-hidden="true"></span>
         <a class="hdr-text-link hdr-desktop-only" href="{{ url_for('agent.login') }}">
@@ -74,7 +68,6 @@
 <div class="hdr-mobile-panel" id="hdrMobilePanel" role="menu" hidden>
   <div class="hdr-mobile-head">
     <a class="brand-link" href="{{ url_for('index') }}">
-      <span class="brand-dot" aria-hidden="true"></span>
       SKAIROVA
     </a>
     <button type="button" class="hdr-mobile-close" id="hdrMobileClose" aria-label="Close menu">

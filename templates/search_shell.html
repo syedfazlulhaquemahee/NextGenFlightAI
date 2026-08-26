@@ -13,16 +13,15 @@
   {% include "partials/results_head_assets.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='gf-stream.css') }}" />
   {% include "partials/flights_parity_head.html" %}
-  {# Warm the cache for the scripts the post-swap page needs but this
+  {# Warm the cache for the script the post-swap page needs but this
      loading page doesn't load itself, so swapInFinalResults()'s dynamic
      script creation (static/flex-results-stream.js) is a fast local hit
-     instead of a cold fetch. Version strings must stay in lockstep with
-     the real <script> tags in results.html or this silently no-ops. #}
-  <link rel="preload" as="script" href="{{ url_for('static', filename='results-lab.js', v='20260826-airport-filters') }}" />
+     instead of a cold fetch. Version string must stay in lockstep with
+     the real <script> tag in results.html or this silently no-ops. #}
+  <link rel="preload" as="script" href="{{ url_for('static', filename='results-lab.js', v='20260826-liteapi-supplement') }}" />
   <link rel="preload" as="script" href="{{ url_for('static', filename='ai-assistant.js', v='20260822-content-1') }}" />
-  <link rel="preload" as="script" href="{{ url_for('static', filename='liteapi-supplement.js', v='20260822-1') }}" />
 </head>
-<body class="results-page flex-stream-results{% if request.cookies.get('resultsView') == 'lab' %} lab-active{% endif %}">
+<body class="results-page flex-stream-results">
   {% if flex_streaming %}
   <form id="flexStreamBootForm" method="post" action="{{ url_for('search_flex_stream') }}" class="sr-only" aria-hidden="true">
     {% for name, value in flex_stream_fields.items() %}
@@ -50,190 +49,12 @@
      results.html for why this has to stay outside #resultsContentRoot. #}
   {% include "partials/theme_scripts.html" %}
 
-  {# Gate the Lab-styled skeleton on the same resultsView cookie results.html
-     uses to decide Lab vs classic, so the loading state always matches
-     whichever final UI this exact request is actually going to land on.
-     Not gated on flex_streaming: that flag only describes how THIS shell
-     page was reached, not what the final results.html render (which never
-     receives it) ends up showing — tying to it would reintroduce the same
-     shell/final mismatch for flex and AI-flex searches. manual_flow is the
-     one server-side condition that genuinely produces a classic-shaped
-     final render for a roundtrip search (see search_liteapi_supplement's
-     analogous _liteapi_flight_search_supported gating for the same
-     "combination_mode already tells us the eventual shape" pattern). #}
-  {% set shell_manual_combo = (query.get('combination_mode') == 'manual') and (query.get('trip_type', 'roundtrip') == 'roundtrip') %}
-  {% set show_lab_skeleton = (request.cookies.get('resultsView') == 'lab') and not shell_manual_combo %}
-
   {# Swap anchor for the non-destructive shell->results transition — must
      match results.html's #resultsContentRoot exactly (see
      static/flex-results-stream.js's swapInFinalResults()). #}
   <div id="resultsContentRoot">
 
-  {% if show_lab_skeleton %}
-    {% include "partials/results_lab_skeleton.html" %}
-  {% endif %}
-
-  <main class="wrap"{% if show_lab_skeleton %} hidden{% endif %}>
-    {% set shell_trip_mode = query.get('trip_type', 'roundtrip') %}
-    {% set shell_pax = query.get('passengers', 1) %}
-    {% set shell_cabin = query.get('cabin', 'ECONOMY').replace('_', ' ')|title %}
-
-    {# ── SRB region — matches results.html structure exactly ── #}
-    <div class="srb-region">
-      <section class="results-head">
-        <div class="srb">
-          <div class="srb-bar" style="pointer-events:none;cursor:default;">
-
-            <a class="srb-back srb-seg srb-seg--back" href="{{ url_for('index') }}" aria-label="Back to search" style="pointer-events:auto;cursor:pointer;">
-              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-                <path d="M11 14L6 9l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-
-            <span class="srb-seg srb-seg--route">
-              <span class="srb-icon srb-mask-icon {{ 'srb-mask-icon--roundtrip' if shell_trip_mode == 'roundtrip' else 'srb-mask-icon--takeoff' }}" aria-hidden="true"></span>
-              <span class="srb-route-text-wrap">
-                <span class="srb-seg-val srb-seg-val--route" id="srbRouteLabel">
-                  {% if query.get('origin') and query.get('destination') %}
-                    {{ query.get('origin') }} {{ '↔' if shell_trip_mode == 'roundtrip' else '→' }} {{ query.get('destination') }}
-                  {% else %}
-                    Flight search
-                  {% endif %}
-                </span>
-                <span class="srb-route-sub" aria-hidden="true">
-                  {%- if flex_streaming and query.get('flex_month') -%}
-                    {{ query.get('flex_month') }}{% if shell_trip_mode != 'oneway' and query.get('trip_length_days') %} · {{ query.get('trip_length_days') }}d{% endif %}
-                  {%- elif query.get('depart_date') -%}
-                    {{ query.get('depart_date')|format_date }}{% if query.get('return_date') %} – {{ query.get('return_date')|format_date }}{% endif %}
-                  {%- else -%}Any dates{%- endif -%}
-                  &nbsp;·&nbsp;{{ shell_pax }} {{ 'traveler' if shell_pax == 1 else 'travelers' }}&nbsp;·&nbsp;{{ shell_cabin }}
-                </span>
-              </span>
-            </span>
-
-            <span class="srb-seg srb-seg--dates">
-              <span class="srb-icon srb-mask-icon srb-mask-icon--calendar" aria-hidden="true"></span>
-              <span class="srb-seg-val" id="resultsFlexHeadDates">
-                {% if flex_streaming and query.get('flex_month') %}
-                  {{ query.get('flex_month') }}{% if query.get('trip_length_days') %} · {{ query.get('trip_length_days') }}d{% endif %}
-                {% elif query.get('depart_date') %}
-                  {{ query.get('depart_date')|format_date }}{% if query.get('return_date') %} – {{ query.get('return_date')|format_date }}{% endif %}
-                {% else %}
-                  Any dates
-                {% endif %}
-              </span>
-            </span>
-
-            <span class="srb-seg srb-seg--pax">
-              <span class="srb-icon srb-mask-icon srb-mask-icon--user" aria-hidden="true"></span>
-              <span class="srb-seg-val">{{ "Round trip" if shell_trip_mode == "roundtrip" else "One way" }} · {{ shell_pax }} traveler{{ '' if shell_pax == 1 else 's' }}{% if shell_cabin %} · {{ shell_cabin }}{% endif %}</span>
-            </span>
-
-            <span class="srb-edit" aria-hidden="true">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </span>
-
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <section class="list">
-      <div class="list-head">
-        <div>
-          <h2 class="section-title">Top matches</h2>
-          {% if flex_streaming %}
-          {% include "partials/flex_stream_list_head.html" %}
-          {% else %}
-          {% include "partials/results_pending_loader_block.html" %}
-          {% endif %}
-        </div>
-      </div>
-
-      {# Skeleton toolbar — mirrors results-premium-toolbar layout #}
-      <div class="results-premium-toolbar sk-toolbar" aria-hidden="true" style="pointer-events:none;">
-        <div class="gf-sk-shimmer" style="width:40px;height:40px;min-height:40px;border-radius:12px;background:rgba(255,255,255,.06);"></div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          {% for w in [68, 62, 58] %}
-          <div class="gf-sk-shimmer" style="width:{{ w }}px;height:32px;min-height:32px;border-radius:999px;background:rgba(255,255,255,.05);"></div>
-          {% endfor %}
-        </div>
-      </div>
-
-      {# Skeleton flight cards — layout mirrors real .flight-card / .fc-row structure #}
-      <div class="cards" id="resultsCards" data-endpoint-airport-leg="outbound" data-flex-live="1" aria-hidden="true">
-        {% for i in range(8) %}
-        <article class="flight-card flex-live-skeleton{{ ' rank-1' if i == 0 else '' }}">
-          <div class="fc-row">
-
-            {# ── Carrier column ── #}
-            <div class="fc-carrier">
-              {# Airline logo placeholder #}
-              <div class="gf-sk-shimmer" style="width:38px;height:38px;min-height:38px;border-radius:10px;flex-shrink:0;background:rgba(255,255,255,.07);"></div>
-              {# Carrier name + note + badge #}
-              <div class="fc-carrier-meta">
-                <div class="gf-sk-shimmer" style="flex:1;min-height:54px;">
-                  <div class="gf-sk-line" style="width:{{ [72,78,68,80,74][i % 5] }}%;height:11px;margin-bottom:6px;"></div>
-                  <div class="gf-sk-line" style="width:{{ [50,44,56,48,52][i % 5] }}%;height:9px;margin-bottom:7px;"></div>
-                  <div class="gf-sk-line" style="width:54px;height:17px;border-radius:5px;margin-bottom:0;"></div>
-                </div>
-              </div>
-            </div>
-
-            {# ── Itinerary column ── #}
-            <div class="fc-itinerary">
-              <div class="gf-sk-shimmer" style="flex:1;min-height:60px;">
-                {# Mirror fc-leg-times grid: departure endpoint | via center | arrival endpoint #}
-                <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;">
-                  {# Departure #}
-                  <div>
-                    <div class="gf-sk-line" style="width:{{ [54,58,52,60,56][i % 5] }}px;height:22px;border-radius:6px;margin-bottom:5px;"></div>
-                    <div class="gf-sk-line" style="width:28px;height:8px;margin-bottom:3px;"></div>
-                    <div class="gf-sk-line" style="width:42px;height:7px;margin-bottom:0;"></div>
-                  </div>
-                  {# Via / duration #}
-                  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-                    <div class="gf-sk-line" style="width:{{ [46,52,44,50,48][i % 5] }}px;height:8px;margin-bottom:0;"></div>
-                    <div style="width:100%;height:1.5px;background:rgba(255,255,255,.1);border-radius:999px;"></div>
-                    <div class="gf-sk-line" style="width:{{ [42,38,46,40,44][i % 5] }}px;height:8px;margin-bottom:0;"></div>
-                  </div>
-                  {# Arrival #}
-                  <div style="text-align:right;">
-                    <div class="gf-sk-line" style="width:{{ [54,58,52,60,56][i % 5] }}px;height:22px;border-radius:6px;margin-bottom:5px;margin-left:auto;"></div>
-                    <div class="gf-sk-line" style="width:28px;height:8px;margin-bottom:3px;margin-left:auto;"></div>
-                    <div class="gf-sk-line" style="width:42px;height:7px;margin-bottom:0;margin-left:auto;"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {# ── Pricing column — display:contents on mobile; children become grid areas ── #}
-            <div class="fc-pricing">
-              {# Price wrap — grid-area:price-area on mobile #}
-              <div class="fc-price-wrap">
-                <div class="gf-sk-shimmer" style="min-height:56px;width:100%;">
-                  <div class="gf-sk-line" style="width:50px;height:7px;margin-left:auto;margin-bottom:6px;"></div>
-                  <div class="gf-sk-line" style="width:{{ [76,82,72,86,78][i % 5] }}px;height:27px;border-radius:6px;margin-left:auto;margin-bottom:5px;"></div>
-                  <div class="gf-sk-line" style="width:62px;height:7px;margin-left:auto;margin-bottom:0;"></div>
-                </div>
-              </div>
-              {# Actions — grid-area:actions on mobile #}
-              <div class="fc-actions">
-                <div class="gf-sk-shimmer" style="width:100%;height:38px;min-height:38px;border-radius:10px;background:rgba(255,255,255,.07);"></div>
-                <div class="gf-sk-shimmer" style="width:100%;height:30px;min-height:30px;border-radius:8px;background:rgba(255,255,255,.04);margin-top:2px;"></div>
-              </div>
-            </div>
-
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-    </section>
-
-    <footer class="footer">
-      <span class="muted">Skairova · Live flight offers + AI search enabled.</span>
-    </footer>
-  </main>
+  {% include "partials/results_lab_skeleton.html" %}
 
   </div><!-- /#resultsContentRoot -->
 

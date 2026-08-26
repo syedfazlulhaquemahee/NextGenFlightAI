@@ -1,19 +1,12 @@
 /* ==========================================================================
-   Skairova Flight Results — "Lab" experience
-   Experimental redesign per skairova_flight_results_sonnet_build_spec.
-   Fully scoped under .results-lab-body so it can never affect the classic
-   results page. Hidden by default; body.lab-active reveals it and hides
-   the classic .wrap in its place. See templates/partials/results_lab_body.html
-   and static/results-lab.js.
+   Skairova Flight Results — the results page (formerly the "Lab" redesign,
+   now the only one — the classic markup it used to coexist with, and the
+   lab-active toggle class that switched between them, are both gone).
+   Fully scoped under .results-lab-body. See
+   templates/partials/results_lab_body.html and static/results-lab.js.
    ========================================================================== */
 
 .results-lab-body {
-  display: none;
-}
-body.lab-active .wrap {
-  display: none !important;
-}
-body.lab-active .results-lab-body {
   display: block;
 }
 
@@ -142,6 +135,78 @@ html:not([data-theme="light"]) .results-lab-body {
 }
 @media (max-width: 360px) {
   .lab-shell { padding-left: 14px; padding-right: 14px; }
+}
+
+/* ---------- combined flight+hotel trip banner ---------- */
+.lab-trip-combo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: var(--lab-sp-5) 0 0;
+  padding: 12px 16px;
+  border-radius: var(--lab-radius-card);
+  background: rgba(79, 111, 255, 0.08);
+  border: 1px solid rgba(79, 111, 255, 0.22);
+  color: var(--lab-ink);
+  font-size: 13.5px;
+}
+.lab-trip-combo-banner strong { font-weight: 700; }
+.lab-trip-combo-banner a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.lab-trip-combo-banner a:hover { opacity: 1; }
+
+/* ---------- fare-tier picker (see LAB_FARE_TIER_PICKER_ENABLED) ---------- */
+.lab-tier-panel {
+  margin-top: var(--lab-sp-3);
+  padding-top: var(--lab-sp-3);
+  border-top: 1px solid var(--lab-border-soft);
+}
+.lab-tier-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--lab-sp-2);
+  margin-bottom: var(--lab-sp-2);
+  font-size: 13px;
+}
+.lab-tier-header-note { color: var(--lab-muted); font-size: 12px; }
+.lab-tier-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--lab-sp-2);
+  margin-bottom: var(--lab-sp-3);
+}
+.lab-tier-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--lab-sp-2) var(--lab-sp-3);
+  border-radius: var(--lab-radius-ctrl);
+  border: 1px solid var(--lab-border);
+  background: var(--lab-card-bg);
+  cursor: pointer;
+  text-align: left;
+}
+.lab-tier-option.is-active { border-color: var(--lab-brand); background: rgba(79, 111, 255, 0.06); }
+.lab-tier-name { font-size: 12.5px; font-weight: 700; color: var(--lab-ink-strong); }
+.lab-tier-price { font-size: 11.5px; color: var(--lab-muted); }
+.lab-tier-detail { display: none; }
+.lab-tier-detail.is-active { display: block; }
+.lab-tier-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.lab-tier-meta span {
+  font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 999px; border: 1px solid var(--lab-border);
+}
+.lab-tier-feature-list { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.lab-tier-feature-list li { font-size: 11.5px; line-height: 1.35; color: var(--lab-muted); }
+@media (max-width: 480px) {
+  .lab-tier-options { grid-template-columns: 1fr; }
 }
 
 /* ---------- sticky search summary (spec 6.2) ---------- */

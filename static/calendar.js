@@ -1,195 +1,116 @@
-/*
- * Flex "cheapest week" month picker (a custom popover, not a calendar
- * library). Depart/return date pickers now live in date-picker.js, built on
- * the Cally web components — this file only handles the month roller.
- */
+/* Flexible-date month selector. The date range picker lives in date-picker.js;
+ * this control deliberately supports several candidate travel months. */
 (function () {
-  const today = new Date();
-  const firstOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const viewportPadding = 12;
+  const firstMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const maxMonths = 6;
 
-  function formatMonthDisplay(value) {
+  function monthValue(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function monthLabel(value, short) {
     if (!/^\d{4}-\d{2}$/.test(value || "")) return "";
     const [year, month] = value.split("-").map(Number);
-    const date = new Date(year, month - 1, 1);
-    if (Number.isNaN(date.getTime())) return "";
-    return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(date);
+    return new Intl.DateTimeFormat("en-US", { month: short ? "short" : "long", year: "numeric" }).format(new Date(year, month - 1, 1));
   }
 
-  function formatMonthValue(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    return `${year}-${month}`;
+  function choices(count) {
+    return Array.from({ length: count }, (_, index) => {
+      const date = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
+      return { value: monthValue(date), label: monthLabel(monthValue(date), false) };
+    });
   }
 
-  function buildMonthChoices(count = 24) {
-    const choices = [];
-    for (let index = 0; index < count; index += 1) {
-      const date = new Date(firstOfCurrentMonth.getFullYear(), firstOfCurrentMonth.getMonth() + index, 1);
-      choices.push({
-        value: formatMonthValue(date),
-        label: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(date),
-      });
-    }
-    return choices;
+  function parseMonths(value) {
+    return [...new Set(String(value || "").split(",").map((item) => item.trim()).filter((item) => /^\d{4}-\d{2}$/.test(item)))];
   }
 
-  function initMonthInput(monthInput) {
-    if (!monthInput || monthInput.dataset.monthRollerBound === "true") return;
+  function displayLabel(months) {
+    if (!months.length) return "Choose month(s)";
+    if (months.length === 1) return monthLabel(months[0], true);
+    if (months.length === 2) return months.map((month) => monthLabel(month, true)).join(" + ");
+    return `${monthLabel(months[0], true)} + ${months.length - 1} more`;
+  }
 
-    monthInput.dataset.monthRollerBound = "true";
-    monthInput.type = "hidden";
+  function initMonthPicker() {
+    const monthInput = document.getElementById("flexMonthPicker");
+    const monthsInput = document.getElementById("flexMonthsPicker");
+    const trigger = document.getElementById("flexMonthPickerTrigger");
+    const display = document.getElementById("flexMonthPickerDisplay");
+    if (!monthInput || !monthsInput || !trigger || !display || monthInput.dataset.monthPickerBound) return;
+    monthInput.dataset.monthPickerBound = "true";
 
-    const field = monthInput.closest(".calendar-field") || monthInput.parentElement;
-    const displayInput = document.createElement("input");
-    displayInput.type = "text";
-    displayInput.className = `${monthInput.className || ""} month-roller-display`.trim();
-    displayInput.id = `${monthInput.id}Display`;
-    displayInput.placeholder = monthInput.getAttribute("placeholder") || "Select month";
-    displayInput.setAttribute("aria-label", monthInput.getAttribute("aria-label") || "Month");
-    displayInput.setAttribute("aria-haspopup", "listbox");
-    displayInput.setAttribute("aria-expanded", "false");
-    displayInput.readOnly = true;
-    displayInput.value = formatMonthDisplay(monthInput.value);
-    monthInput._monthRollerDisplay = displayInput;
-    monthInput.insertAdjacentElement("afterend", displayInput);
-
-    const popover = document.createElement("div");
-    popover.className = "month-roller-popover";
-    popover.setAttribute("role", "listbox");
-    popover.setAttribute("aria-label", "Choose month");
+    const popover = document.createElement("section");
+    popover.className = "flex-month-popover";
     popover.hidden = true;
-
-    const choices = buildMonthChoices();
-    popover.innerHTML = [
-      "<div class=\"month-roller-head\">Choose month</div>",
-      "<div class=\"month-roller-list\">",
-      choices.map((choice) => (
-        `<button type="button" class="month-roller-option" role="option" data-month-value="${choice.value}">${choice.label}</button>`
-      )).join(""),
-      "</div>",
-    ].join("");
+    popover.setAttribute("role", "dialog");
+    popover.setAttribute("aria-label", "Choose travel months");
+    popover.innerHTML = `
+      <div class="flex-month-popover__head"><div><strong>When would you like to travel?</strong><span>Select one or more months to compare prices.</span></div><button type="button" class="flex-month-popover__close" aria-label="Close month picker">×</button></div>
+      <div class="flex-month-grid">${choices(18).map(({ value, label }) => `<button type="button" class="flex-month-option" data-month="${value}" aria-pressed="false">${label}</button>`).join("")}</div>
+      <div class="flex-month-popover__footer"><span class="flex-month-selection">No months selected</span><div><button type="button" class="flex-month-clear">Clear</button><button type="button" class="flex-month-apply">Done</button></div></div>`;
     document.body.appendChild(popover);
 
-    const list = popover.querySelector(".month-roller-list");
-    const options = Array.from(popover.querySelectorAll(".month-roller-option"));
-    let suppressNextFocusOpen = false;
+    const options = Array.from(popover.querySelectorAll(".flex-month-option"));
+    const summary = popover.querySelector(".flex-month-selection");
+    let selected = parseMonths(monthsInput.value || monthInput.value);
 
-    function setMonth(value, notify = true) {
-      monthInput.value = value;
-      displayInput.value = formatMonthDisplay(value);
-      monthInput.setCustomValidity("");
-      displayInput.setCustomValidity("");
+    function sync(notify) {
+      selected.sort();
+      monthInput.value = selected[0] || "";
+      monthsInput.value = selected.join(",");
+      display.textContent = displayLabel(selected);
+      display.classList.toggle("is-placeholder", !selected.length);
       options.forEach((option) => {
-        const active = option.dataset.monthValue === value;
+        const active = selected.includes(option.dataset.month || "");
         option.classList.toggle("is-selected", active);
-        option.setAttribute("aria-selected", String(active));
+        option.setAttribute("aria-pressed", String(active));
       });
-      if (notify) {
-        monthInput.dispatchEvent(new Event("input", { bubbles: true }));
-        monthInput.dispatchEvent(new Event("change", { bubbles: true }));
-        displayInput.dispatchEvent(new Event("input", { bubbles: true }));
-        displayInput.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      summary.textContent = selected.length ? `${selected.length} month${selected.length === 1 ? "" : "s"} selected` : "No months selected";
+      if (notify) [monthInput, monthsInput].forEach((input) => {
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
     }
 
-    function positionPopover() {
-      const rect = displayInput.getBoundingClientRect();
-      const width = Math.max(220, Math.min(rect.width, window.innerWidth - viewportPadding * 2));
-      const maxLeft = window.scrollX + window.innerWidth - width - viewportPadding;
-      const left = Math.max(window.scrollX + viewportPadding, Math.min(maxLeft, window.scrollX + rect.left));
+    function position() {
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.min(448, window.innerWidth - 24);
+      const left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.left));
       popover.style.width = `${width}px`;
-      popover.style.left = `${left}px`;
-      popover.style.top = `${window.scrollY + rect.bottom + 8}px`;
+      popover.style.left = `${left + window.scrollX}px`;
+      popover.style.top = `${rect.bottom + window.scrollY + 10}px`;
     }
+    function open() { position(); popover.hidden = false; trigger.setAttribute("aria-expanded", "true"); document.body.classList.add("month-roller-open"); }
+    function close() { popover.hidden = true; trigger.setAttribute("aria-expanded", "false"); document.body.classList.remove("month-roller-open"); }
 
-    function openPopover() {
-      positionPopover();
-      popover.hidden = false;
-      document.body.classList.add("month-roller-open");
-      displayInput.setAttribute("aria-expanded", "true");
-      const active = popover.querySelector(".month-roller-option.is-selected") || options[0];
-      window.requestAnimationFrame(() => {
-        if (!active || !list) return;
-        const top = active.offsetTop - ((list.clientHeight - active.offsetHeight) / 2);
-        list.scrollTop = Math.max(0, top);
-      });
-    }
-
-    function closePopover() {
-      popover.hidden = true;
-      document.body.classList.remove("month-roller-open");
-      displayInput.setAttribute("aria-expanded", "false");
-    }
-
-    function isOpen() {
-      return !popover.hidden;
-    }
-
-    monthInput._openMonthRoller = openPopover;
-    monthInput._closeMonthRoller = closePopover;
-
-    displayInput.addEventListener("click", (event) => {
-      event.stopPropagation();
-      openPopover();
+    monthInput._monthRollerDisplay = trigger;
+    monthInput._openMonthRoller = open;
+    monthInput._closeMonthRoller = close;
+    trigger.addEventListener("click", (event) => { event.stopPropagation(); popover.hidden ? open() : close(); });
+    trigger.addEventListener("keydown", (event) => {
+      if (["Enter", " ", "ArrowDown"].includes(event.key)) { event.preventDefault(); open(); }
+      if (event.key === "Escape") close();
     });
-
-    displayInput.addEventListener("focus", () => {
-      if (suppressNextFocusOpen) {
-        suppressNextFocusOpen = false;
-        return;
-      }
-      openPopover();
-    });
-
-    displayInput.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closePopover();
-        return;
-      }
-      if (event.key === "Enter" || event.key === " " || event.key === "ArrowDown") {
-        event.preventDefault();
-        openPopover();
-      }
-    });
-
-    popover.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-    });
-
     popover.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const option = event.target.closest(".month-roller-option");
-      if (!option) return;
-      setMonth(option.dataset.monthValue || "");
-      closePopover();
-      suppressNextFocusOpen = true;
-      try {
-        displayInput.focus({ preventScroll: true });
-      } catch (e) {
-        displayInput.focus();
-      }
-      window.setTimeout(() => {
-        suppressNextFocusOpen = false;
-      }, 0);
+      const option = event.target.closest(".flex-month-option");
+      if (option) {
+        const value = option.dataset.month || "";
+        selected = selected.includes(value) ? selected.filter((month) => month !== value) : [...selected, value];
+        if (selected.length > maxMonths) selected = selected.slice(-maxMonths);
+        sync(true);
+      } else if (event.target.closest(".flex-month-clear")) { selected = []; sync(true); }
+      else if (event.target.closest(".flex-month-apply") || event.target.closest(".flex-month-popover__close")) close();
     });
-
-    document.addEventListener("click", (event) => {
-      if (popover.hidden) return;
-      if (popover.contains(event.target) || field?.contains(event.target)) return;
-      closePopover();
+    document.addEventListener("click", (event) => { if (!popover.hidden && !popover.contains(event.target) && !trigger.contains(event.target)) close(); });
+    window.addEventListener("resize", () => { if (!popover.hidden) position(); }, { passive: true });
+    window.addEventListener("scroll", () => { if (!popover.hidden) position(); }, { passive: true });
+    monthInput.addEventListener("change", () => {
+      const next = parseMonths(monthsInput.value || monthInput.value);
+      if (next.join(",") !== selected.join(",")) { selected = next; sync(false); }
     });
-
-    window.addEventListener("resize", () => {
-      if (isOpen()) positionPopover();
-    }, { passive: true });
-
-    window.addEventListener("scroll", () => {
-      if (isOpen()) positionPopover();
-    }, { passive: true });
-
-    setMonth(monthInput.value, false);
+    sync(false);
   }
 
-  initMonthInput(document.getElementById("flexMonthPicker"));
+  initMonthPicker();
 })();

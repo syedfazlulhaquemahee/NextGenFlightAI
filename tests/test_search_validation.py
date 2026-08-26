@@ -32,69 +32,6 @@ class SearchValidationTests(unittest.TestCase):
         month = (month_index % 12) + 1
         return f"{year:04d}-{month:02d}"
 
-    def _sample_roundtrip_flight(
-        self,
-        *,
-        token: str,
-        price: float,
-        outbound_code: str,
-        return_code: str,
-        outbound_depart: str = "2099-06-01T08:00:00",
-        outbound_arrive: str = "2099-06-01T11:00:00",
-        return_depart: str = "2099-06-08T09:00:00",
-        return_arrive: str = "2099-06-08T17:00:00",
-    ) -> dict:
-        return {
-            "selection_token": token,
-            "price": price,
-            "price_per_pax": price,
-            "currency": "USD",
-            "booking_url": "https://example.com/book",
-            "airline_summary": "Delta Air Lines",
-            "out_airline": "Delta Air Lines",
-            "out_airline_code": "DL",
-            "out_depart_at": outbound_depart,
-            "out_arrive_at": outbound_arrive,
-            "out_stops": 0,
-            "in_airline": "Delta Air Lines",
-            "in_airline_code": "DL",
-            "in_depart_at": return_depart,
-            "in_arrive_at": return_arrive,
-            "in_stops": 0,
-            "segments_ui": [
-                {
-                    "label": "Outbound",
-                    "airline": "Delta Air Lines",
-                    "origin": "JFK",
-                    "destination": "LAX",
-                    "depart_time": "8:00 AM",
-                    "depart_day": "Mon, Jun 1",
-                    "arrive_time": "11:00 AM",
-                    "arrive_day": "Mon, Jun 1",
-                    "duration": "6h 0m",
-                    "stops_label": "Nonstop",
-                    "route_chip": outbound_code,
-                    "time_chip": "Morning",
-                    "layovers": [],
-                },
-                {
-                    "label": "Return",
-                    "airline": "Delta Air Lines",
-                    "origin": "LAX",
-                    "destination": "JFK",
-                    "depart_time": "9:00 AM",
-                    "depart_day": "Mon, Jun 8",
-                    "arrive_time": "5:00 PM",
-                    "arrive_day": "Mon, Jun 8",
-                    "duration": "5h 0m",
-                    "stops_label": "Nonstop",
-                    "route_chip": return_code,
-                    "time_chip": "Morning",
-                    "layovers": [],
-                },
-            ],
-        }
-
     def test_standard_roundtrip_requires_return_date(self):
         with patch("app.search_flights") as search_mock:
             response = self.client.post("/search", data={
@@ -152,21 +89,6 @@ class SearchValidationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Please choose the current month or a future month.", response.data)
-        flex_mock.assert_not_called()
-
-    def test_flex_rejects_manual_combination_mode(self):
-        with patch("app.find_best_week_in_month") as flex_mock:
-            response = self.client.post("/search", data={
-                "mode": "flex",
-                "origin": "JFK",
-                "destination": "LAX",
-                "flex_month": self._future_month(2),
-                "trip_length_days": "7",
-                "combination_mode": "manual",
-            })
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Choose-your-own flight combinations are only available for fixed-date round trips.", response.data)
         flex_mock.assert_not_called()
 
     def test_flex_shell_ai_does_not_parse_before_shell(self):
@@ -327,95 +249,6 @@ class SearchValidationTests(unittest.TestCase):
         self.assertEqual(params["trip_type"], "oneway")
         self.assertNotIn("trip_length_days", params)
         roundtrip_mock.assert_not_called()
-
-    def test_manual_combination_roundtrip_shows_outbound_selection_step(self):
-        cheapest = self._sample_roundtrip_flight(token="rt-1", price=250.0, outbound_code="Direct route", return_code="Direct route")
-        alternate = self._sample_roundtrip_flight(
-            token="rt-2",
-            price=310.0,
-            outbound_code="Via ORD",
-            return_code="Direct route",
-            outbound_depart="2099-06-01T10:00:00",
-            outbound_arrive="2099-06-01T15:00:00",
-        )
-
-        with patch("app.search_flights", return_value=[cheapest, alternate]) as search_mock:
-            response = self.client.post("/search", data={
-                "mode": "standard",
-                "origin": "JFK",
-                "destination": "LAX",
-                "trip_type": "roundtrip",
-                "depart_date": self._future_date(14),
-                "return_date": self._future_date(21),
-                "combination_mode": "manual",
-            })
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Choose your departure flight", response.data)
-        self.assertIn(b"Choose outbound", response.data)
-        self.assertIn(b"Total trip", response.data)
-        self.assertNotIn(b"+$60.00", response.data)
-        self.assertNotIn(b">$0<", response.data)
-        self.assertEqual(search_mock.call_count, 1)
-
-    def test_manual_combination_roundtrip_shows_return_deltas_after_outbound_pick(self):
-        cheapest = self._sample_roundtrip_flight(token="rt-1", price=250.0, outbound_code="Direct route", return_code="Direct route")
-        plus = self._sample_roundtrip_flight(
-            token="rt-2",
-            price=300.0,
-            outbound_code="Direct route",
-            return_code="Via DEN",
-            return_depart="2099-06-08T12:00:00",
-            return_arrive="2099-06-08T20:30:00",
-        )
-
-        with patch("app.search_flights", return_value=[cheapest, plus]) as search_mock:
-            response = self.client.post("/search", data={
-                "mode": "standard",
-                "origin": "JFK",
-                "destination": "LAX",
-                "trip_type": "roundtrip",
-                "depart_date": self._future_date(14),
-                "return_date": self._future_date(21),
-                "combination_mode": "manual",
-                "selected_outbound_token": "rt-1",
-            })
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Choose your return flight", response.data)
-        self.assertIn(b"Choose return", response.data)
-        self.assertIn(b"USD $250.00", response.data)
-        self.assertIn(b"+$50.00", response.data)
-        self.assertNotIn(b">$0<", response.data)
-        self.assertNotIn(b"Continue to Booking", response.data)
-        self.assertNotIn(b"Book now", response.data)
-        self.assertEqual(search_mock.call_count, 1)
-
-    def test_ai_manual_combination_is_blocked_for_flex_requests(self):
-        parsed = {
-            "origin": "JFK",
-            "destination": "LAX",
-            "trip_type": "roundtrip",
-            "search_mode": "flex",
-            "flex_month": self._future_month(3),
-            "trip_length_days": 7,
-            "passengers": 1,
-            "cabin": "ECONOMY",
-            "nonstop": False,
-            "sort": "cheapest",
-            "combination_mode": "manual",
-        }
-
-        with patch("app.parse_ai_flight_request", return_value=parsed), \
-             patch("app.find_best_week_in_month") as flex_mock:
-            response = self.client.post("/search", data={
-                "mode": "ai",
-                "ai_text": "Let me choose the outbound and return separately for a 7 day trip in next month",
-            })
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Choosing flights separately is only available for fixed-date round trips right now.", response.data)
-        flex_mock.assert_not_called()
 
     def test_raw_offer_failures_are_not_cached_as_empty_results(self):
         class DummyResponse:

@@ -7,6 +7,13 @@
 (function () {
   "use strict";
 
+  // Fare-tier picker (multiple fare options per flight): data + rendering
+  // are fully wired below, but the picker stays off by default — mirrors
+  // the classic page's has_tier_picker=false, which was already dormant
+  // with no recorded reason it was disabled. Flip to true once that's
+  // confirmed safe to turn on.
+  var LAB_FARE_TIER_PICKER_ENABLED = false;
+
   var root = document.getElementById("resultsLabBody");
   if (!root) return;
   var dataEl = document.getElementById("labFlightsData");
@@ -111,7 +118,13 @@
   }
 
   var departureGroups = [];
-  if (isRoundTrip) {
+  /* Rebuilds departureGroups from the current allFlights array — called at
+     init, and again after mergeSupplementalFlights() splices in LiteAPI
+     offers, so a late cheaper fare still lands in the right departure
+     group instead of only ever appearing in the initial grouping. */
+  function rebuildDepartureGroups() {
+    departureGroups.length = 0;
+    if (!isRoundTrip) return;
     var byKey = new Map();
     allFlights.forEach(function (f) {
       var key = outboundKey(f);
@@ -125,6 +138,7 @@
       if (f.price < g.best.price) g.best = f;
     });
   }
+  rebuildDepartureGroups();
 
   var flow = {
     stage: isRoundTrip ? "departure" : "flat",
@@ -411,6 +425,39 @@
      `stageItem`/`bestRef` are the normalized {key,price,duration,stops,...}
      views from itemsForStage() — present for every kind except "review" —
      used only to compute isTop/tradeoff; never re-rendered directly. */
+  /* Fare-tier picker panel (see LAB_FARE_TIER_PICKER_ENABLED) — a row of
+     pills (name + price) plus a per-tier feature-list detail panel below,
+     matching the classic page's dormant fare-tier-panel/fare-tier-options
+     markup. wireCardEvents() below handles switching tiers. */
+  function tierPanelHtmlFor(tiers) {
+    var options = tiers.map(function (tier, i) {
+      return (
+        '<button type="button" class="lab-tier-option' + (i === 0 ? " is-active" : "") + '" role="radio" aria-checked="' + (i === 0 ? "true" : "false") + '"' +
+          ' data-lab-tier-option="' + i + '" data-lab-tier-offer-id="' + esc(tier.offerId) + '" data-lab-tier-price-label="' + esc(tier.priceLabel) + '" data-lab-tier-checkout-url="' + esc(tier.checkoutUrl || "") + '">' +
+          '<span class="lab-tier-name">' + esc(tier.name) + "</span>" +
+          '<span class="lab-tier-price">' + esc(tier.priceLabel) + "</span>" +
+        "</button>"
+      );
+    }).join("");
+    var details = tiers.map(function (tier, i) {
+      var meta = [tier.cabinLabel, tier.fareBrand].filter(Boolean).map(esc).map(function (s) { return "<span>" + s + "</span>"; }).join("");
+      var features = (tier.features || []).map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("");
+      return (
+        '<div class="lab-tier-detail' + (i === 0 ? " is-active" : "") + '" data-lab-tier-detail="' + i + '">' +
+          (meta ? '<div class="lab-tier-meta">' + meta + "</div>" : "") +
+          '<ul class="lab-tier-feature-list">' + features + "</ul>" +
+        "</div>"
+      );
+    }).join("");
+    return (
+      '<section class="lab-tier-panel" data-lab-tier-panel>' +
+        '<div class="lab-tier-header"><strong>Fare options</strong><span class="lab-tier-header-note">Same itinerary, different flexibility</span></div>' +
+        '<div class="lab-tier-options" role="radiogroup" aria-label="Fare tiers">' + options + "</div>" +
+        '<div class="lab-tier-details">' + details + "</div>" +
+      "</section>"
+    );
+  }
+
   function cardHtml(kind, entity, stageItem, bestRef) {
     var legs, priceAmt, priceQualifier, secondaryNote, cueHtml, ctaHtml, badge, reasoning, key, airlineName, logoUrl, mix;
 
@@ -457,8 +504,13 @@
       var ctaClass = kind === "review" ? "lab-select-btn lab-select-btn--final" : "lab-select-btn";
       var ctaLabel = kind === "review" ? "Book flight" : "Select flight";
       ctaHtml = fl.checkoutUrl
-        ? '<a class="' + ctaClass + '" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '">' + ctaLabel + '</a>'
+        ? '<a class="' + ctaClass + '" href="' + esc(fl.checkoutUrl) + '"' + (fl.tripCombo ? "" : ' target="_blank" rel="noopener noreferrer"') + ' data-result-id="' + esc(fl.id) + '" data-lab-tier-cta>' + ctaLabel + '</a>'
         : '<span class="' + ctaClass + '" aria-disabled="true">Unavailable</span>';
+    }
+
+    var tierPanelHtml = "";
+    if (LAB_FARE_TIER_PICKER_ENABLED && entity && entity.tiers && entity.tiers.length > 1) {
+      tierPanelHtml = tierPanelHtmlFor(entity.tiers);
     }
 
     var showLegLabel = legs.length > 1;
@@ -496,6 +548,7 @@
             ctaHtml +
           "</div>" +
         "</div>" +
+        tierPanelHtml +
         '<div class="lab-card-footer">' +
           '<button type="button" class="lab-details-toggle" aria-expanded="false" data-lab-details-toggle>Flight details' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
@@ -760,6 +813,39 @@
         flow.stage = "review";
         renderStage();
         window.scrollTo({ top: 0, behavior: "auto" });
+      });
+    });
+
+    if (LAB_FARE_TIER_PICKER_ENABLED) wireTierPanels();
+  }
+
+  /* Fare-tier picker interaction: switching a tier updates that card's
+     active pill/detail panel, displayed price, and CTA link — never the
+     card's rank/position (tiers are the same itinerary, different fare). */
+  function wireTierPanels() {
+    Array.from(listEl.querySelectorAll("[data-lab-tier-panel]")).forEach(function (panel) {
+      var card = panel.closest(".lab-card");
+      if (!card) return;
+      var options = Array.from(panel.querySelectorAll("[data-lab-tier-option]"));
+      var details = Array.from(panel.querySelectorAll("[data-lab-tier-detail]"));
+      var priceEl = card.querySelector(".lab-price-amt");
+      var ctaLinks = Array.from(card.querySelectorAll("[data-lab-tier-cta]"));
+
+      options.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var tierIndex = btn.dataset.labTierOption;
+          options.forEach(function (b) {
+            var active = b === btn;
+            b.classList.toggle("is-active", active);
+            b.setAttribute("aria-checked", String(active));
+          });
+          details.forEach(function (d) {
+            d.classList.toggle("is-active", d.dataset.labTierDetail === tierIndex);
+          });
+          if (priceEl && btn.dataset.labTierPriceLabel) priceEl.textContent = stripCents(btn.dataset.labTierPriceLabel);
+          var url = btn.dataset.labTierCheckoutUrl;
+          if (url) ctaLinks.forEach(function (link) { link.setAttribute("href", url); });
+        });
       });
     });
   }
@@ -1702,4 +1788,82 @@
   /* ---------------- initial paint ---------------- */
 
   renderStage();
+
+  /* ---------------- LiteAPI (second flight provider) supplement ----------------
+     LiteAPI's results arrive slower than Duffel's (~15-20s, confirmed live —
+     not a bug), so they're deliberately left out of the fast initial render
+     and fetched here in the background instead. Ported from the classic
+     page's static/liteapi-supplement.js, which patched #resultsCards HTML —
+     Lab has no server HTML to parse, so this fetches the same merged
+     flights as JSON (build_lab_flights_data, shared with the initial
+     render) and merges them straight into allFlights/departureGroups. */
+  (function fetchLiteApiSupplement() {
+    if (!searchForm) return;
+
+    var toastTimer = null;
+    function showToast(text) {
+      var toast = document.createElement("div");
+      toast.textContent = text;
+      toast.style.cssText =
+        "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;" +
+        "background:rgba(15,23,42,.92);color:#fff;padding:10px 18px;border-radius:999px;" +
+        "font:600 13px/1.4 -apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);" +
+        "opacity:0;transition:opacity .25s ease;";
+      document.body.appendChild(toast);
+      requestAnimationFrame(function () { toast.style.opacity = "1"; });
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        toast.style.opacity = "0";
+        setTimeout(function () { toast.remove(); }, 300);
+      }, 3200);
+    }
+
+    var body = new URLSearchParams({
+      origin: searchForm.originRaw || "",
+      destination: searchForm.destinationRaw || "",
+      trip_type: searchForm.tripTypeRaw || "roundtrip",
+      depart_date: searchForm.departDateRaw || "",
+      return_date: searchForm.returnDateRaw || "",
+      passengers: String(searchForm.passengersRaw || 1),
+      cabin: searchForm.cabinRaw || "ECONOMY",
+      nonstop: searchForm.nonstopRaw ? "on" : "",
+      sort: "recommended",
+      combination_mode: "auto",
+    });
+
+    var priceBefore = Math.min.apply(null, allFlights.map(function (f) { return f.price; }));
+
+    fetch("/search/liteapi-supplement", { method: "POST", body: body })
+      .then(function (r) { return r.ok ? r.json() : { updated: false }; })
+      .then(function (data) {
+        if (!data || !data.updated || !data.flights || !data.flights.length) return;
+
+        var incoming = data.flights.filter(function (f) { return f && f.out; });
+        if (!incoming.length) return;
+
+        var newPrice = Math.min.apply(null, incoming.map(function (f) { return f.price; }));
+        // Only merge when it actually beats the current cheapest — folding
+        // in more same-or-worse options isn't worth rearranging the list
+        // (and every filter/tab range) under the user for.
+        if (!(newPrice < priceBefore)) return;
+
+        var existingIds = new Set(allFlights.map(function (f) { return f.id; }));
+        var added = false;
+        incoming.forEach(function (f) {
+          if (existingIds.has(f.id)) return;
+          existingIds.add(f.id);
+          allFlights.push(f);
+          added = true;
+        });
+        if (!added) return;
+
+        rebuildDepartureGroups();
+        renderStage();
+        showToast("Found a cheaper fare — prices updated");
+      })
+      .catch(function () {
+        // Best-effort enhancement — a failed fetch just leaves the fast
+        // Duffel results as-is.
+      });
+  })();
 })();

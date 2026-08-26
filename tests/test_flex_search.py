@@ -224,33 +224,6 @@ class FlexSearchTests(unittest.TestCase):
         self.assertEqual(flight_app._extract_ai_flex_month("cheapest fares next month"), next_month)
         self.assertEqual(flight_app._extract_ai_flex_month("flexible dates this month"), this_month)
 
-    def test_parse_ai_manual_combination_request_sets_manual_mode(self):
-        class FakeResponse:
-            text = json.dumps({
-                "origin": "JFK",
-                "destination": "LAX",
-                "depart_date": "2099-08-10",
-                "return_date": "2099-08-17",
-                "passengers": 1,
-                "cabin": "ECONOMY",
-                "nonstop": False,
-                "max_price": None,
-                "sort": "recommended",
-            })
-
-        class FakeModel:
-            def generate_content(self, _prompt, **_kwargs):
-                return FakeResponse()
-
-        with patch.object(flight_app, "model", FakeModel()):
-            parsed = flight_app.parse_ai_flight_request(
-                "Round trip from JFK to LAX on 2099-08-10 returning 2099-08-17. Let me choose the outbound and return separately."
-            )
-
-        self.assertIsNotNone(parsed)
-        self.assertEqual(parsed["combination_mode"], "manual")
-        self.assertEqual(parsed["trip_type"], "roundtrip")
-
     def test_parse_ai_multicity_falls_back_to_text_route_chain_with_then_separator(self):
         class FakeResponse:
             text = json.dumps({

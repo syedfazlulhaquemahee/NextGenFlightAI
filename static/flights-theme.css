@@ -1316,3 +1316,64 @@ body.home-page .home-recent-card:focus-visible .home-recent-replay img {
   }
   body.home-page .home-recent-sub { white-space: nowrap; }
 }
+
+/* Cheapest week has two explicit choices: travel month(s) and trip length. */
+body.home-page .manual-search-v2.flex-mode .gf-seg--dates { min-width: 300px; padding: 0 14px; }
+body.home-page .manual-search-v2.flex-mode .gf-flex-controls { display:flex !important; align-items:stretch; width:100%; min-width:0; min-height:56px; }
+body.home-page .gf-flex-picker, body.home-page .gf-flex-length { display:flex; min-width:0; flex:1 1 0; flex-direction:column; justify-content:center; gap:3px; border:0; background:transparent; color:inherit; font:inherit; text-align:left; }
+body.home-page .gf-flex-picker { cursor:pointer; padding:4px 8px 4px 0; }
+body.home-page .gf-flex-picker.is-invalid { outline:2px solid #dc2626; outline-offset:3px; border-radius:6px; }
+body.home-page .gf-flex-picker-label, body.home-page .gf-flex-length > span { color:#6c737f; font-size:11px; font-weight:600; letter-spacing:.02em; line-height:1.2; }
+body.home-page .gf-flex-picker-value, body.home-page .gf-flex-length select { overflow:hidden; color:#111322; font-size:15px; font-weight:650; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; }
+body.home-page .gf-flex-picker-value.is-placeholder { color:#667085; font-weight:500; }
+body.home-page .gf-flex-control-divider { width:1px; align-self:center; height:34px; margin:0 12px; background:#e3e8f0; }
+body.home-page .gf-flex-length { flex:0 0 92px; }
+body.home-page .gf-flex-length select { width:100%; padding:0; border:0; outline:0; background:transparent; cursor:pointer; font-family:inherit; }
+
+/* The base desktop bar turns each segment into a vertical stack and hides
+   #flexTripLengthField.  Flexible dates is a compact two-control row. */
+@media (min-width:1025px) {
+  body.home-page .manual-search-v2.flex-mode .gf-seg--dates {
+    /* A selected month is short. Keep this group compact and let the route
+       fields use the reclaimed space instead of stretching the month label. */
+    flex: 0 0 340px !important;
+    min-width: 340px;
+    flex-direction:row !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    gap:0 !important;
+  }
+  body.home-page .manual-search-v2.flex-mode .gf-seg--dates::before,
+  body.home-page .manual-search-v2.flex-mode .gf-seg--dates .gf-seg-icon--flex {
+    display:none !important;
+    content:"" !important;
+  }
+  body.home-page .manual-search-v2.flex-mode #flexTripLengthField { display:flex !important; }
+  body.home-page .manual-search-v2.flex-mode.oneway #flexTripLengthField { display:none !important; }
+  body.home-page .manual-search-v2.flex-mode .gf-flex-picker { flex:0 1 190px; }
+  body.home-page .manual-search-v2.flex-mode .gf-flex-length { flex:1 0 96px; }
+  body.home-page .manual-search-v2.flex-mode .gf-flex-control-divider { margin:0 10px; }
+}
+
+.flex-month-popover { position:absolute; z-index:10020; overflow:hidden; border:1px solid #d9e0ea; border-radius:16px; background:#fff; box-shadow:0 18px 45px rgba(15,23,42,.2),0 2px 8px rgba(15,23,42,.12); color:#172033; font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.flex-month-popover__head { display:flex; justify-content:space-between; gap:14px; padding:18px 18px 14px; border-bottom:1px solid #edf1f5; }
+.flex-month-popover__head strong { display:block; font-size:15px; line-height:1.3; }
+.flex-month-popover__head span { display:block; margin-top:4px; color:#667085; font-size:12px; line-height:1.4; }
+.flex-month-popover__close { width:28px; height:28px; border:0; border-radius:8px; background:#f4f6f9; color:#475467; font-size:23px; line-height:1; cursor:pointer; }
+.flex-month-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; max-height:310px; padding:14px 18px; overflow-y:auto; }
+.flex-month-option { min-height:45px; padding:7px 6px; border:1px solid #e1e6ed; border-radius:10px; background:#fff; color:#344054; font:600 12px/1.2 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; transition:.14s ease; }
+.flex-month-option:hover { border-color:#a9b7fb; background:#f6f7ff; }
+.flex-month-option.is-selected { border-color:#4f46e5; background:#eeefff; box-shadow:inset 0 0 0 1px #4f46e5; color:#3730a3; }
+.flex-month-popover__footer { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 18px; border-top:1px solid #edf1f5; background:#fafbfc; }
+.flex-month-selection { color:#667085; font-size:12px; font-weight:600; }
+.flex-month-clear,.flex-month-apply { min-height:32px; border-radius:8px; padding:0 11px; font:650 12px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; }
+.flex-month-clear { border:0; background:transparent; color:#5a6472; }
+.flex-month-apply { margin-left:4px; border:1px solid #4f46e5; background:#4f46e5; color:#fff; }
+@media (max-width:1024px) {
+  body.home-page .manual-search-v2.flex-mode .gf-seg--dates { min-width:0; }
+  body.home-page .manual-search-v2.flex-mode .gf-flex-controls { min-height:48px; }
+  /* home-page.css hides the old compatibility control at this breakpoint. */
+  body.home-page .manual-search-v2.flex-mode #flexTripLengthField { display:flex !important; }
+  body.home-page .manual-search-v2.flex-mode.oneway #flexTripLengthField { display:none !important; }
+}
+@media (max-width:520px) { body.home-page .gf-flex-picker-value,body.home-page .gf-flex-length select { font-size:14px; } body.home-page .gf-flex-control-divider { margin:0 9px; } body.home-page .gf-flex-length { flex-basis:80px; } .flex-month-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .flex-month-popover__footer { align-items:flex-start; flex-direction:column; } }

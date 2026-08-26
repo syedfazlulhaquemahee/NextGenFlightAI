@@ -12,7 +12,7 @@
   {% include "partials/theme_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='date-picker.css', v='20260813-shadcn-range') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='voice/voice-ai.css', v='20260729-modal-disclaimer') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260821-recent-searches-3') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='flights-theme.css', v='20260826-flex-responsive') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='flight-stays.css', v='20260817-member-prices') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='ai-composer.css', v='20260818-ios-ai-input-lock') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='airport-search.css', v='20260823-liteapi-3') }}" />
@@ -294,8 +294,22 @@
                 <input class="calendar-input calendar-display-input" id="departPickerDisplay" type="text" placeholder="Depart" aria-label="Depart" readonly tabindex="-1" />
                 <input class="calendar-input calendar-display-input" id="returnPickerDisplay" type="text" placeholder="Return" aria-label="Return" readonly tabindex="-1" />
               </div>
-              <div id="panel-flex" style="display:none">
-                <input class="ms2-input calendar-input" id="flexMonthPicker" type="text" name="flex_month" placeholder="Select month" aria-label="Month" />
+              <div id="panel-flex" class="gf-flex-controls" style="display:none">
+                <input id="flexMonthPicker" type="hidden" name="flex_month" />
+                <input id="flexMonthsPicker" type="hidden" name="flex_months" />
+                <button type="button" class="gf-flex-picker" id="flexMonthPickerTrigger" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="gf-flex-picker-label">Travel months</span>
+                  <span class="gf-flex-picker-value" id="flexMonthPickerDisplay">Choose month(s)</span>
+                </button>
+                <span class="gf-flex-control-divider" aria-hidden="true"></span>
+                <label class="gf-flex-length" id="flexTripLengthField">
+                  <span>Trip length</span>
+                  <select name="trip_length_days" id="flexTripLengthDays" aria-label="Trip length">
+                    {% for d in [3,5,7,10,14] %}
+                      <option value="{{ d }}" {% if d == 7 %}selected{% endif %}>{{ d }} days</option>
+                    {% endfor %}
+                  </select>
+                </label>
               </div>
               <input id="departPicker" name="depart_date" type="hidden" />
               <input id="returnPicker" name="return_date" type="hidden" />
@@ -391,21 +405,8 @@
               {{ manual_search_icon('nonstop', 'gf-check-icon') }}
               <span>Direct flights only</span>
             </label>
-            <label class="gf-underbar-check" id="combinationInline" style="display:none">
-              <input type="checkbox" name="combination_mode" id="manualCombinationInput" value="manual" />
-              {{ manual_search_icon('split', 'gf-check-icon') }}
-              <span>Let me choose departure and return separately</span>
-            </label>
           </div>
 
-          <!-- Hidden compat elements for existing JS -->
-          <div id="flexTripLengthField" style="display:none">
-            <select name="trip_length_days" aria-label="Duration">
-              {% for d in [3,5,7,10,14] %}
-                <option value="{{ d }}" {% if d == 7 %}selected{% endif %}>{{ d }} days</option>
-              {% endfor %}
-            </select>
-          </div>
         </form>
       </div>
     </section>
@@ -696,8 +697,6 @@
       const metaSortWrap = document.getElementById("metaSortWrap");
       const vsepSort = document.getElementById("vsepSort");
       const nonstopInline = document.getElementById("nonstopInline");
-      const combinationInline = document.getElementById("combinationInline");
-      const manualCombinationInput = document.getElementById("manualCombinationInput");
       const cta = document.getElementById("unifiedCta");
       const multiCta = document.getElementById("unifiedCtaMulti");
       const btns = root.querySelectorAll(".seg-btn");
@@ -814,13 +813,7 @@
         document.body.classList.toggle("manual-focus-active", isActive);
       }
 
-      function syncCombinationModeAvailability() {
-        const standardRoundTrip = modeField.value === "standard" && tripSel?.value === "roundtrip";
-        if (combinationInline) combinationInline.style.display = standardRoundTrip ? "" : "none";
-        if (manualCombinationInput) manualCombinationInput.disabled = !standardRoundTrip;
-      }
-
-      function syncManualVisibility() {
+function syncManualVisibility() {
         const collapsed = root.classList.contains("is-collapsed");
         root.setAttribute("data-expanded", collapsed ? "false" : "true");
         document.body.classList.toggle("manual-open", !collapsed);
@@ -952,7 +945,6 @@
         root.classList.toggle("standard-mode", isStd);
         root.classList.toggle("flex-mode", !isStd);
         root.classList.toggle("multicity", isMultiCity);
-        syncCombinationModeAvailability();
         syncFlexControls();
         fitMs2MetaPillSelects();
 
@@ -1049,7 +1041,6 @@
         if (panelMulti) panelMulti.style.display = isMultiCity ? "" : "none";
         if (dateSortRow) dateSortRow.style.display = isMultiCity ? "none" : "";
         if (cta) cta.style.display = isMultiCity ? "none" : "";
-        syncCombinationModeAvailability();
         syncFlexControls();
         afterManualFormLayoutChange();
         fitMs2MetaPillSelects();
@@ -1771,9 +1762,9 @@
 
   <!-- Cally calendar web components (date picker) -->
   <script type="module" src="{{ url_for('static', filename='vendor/cally/cally.js', v='0.9.2') }}"></script>
-  <script src="{{ url_for('static', filename='search-validation.js', v='20260513-month-roller-tight') }}"></script>
+  <script src="{{ url_for('static', filename='search-validation.js', v='20260826-flex-months') }}"></script>
   <script src="{{ url_for('static', filename='search-loader.js') }}"></script>
-  <script src="{{ url_for('static', filename='calendar.js', v='20260722-cally') }}"></script>
+  <script src="{{ url_for('static', filename='calendar.js', v='20260826-flex-months') }}"></script>
   <script type="module" src="{{ url_for('static', filename='date-picker.js', v='20260813-shadcn-range') }}"></script>
   <script src="{{ url_for('static', filename='geo-location.js', v='20260818-location-retry') }}"></script>
   <script src="{{ url_for('static', filename='home-sections.js', v='20260821-recent-searches-3') }}"></script>
@@ -1884,9 +1875,9 @@
       function updateDatesDisplay(){
         if (dateModeSelect?.value === "flex") {
           const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
-          const month = (flexMonthDisplay?.value || flexMonthPicker?.value || "").trim();
-          datesText.textContent = month || "Select month";
-          datesText.classList.toggle("is-placeholder", !month);
+          const month = (flexMonthDisplay?.textContent || flexMonthPicker?.value || "").trim();
+          datesText.textContent = month || "Choose month(s)";
+          datesText.classList.toggle("is-placeholder", !flexMonthPicker?.value);
           return;
         }
 
@@ -1980,9 +1971,8 @@
       if (datesSeg && departDisplay){
         datesSeg.addEventListener("click", (e) => {
           if (dateModeSelect?.value !== "flex") return;
-          const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
-          const target = flexMonthDisplay || flexMonthPicker;
-          if (target && e.target === target) return;
+          const target = flexMonthPicker?._monthRollerDisplay || document.getElementById("flexMonthPickerTrigger") || flexMonthPicker;
+          if (target && target.contains?.(e.target)) return;
           e.preventDefault();
           e.stopImmediatePropagation();
           closeDateCalendar();
@@ -1996,9 +1986,8 @@
         datesSeg.addEventListener("click", (e) => {
           if (dateModeSelect?.value === "flex") {
             closeDateCalendar();
-            const flexMonthDisplay = document.getElementById("flexMonthPickerDisplay");
-            const target = flexMonthDisplay || flexMonthPicker;
-            if (target && e.target !== target) target.click();
+            const target = flexMonthPicker?._monthRollerDisplay || document.getElementById("flexMonthPickerTrigger") || flexMonthPicker;
+            if (target && !target.contains?.(e.target)) target.click();
             return;
           }
           if (e.target === departDisplay || e.target === returnDisplay) return;
