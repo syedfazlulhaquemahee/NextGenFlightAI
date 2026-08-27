@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% include "partials/theme_init.html" %}
+  <title>Help Center • Skairova</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='support.css', v='20260826-support-1') }}" />
+  {% include "partials/theme_head.html" %}
+</head>
+<body class="support-page">
+  {% include "partials/platform_header.html" %}
+  <main class="support-main">
+    <section class="support-hero" aria-labelledby="supportTitle">
+      <p>SKAIROVA HELP CENTER</p>
+      <h1 id="supportTitle">How can we help?</h1>
+      <div class="support-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="supportSearch" type="search" placeholder="Search for help with a trip, booking, or account" aria-label="Search help articles" /></div>
+    </section>
+    <section class="support-section" aria-labelledby="supportTopicsTitle">
+      <header><h2 id="supportTopicsTitle">Browse by topic</h2><p>Answers for every stage of your journey.</p></header>
+      <div class="support-topic-grid" id="supportTopics">
+        <a href="{{ url_for('manage_booking') }}" data-support-search="booking itinerary confirmation change cancel refund"><span>✈</span><strong>Manage a booking</strong><small>View your itinerary, change plans, or check a booking.</small><i>→</i></a>
+        <a href="#payments" data-support-search="payment price charge receipt refund card"><span>◫</span><strong>Payments &amp; refunds</strong><small>Understand charges, receipts, fare rules, and refunds.</small><i>→</i></a>
+        <a href="#searching" data-support-search="search flights hotels price fare dates travelers"><span>⌕</span><strong>Search &amp; prices</strong><small>Get help finding, comparing, and choosing travel options.</small><i>→</i></a>
+        <a href="#account" data-support-search="account password sign in profile privacy"><span>◎</span><strong>Account &amp; profile</strong><small>Sign in, update your profile, or keep your account secure.</small><i>→</i></a>
+      </div>
+      <p class="support-no-results" id="supportNoResults" hidden>No matching topics. <a href="mailto:support@skairova.com">Email our support team</a>.</p>
+    </section>
+    <section class="support-section support-articles" aria-labelledby="popularArticlesTitle">
+      <header><h2 id="popularArticlesTitle">Popular help articles</h2><p>Quick answers to the questions travelers ask most.</p></header>
+      <div class="support-article-list">
+        <details id="searching" data-support-search="how flight prices work search price changes availability"><summary>Why did the price change after I searched?<span>+</span></summary><p>Travel inventory changes quickly. A fare is confirmed only after the provider accepts the reservation at checkout.</p></details>
+        <details id="payments" data-support-search="refund cancellation payment card receipt charged"><summary>How do cancellations and refunds work?<span>+</span></summary><p>Changes and refunds depend on the airline or provider’s fare rules. Start in Manage booking to see the options available for your itinerary.</p></details>
+        <details data-support-search="confirmation itinerary booking reference email"><summary>Where can I find my booking confirmation?<span>+</span></summary><p>Use your booking reference in Manage booking. Your confirmation is also sent to the email address used at checkout.</p></details>
+        <details id="account" data-support-search="password account sign in security profile"><summary>I need help signing in to my account.<span>+</span></summary><p>Use the password reset option on the sign-in screen. For account access issues, contact support from the email tied to your account.</p></details>
+      </div>
+    </section>
+    <section class="support-contact"><div><p>STILL NEED HELP?</p><h2>Our travel support team is here.</h2><span>For booking or account questions, email us with your booking reference if you have one.</span></div><a href="mailto:support@skairova.com">Contact support <b>→</b></a></section>
+  </main>
+  <script src="{{ url_for('static', filename='support.js', v='20260826-support-1') }}" defer></script>
+</body>
+</html>

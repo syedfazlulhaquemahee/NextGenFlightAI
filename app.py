@@ -14444,6 +14444,17 @@ def deals():
     )
 
 
+@app.route("/support")
+def support():
+    _track_analytics_event(
+        event_type="support_viewed",
+        search_mode="support",
+        success=True,
+        metadata={"page": "support"},
+    )
+    return render_template("support.html")
+
+
 @app.route("/destinations/<slug>")
 def destination_landing(slug: str):
     destination = get_destination(slug)
@@ -14530,6 +14541,37 @@ def nearest_airport():
         "city": airport["city"],
         "country": airport["country"],
     })
+
+
+@app.route("/api/feedback", methods=["POST"])
+def submit_feedback():
+    """Record a short, voluntary product-feedback response for analytics."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        rating = int(payload.get("rating"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "A rating from 0 to 10 is required."}), 400
+
+    if not 0 <= rating <= 10:
+        return jsonify({"error": "A rating from 0 to 10 is required."}), 400
+
+    comment = str(payload.get("comment") or "").strip()[:1200]
+    page = str(payload.get("page") or "").strip()[:240]
+    feedback_type = str(payload.get("feedback_type") or "idea").strip().lower()
+    if feedback_type not in {"idea", "issue", "praise"}:
+        feedback_type = "idea"
+    _track_analytics_event(
+        event_type="feedback_submitted",
+        search_mode="feedback",
+        success=True,
+        metadata={
+            "rating": rating,
+            "feedback_type": feedback_type,
+            "comment": comment,
+            "page": page,
+        },
+    )
+    return jsonify({"ok": True})
 
 
 @app.route("/api/destination-prices", methods=["POST"])

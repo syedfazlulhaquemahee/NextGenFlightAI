@@ -515,7 +515,7 @@
               {% endif %}
             </div>
             {% if not (manage_model and manage_model.can_cancel) %}
-            <p class="bd2-actions-note">Cancellation is unavailable for this booking through the airline. Contact <a href="mailto:support@skairova.com">support</a> for help.</p>
+            <p class="bd2-actions-note">Cancellation is unavailable for this booking through the airline. Contact <a href="{{ url_for('support') }}">support</a> for help.</p>
             {% endif %}
           </div>
           {% endif %}

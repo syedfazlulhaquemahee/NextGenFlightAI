@@ -45,7 +45,7 @@
           {{ header_icon('briefcase-business') }}
           Agent Portal
         </a>
-        <a class="hdr-text-link hdr-desktop-only" href="mailto:support@skairova.com">
+        <a class="hdr-text-link hdr-desktop-only" href="{{ url_for('support') }}">
           {{ header_icon('circle-help') }}
           Support
         </a>
@@ -97,7 +97,7 @@
       <span>Agent Portal</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
-    <a class="hdr-mobile-link" href="mailto:support@skairova.com">
+    <a class="hdr-mobile-link" href="{{ url_for('support') }}">
       <span>Support</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
@@ -138,6 +138,29 @@
     </div>
   {% endif %}
 </div>
+<section class="sk-feedback" id="skFeedback" hidden aria-hidden="true">
+  <div class="sk-feedback-backdrop" data-feedback-dismiss aria-hidden="true"></div>
+  <div class="sk-feedback-widget" role="dialog" aria-modal="true" aria-labelledby="skFeedbackTitle" tabindex="-1">
+    <div data-feedback-step="form">
+      <header class="sk-feedback-widget-head">
+        <div><h2 id="skFeedbackTitle">Send feedback</h2><p>Goes straight to the Skairova team improving this experience.</p></div>
+        <button type="button" data-feedback-dismiss aria-label="Close feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+      </header>
+      <div class="sk-feedback-types" role="radiogroup" aria-label="Feedback type">
+        <button type="button" role="radio" aria-checked="true" data-feedback-type="idea">✦ Idea</button>
+        <button type="button" role="radio" aria-checked="false" data-feedback-type="issue">! Issue</button>
+        <button type="button" role="radio" aria-checked="false" data-feedback-type="praise">♡ Praise</button>
+      </div>
+      <div class="sk-feedback-rating-row"><div class="sk-feedback-rating-label"><span>How would you rate this experience?</span><small>0 = poor · 10 = excellent</small></div><div role="radiogroup" aria-label="Rate Skairova from 0 to 10">{% for rating in range(0, 11) %}<button type="button" role="radio" aria-checked="false" data-feedback-rating="{{ rating }}">{{ rating }}</button>{% endfor %}</div><p id="skFeedbackScoreSelection" aria-live="polite">Choose a score to continue</p></div>
+      <label class="sk-feedback-message-label" for="skFeedbackComment">Your feedback</label>
+      <textarea id="skFeedbackComment" maxlength="1200" rows="4" placeholder="What would you like Skairova to do better?"></textarea>
+      <div class="sk-feedback-attachment"><span aria-hidden="true">▧</span><span>Attach a screenshot</span><small>Optional</small></div>
+      <p class="sk-feedback-privacy">Sent with your page URL and browser so we can reproduce it. No page content is captured.</p>
+      <footer><button type="button" class="sk-feedback-cancel" data-feedback-dismiss>Cancel</button><button type="button" class="sk-feedback-send" data-feedback-submit disabled>Send feedback</button></footer>
+    </div>
+    <div class="sk-feedback-sent" data-feedback-step="sent" hidden><span aria-hidden="true">✓</span><h2>Feedback sent</h2><p>Thank you for helping us make Skairova better.</p><button type="button" class="sk-feedback-send" data-feedback-dismiss>Done</button></div>
+  </div>
+</section>
 {# Sign-in popup, available site-wide. The /auth page renders the same block
    inline and sets hide_auth_modal to avoid duplicating it. #}
 {% if not portal_signed_in and not hide_auth_modal %}
