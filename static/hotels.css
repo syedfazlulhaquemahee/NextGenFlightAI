@@ -1023,30 +1023,42 @@ html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; 
 .hotel-results-page .nu-grid > li { display: block; }
 .hotel-results-page .nu-card {
   display: grid;
-  grid-template-columns: 182px minmax(0, 1fr);
-  min-height: 174px;
+  grid-template-columns: 170px minmax(0, 1fr);
+  min-height: 200px;
   border-radius: 12px;
   overflow: visible;
 }
 .hotel-results-page .nu-card-img {
-  width: 158px;
-  min-height: 150px;
+  width: 144px;
+  height: 176px;
+  min-height: 0;
   margin: 12px;
-  align-self: stretch;
+  align-self: center;
   aspect-ratio: auto;
   border-radius: 8px;
 }
 .hotel-results-page .nu-card-img img { border-radius: inherit; }
 .hotel-results-page .nu-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: none;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 184px;
+  grid-template-areas:
+    "stars price"
+    "name price"
+    "location price"
+    "perks price"
+    "score price";
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 4px;
   min-width: 0;
-  padding: 16px 18px 14px 4px;
+  min-height: 168px;
+  padding: 16px 18px 16px 0;
 }
-.hotel-results-page .nu-card-name { font-size: 17px; }
+.hotel-results-page .nu-stars { grid-area: stars; }
+.hotel-results-page .nu-card-name { grid-area: name; font-size: 17px; }
+.hotel-results-page .nu-card-loc { grid-area: location; }
 .hotel-results-page .nu-card-perks {
+  grid-area: perks;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1062,17 +1074,15 @@ html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; 
   line-height: 1.25;
 }
 .hotel-results-page .nu-card-foot {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 184px;
-  align-items: start;
-  gap: 14px;
-  margin-top: 8px;
-  padding-top: 10px;
+  display: contents;
 }
+.hotel-results-page .nu-score { grid-area: score; align-self: end; }
 .hotel-results-page .nu-price {
+  grid-area: price;
+  align-self: center;
   min-width: 0;
   margin: 0;
-  padding-left: 16px;
+  padding-left: 14px;
   border-left: 1px solid var(--nu-border-soft);
 }
 .hotel-results-page .nu-price strong { font-size: 21px; }
