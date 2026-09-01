@@ -20,6 +20,12 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
           <span>{{ card.city }}{% if card.address %}, {{ card.address }}{% endif %}</span>
         </span>
+        {% if card.offer.refundable_available or card.offer.has_breakfast %}
+          <span class="nu-card-perks">
+            {% if card.offer.refundable_available %}<span>Free cancellation</span>{% endif %}
+            {% if card.offer.has_breakfast %}<span>Breakfast included</span>{% endif %}
+          </span>
+        {% endif %}
 
         <span class="nu-card-foot">
           <span class="nu-score">
@@ -35,6 +41,7 @@
             {% if card.offer.was_amount %}<s>US${{ '{:,.0f}'.format(card.offer.was_amount) }}</s>{% endif %}
             <strong>US${{ '{:,.0f}'.format(card.offer.total_amount) }}</strong>
             <span>{{ search.rooms }} room{{ 's' if search.rooms != 1 }} x {{ search.nights }} night{{ 's' if search.nights != 1 }} incl. taxes</span>
+            <span class="nu-card-cta">View deal</span>
           </span>
         </span>
       </span>

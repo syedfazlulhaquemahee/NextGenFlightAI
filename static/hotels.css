@@ -984,6 +984,87 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
 .nu-load-more-wrap { display: flex; justify-content: center; padding: 28px 0 6px; }
 .nu-load-more { min-width: 188px; }
 
+/* Results are deliberately information-first: a compact, fixed-size photo,
+   property details in the centre, then a dedicated decision/price rail. */
+.hotel-results-page .nu-grid {
+  grid-template-columns: minmax(0, 940px);
+  gap: 14px;
+}
+.hotel-results-page .nu-grid > li { display: block; }
+.hotel-results-page .nu-card {
+  display: grid;
+  grid-template-columns: 182px minmax(0, 1fr);
+  min-height: 174px;
+  border-radius: 12px;
+  overflow: visible;
+}
+.hotel-results-page .nu-card-img {
+  width: 158px;
+  height: 150px;
+  min-height: 0;
+  margin: 12px;
+  align-self: start;
+  aspect-ratio: auto;
+  border-radius: 8px;
+}
+.hotel-results-page .nu-card-img img { border-radius: inherit; }
+.hotel-results-page .nu-card-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 18px 14px 4px;
+}
+.hotel-results-page .nu-card-name { font-size: 17px; }
+.hotel-results-page .nu-card-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+.hotel-results-page .nu-card-perks span {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: var(--nu-primary-soft);
+  color: var(--nu-primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.hotel-results-page .nu-card-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 184px;
+  align-items: end;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.hotel-results-page .nu-price {
+  min-width: 0;
+  margin: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--nu-border-soft);
+}
+.hotel-results-page .nu-price strong { font-size: 21px; }
+.hotel-results-page .nu-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-top: 7px;
+  padding: 0 11px;
+  border-radius: 6px;
+  background: var(--nu-primary);
+  color: var(--nu-on-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hotel-results-page .nu-card:hover .nu-card-cta { background: var(--nu-primary-hover); }
+}
+
 .nu-none { padding: 26px 0; color: var(--nu-muted); font-size: 14px; }
 .nu-none[hidden] { display: none !important; }
 .nu-none button { border: 0; background: none; color: var(--nu-primary); font: inherit; cursor: pointer; text-decoration: underline; }
@@ -1195,6 +1276,43 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
 }
 
 @media (max-width: 620px) {
+  .hotel-results-page .nu-grid { gap: 10px; }
+  .hotel-results-page .nu-card {
+    grid-template-columns: 116px minmax(0, 1fr);
+    min-height: 0;
+    border-radius: 10px;
+  }
+  .hotel-results-page .nu-card-img {
+    width: 96px;
+    height: 112px;
+    margin: 10px;
+    border-radius: 7px;
+  }
+  .hotel-results-page .nu-card-body {
+    display: flex;
+    min-height: 132px;
+    padding: 12px 12px 12px 0;
+    gap: 3px;
+  }
+  .hotel-results-page .nu-stars { font-size: 11px; }
+  .hotel-results-page .nu-card-name { margin-top: 1px; font-size: 15px; }
+  .hotel-results-page .nu-card-loc { font-size: 12px; line-height: 16px; }
+  .hotel-results-page .nu-card-perks { margin-top: 3px; }
+  .hotel-results-page .nu-card-perks span { font-size: 10px; padding: 2px 5px; }
+  .hotel-results-page .nu-card-foot {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding-top: 7px;
+  }
+  .hotel-results-page .nu-score { gap: 5px; }
+  .hotel-results-page .nu-score-badge { padding: 3px 5px; font-size: 11px; }
+  .hotel-results-page .nu-score-text strong { font-size: 11px; }
+  .hotel-results-page .nu-score-text span { font-size: 10px; }
+  .hotel-results-page .nu-price { flex: none; padding-left: 8px; }
+  .hotel-results-page .nu-price strong { font-size: 17px; }
+  .hotel-results-page .nu-price span { font-size: 10px; }
+  .hotel-results-page .nu-price s, .hotel-results-page .nu-card-cta { display: none; }
   .nu-hero-title { font-size: 32px; }
   .nu-rail { grid-auto-columns: 86%; }
   .nu-list-head { flex-direction: column; align-items: flex-start; }
