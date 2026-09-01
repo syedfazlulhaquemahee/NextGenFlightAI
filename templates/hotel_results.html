@@ -7,7 +7,7 @@
   <title>{{ search.place_name or 'Stays' }} • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-results-layout-1') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-results-layout-2') }}" />
 </head>
 <body class="hotel-results-page">
   {% include "partials/platform_header.html" %}
@@ -18,7 +18,20 @@
 
   <div class="nu-topbar">
     <div class="nu-wrap">
+      <div class="nu-results-search-summary">
+        <button type="button" id="nuSearchToggle" class="nu-results-search-toggle" aria-expanded="false" aria-controls="staySearchForm">
+          <span class="nu-results-search-summary-copy">
+            <strong>{{ search.place_name }}</strong>
+            <span>{{ search.checkin }} – {{ search.checkout }} · {{ search.adults }} guest{{ 's' if search.adults != 1 }}</span>
+          </span>
+          <span class="nu-results-search-edit">Edit search</span>
+        </button>
+      </div>
       <form class="nu-search" method="POST" action="{{ url_for('hotel_search') }}" autocomplete="off" id="staySearchForm">
+        <div class="nu-results-search-edit-head">
+          <strong>Edit stay search</strong>
+          <button type="button" id="nuSearchEditClose" aria-label="Close search editor">Close</button>
+        </div>
         <div class="nu-seg nu-seg-where">
           <label for="nuWhere">Where</label>
           <input id="nuWhere" type="text" name="place_name" value="{{ search.place_name }}" placeholder="Enter a destination" required
@@ -75,8 +88,11 @@
   <main class="nu-wrap nu-results">
     <aside class="nu-filters" id="nuFilters" aria-label="Filter results">
       <div class="nu-filters-head">
-        <h2>Filter by</h2>
-        <button type="button" class="nu-clear" id="nuClear">Clear all</button>
+        <h2>Filters</h2>
+        <div>
+          <button type="button" class="nu-clear" id="nuClear">Clear all</button>
+          <button type="button" class="nu-filters-close" id="nuFiltersClose" aria-label="Close filters">×</button>
+        </div>
       </div>
 
       <section class="nu-fgroup">
@@ -121,7 +137,11 @@
           <label class="nu-check"><input type="checkbox" class="nuAmenity" value="{{ amenity }}" /><span>{{ amenity }}</span></label>
         {% endfor %}
       </section>
+      <div class="nu-filter-actions">
+        <button type="button" class="nu-btn" id="nuApplyFilters">Show results</button>
+      </div>
     </aside>
+    <div class="nu-filter-backdrop" id="nuFiltersBackdrop" aria-hidden="true"></div>
 
     <section>
       <div class="nu-list-head">
@@ -129,19 +149,20 @@
           <h1 id="nuCount">{{ cards|length }} propert{{ 'y' if cards|length == 1 else 'ies' }}</h1>
           <p class="nu-list-sub">{{ search.place_name }} · {{ search.nights }} night{{ 's' if search.nights != 1 }} · {{ search.adults }} guest{{ 's' if search.adults != 1 }}</p>
         </div>
-        <label class="nu-sort">
-          <span>Sort by</span>
-          <select id="nuSort">
-            <option value="recommended">Recommended</option>
-            <option value="price_low">Price: low to high</option>
-            <option value="price_high">Price: high to low</option>
-            <option value="rating">Guest rating</option>
-            <option value="stars">Star rating</option>
-          </select>
-        </label>
+        <div class="nu-results-actions">
+          <label class="nu-sort">
+            <span>Sort by</span>
+            <select id="nuSort">
+              <option value="recommended">Recommended</option>
+              <option value="price_low">Price: low to high</option>
+              <option value="price_high">Price: high to low</option>
+              <option value="rating">Guest rating</option>
+              <option value="stars">Star rating</option>
+            </select>
+          </label>
+          <button type="button" class="nu-filters-toggle" id="nuFiltersToggle" aria-expanded="false" aria-controls="nuFilters">Filters</button>
+        </div>
       </div>
-
-      <button type="button" class="nu-filters-toggle" id="nuFiltersToggle">Filters &amp; sort</button>
 
       {% if not cards %}
         <div class="nu-empty">
@@ -174,6 +195,69 @@
   <script src="{{ url_for('static', filename='geo-location.js', v='20260818-shared-geo') }}"></script>
   <script src="{{ url_for('static', filename='stays.js', v='20260901-mobile-polish-1') }}"></script>
   <script>
+    (function () {
+      var topbar = document.querySelector(".nu-topbar");
+      var searchToggle = document.getElementById("nuSearchToggle");
+      var searchClose = document.getElementById("nuSearchEditClose");
+      var filters = document.getElementById("nuFilters");
+      var filtersToggle = document.getElementById("nuFiltersToggle");
+      var filtersClose = document.getElementById("nuFiltersClose");
+      var filtersBackdrop = document.getElementById("nuFiltersBackdrop");
+      if (!topbar || !filters || !filtersToggle) return;
+
+      var compact = window.matchMedia("(max-width: 1080px)");
+      var lastFilterFocus = null;
+      function lockFilters(locked) {
+        var interaction = window.SkairovaInteraction;
+        if (!interaction) return;
+        if (locked && interaction.lockScroll) interaction.lockScroll("hotel-results-filters");
+        if (!locked && interaction.unlockScroll) interaction.unlockScroll("hotel-results-filters");
+      }
+      function openFilters() {
+        if (!compact.matches) return;
+        lastFilterFocus = document.activeElement;
+        filters.classList.add("is-open");
+        filtersBackdrop.classList.add("is-open");
+        filtersToggle.setAttribute("aria-expanded", "true");
+        filters.setAttribute("role", "dialog");
+        filters.setAttribute("aria-modal", "true");
+        lockFilters(true);
+        window.requestAnimationFrame(function () { (filtersClose || filters).focus({ preventScroll: true }); });
+      }
+      function closeFilters(restoreFocus) {
+        if (!filters.classList.contains("is-open")) return;
+        filters.classList.remove("is-open");
+        filtersBackdrop.classList.remove("is-open");
+        filtersToggle.setAttribute("aria-expanded", "false");
+        filters.removeAttribute("role");
+        filters.removeAttribute("aria-modal");
+        lockFilters(false);
+        if (restoreFocus && lastFilterFocus && lastFilterFocus.isConnected) lastFilterFocus.focus({ preventScroll: true });
+      }
+      function closeSearch(restoreFocus) {
+        if (!topbar.classList.contains("is-search-open")) return;
+        topbar.classList.remove("is-search-open");
+        searchToggle.setAttribute("aria-expanded", "false");
+        if (restoreFocus) searchToggle.focus({ preventScroll: true });
+      }
+      if (searchToggle) searchToggle.addEventListener("click", function () {
+        topbar.classList.add("is-search-open");
+        searchToggle.setAttribute("aria-expanded", "true");
+        window.requestAnimationFrame(function () { document.getElementById("nuWhere").focus({ preventScroll: true }); });
+      });
+      if (searchClose) searchClose.addEventListener("click", function () { closeSearch(true); });
+      filtersToggle.addEventListener("click", function () { filters.classList.contains("is-open") ? closeFilters(true) : openFilters(); });
+      if (filtersClose) filtersClose.addEventListener("click", function () { closeFilters(true); });
+      if (filtersBackdrop) filtersBackdrop.addEventListener("click", function () { closeFilters(true); });
+      document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape") return;
+        if (filters.classList.contains("is-open")) { event.preventDefault(); closeFilters(true); }
+        else if (topbar.classList.contains("is-search-open")) { event.preventDefault(); closeSearch(true); }
+      });
+      document.addEventListener("skairova:close-hotel-filters", function () { closeFilters(false); });
+      compact.addEventListener("change", function () { if (!compact.matches) closeFilters(false); });
+    })();
+
     StaysSearch.init({
       input: "nuWhere", placeId: "nuPlaceId", list: "nuList",
       checkin: "nuCheckin", checkout: "nuCheckout", form: "staySearchForm"
@@ -251,12 +335,14 @@
         document.getElementById("nuRefundable").checked = false;
         document.getElementById("nuBreakfast").checked = false;
         apply();
+        document.dispatchEvent(new Event("skairova:close-hotel-filters"));
       }
       document.getElementById("nuClear").addEventListener("click", clearAll);
       var c2 = document.getElementById("nuClear2");
       if (c2) c2.addEventListener("click", clearAll);
-      document.getElementById("nuFiltersToggle").addEventListener("click", function () {
-        document.getElementById("nuFilters").classList.toggle("is-open");
+      document.getElementById("nuApplyFilters").addEventListener("click", function () {
+        apply();
+        document.dispatchEvent(new Event("skairova:close-hotel-filters"));
       });
 
       var loadMore = document.getElementById("nuLoadMore");
