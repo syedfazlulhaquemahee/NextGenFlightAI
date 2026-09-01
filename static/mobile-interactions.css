@@ -12,7 +12,6 @@
   --sk-interaction-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sk-press-duration: 150ms;
   --sk-surface-duration: 180ms;
-  --sk-focus-color: #93a9ff;
 }
 
 html {
@@ -53,21 +52,6 @@ html {
 ) {
   -webkit-user-select: none;
   user-select: none;
-}
-
-/*
- * The class selector is intentional. Several legacy component sheets mute
- * outlines while providing their own focus styling; this keeps a visible
- * fallback for every enhanced control without ever using a global
- * `outline: none` reset.
- */
-html#skairova-interaction-root .sk-focusable:focus-visible {
-  outline: 2px solid var(--sk-focus-color) !important;
-  outline-offset: 3px !important;
-}
-
-html#skairova-interaction-root .sk-focusable:focus:not(:focus-visible) {
-  outline-color: transparent;
 }
 
 @media (prefers-reduced-motion: no-preference) {
