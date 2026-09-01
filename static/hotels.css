@@ -1030,10 +1030,9 @@ html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; 
 }
 .hotel-results-page .nu-card-img {
   width: 158px;
-  height: 150px;
-  min-height: 0;
+  min-height: 150px;
   margin: 12px;
-  align-self: start;
+  align-self: stretch;
   aspect-ratio: auto;
   border-radius: 8px;
 }
