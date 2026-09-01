@@ -7,7 +7,7 @@
   <title>Secure Checkout — Flight + Hotel • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css', v='4.6.13') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260527-duffel-masked-fields') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css', v='20260901-mobile-polish-1') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='checkout-card-payment.css', v='20260528-clip-v4') }}" />
   {% include "partials/theme_head.html" %}
   {% include "partials/flights_parity_head.html" %}
@@ -141,7 +141,7 @@
       {% endif %}
       <script src="{{ url_for('static', filename='checkout.js', v='20260513-mobile-price-reveal') }}"></script>
       <script
-        src="{{ url_for('static', filename='checkout-travelers-widgets.js', v='20260410-dob-month-selected-only') }}"
+        src="{{ url_for('static', filename='checkout-travelers-widgets.js', v='20260901-mobile-polish-1') }}"
         data-dial-codes="{{ url_for('static', filename='dial-codes.json', v='20260410-price-expires') }}"
       ></script>
     {% else %}

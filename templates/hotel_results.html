@@ -7,7 +7,7 @@
   <title>{{ search.place_name or 'Stays' }} • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260818-cta-flow-spacing') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-mobile-polish-1') }}" />
 </head>
 <body class="hotel-results-page">
   {% include "partials/platform_header.html" %}
@@ -172,7 +172,7 @@
   {% endif %}
 
   <script src="{{ url_for('static', filename='geo-location.js', v='20260818-shared-geo') }}"></script>
-  <script src="{{ url_for('static', filename='stays.js', v='20260813-request-control') }}"></script>
+  <script src="{{ url_for('static', filename='stays.js', v='20260901-mobile-polish-1') }}"></script>
   <script>
     StaysSearch.init({
       input: "nuWhere", placeId: "nuPlaceId", list: "nuList",

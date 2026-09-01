@@ -18,8 +18,8 @@
      script creation (static/flex-results-stream.js) is a fast local hit
      instead of a cold fetch. Version string must stay in lockstep with
      the real <script> tag in results.html or this silently no-ops. #}
-  <link rel="preload" as="script" href="{{ url_for('static', filename='results-lab.js', v='20260826-liteapi-supplement') }}" />
-  <link rel="preload" as="script" href="{{ url_for('static', filename='ai-assistant.js', v='20260822-content-1') }}" />
+  <link rel="preload" as="script" href="{{ url_for('static', filename='results-lab.js', v='20260901-mobile-polish-1') }}" />
+  <link rel="preload" as="script" href="{{ url_for('static', filename='ai-assistant.js', v='20260901-mobile-polish-1') }}" />
 </head>
 <body class="results-page flex-stream-results">
   {% if flex_streaming %}
