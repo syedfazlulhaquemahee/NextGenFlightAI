@@ -1040,7 +1040,7 @@ html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; 
 .hotel-results-page .nu-card-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: none;
   gap: 4px;
   min-width: 0;
   padding: 16px 18px 14px 4px;
@@ -1064,9 +1064,9 @@ html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; 
 .hotel-results-page .nu-card-foot {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 184px;
-  align-items: end;
+  align-items: start;
   gap: 14px;
-  margin-top: auto;
+  margin-top: 8px;
   padding-top: 10px;
 }
 .hotel-results-page .nu-price {
