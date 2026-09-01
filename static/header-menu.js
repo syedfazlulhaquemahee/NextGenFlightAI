@@ -73,7 +73,7 @@
   if (!btn || !panel) return;
 
   var closeBtn = document.getElementById("hdrMobileClose");
-  var desktopQuery = window.matchMedia("(min-width: 921px)");
+  var desktopQuery = window.matchMedia("(min-width: 1081px)");
   var reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   var drawerState = panel.hidden ? "closed" : "open";
   var scrollPosition = 0;
@@ -276,7 +276,7 @@
     close({ restoreFocus: control === closeBtn });
   });
 
-  // Crossing back above the 920px breakpoint (resize, rotation) should not
+  // Crossing back above the compact-header breakpoint (resize, rotation) should not
   // leave the panel stuck open underneath a now-visible desktop nav.
   var onDesktopChange = function (event) {
     if (event.matches) close({ immediate: true });

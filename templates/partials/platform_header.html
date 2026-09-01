@@ -51,7 +51,7 @@
         </a>
         {% include "partials/user_portal_link.html" %}
         <span class="hdr-divider hdr-desktop-only hdr-divider--account" aria-hidden="true"></span>
-        {# Below 920px the nav and desktop actions above hide — this is the
+        {# Below 1081px the nav and desktop actions above hide — this is the
            only way back to Hotels/Deals from anywhere but the home page's
            own tabs, so it needs to be a real, discoverable menu. #}
         <button type="button" class="hdr-menu-btn" id="hdrMenuBtn" aria-expanded="false" aria-controls="hdrMobilePanel" aria-haspopup="dialog" aria-label="Open menu">
@@ -166,5 +166,5 @@
 {% if not portal_signed_in and not hide_auth_modal %}
   {% include "partials/auth_modal.html" %}
 {% endif %}
-<script src="{{ url_for('static', filename='header-menu.js', v='20260901-mobile-polish-2') }}" defer></script>
+<script src="{{ url_for('static', filename='header-menu.js', v='20260901-header-responsive-3') }}" defer></script>
 {% include "partials/ai_chatbot.html" %}

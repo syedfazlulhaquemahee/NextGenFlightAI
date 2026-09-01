@@ -953,7 +953,7 @@ body.hdr-menu-open {
    itself hidden above 920px — force it closed here too rather than
    relying solely on the resize listener to catch a mid-interaction
    desktop/mobile crossing. */
-@media (min-width: 921px) {
+@media (min-width: 1081px) {
   .hdr-mobile-panel {
     display: none !important;
   }
@@ -980,7 +980,7 @@ body.hdr-menu-open {
   .topbar.platform-header .hdr-icon-label { display: none !important; }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1080px) {
   :root {
     --hdr-h: 64px;
     --hdr-pad: 14px;
@@ -1048,7 +1048,7 @@ body.hdr-menu-open {
    Keep the compact visual language, but make every header control feel like a
    deliberate touch target. These are scoped to the mobile header so desktop
    hover states and layout stay exactly as designed. */
-@media (max-width: 920px) {
+@media (max-width: 1080px) {
   .topbar.platform-header .brand-link {
     min-height: 44px !important;
     margin-left: -4px !important;
@@ -1288,7 +1288,7 @@ html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger svg {
    rhythm of the platform navigation while leaving the compact mobile header
    completely untouched. SVGs are the official Lucide source files kept in
    static/icons, not hand-drawn CSS glyphs. */
-@media (min-width: 921px) {
+@media (min-width: 1081px) {
   :root {
     --hdr-h: 88px;
     --hdr-pad: 48px;
@@ -1527,4 +1527,59 @@ html[data-theme="light"] .topbar.platform-header .portal-menu-item--danger svg {
     height: 18px !important;
     margin-left: 7px !important;
   }
+}
+
+/* Desktop needs three density steps. Keeping the old 88px rail at every
+   desktop width made the header look oversized on wide screens and caused
+   the navigation/action groups to compete at laptop widths. */
+@media (min-width: 1081px) and (max-width: 1279px) {
+  :root { --hdr-h: 68px; --hdr-pad: 24px; --platform-header-h: 68px; --platform-header-side-pad: 24px; }
+  .topbar.platform-header { height: 68px !important; min-height: 68px !important; }
+  .topbar.platform-header .platform-header-inner { width: calc(100% - 48px) !important; min-height: 68px !important; height: 68px !important; margin: 0 24px !important; }
+  .topbar.platform-header .brand-link { margin-right: 30px !important; font-size: 20px !important; }
+  .topbar.platform-header .site-nav { height: 68px !important; gap: 20px !important; }
+  .topbar.platform-header .site-nav-link { height: 68px !important; font-size: 14px !important; }
+  .topbar.platform-header .site-nav-link .hdr-svg { width: 16px !important; height: 16px !important; }
+  .topbar.platform-header .site-nav-indicator { bottom: 7px !important; }
+  .topbar.platform-header .topbar-links { gap: 14px !important; }
+  .topbar.platform-header .hdr-currency,
+  .topbar.platform-header .hdr-divider { display: none !important; }
+  .topbar.platform-header .hdr-text-link { gap: 6px !important; font-size: 13px !important; }
+  .topbar.platform-header .hdr-text-link .hdr-svg { width: 17px !important; height: 17px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger { min-height: 40px !important; height: 40px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger .hdr-avatar { width: 38px !important; height: 38px !important; }
+  .topbar.platform-header .hdr-account-text,
+  .topbar.platform-header .hdr-chevron { display: none !important; }
+}
+
+@media (min-width: 1280px) and (max-width: 1599px) {
+  :root { --hdr-h: 72px; --hdr-pad: 32px; --platform-header-h: 72px; --platform-header-side-pad: 32px; }
+  .topbar.platform-header { height: 72px !important; min-height: 72px !important; }
+  .topbar.platform-header .platform-header-inner { width: calc(100% - 64px) !important; min-height: 72px !important; height: 72px !important; margin: 0 32px !important; }
+  .topbar.platform-header .brand-link { margin-right: 42px !important; font-size: 21px !important; }
+  .topbar.platform-header .site-nav { height: 72px !important; gap: 26px !important; }
+  .topbar.platform-header .site-nav-link { height: 72px !important; font-size: 14.5px !important; }
+  .topbar.platform-header .site-nav-link .hdr-svg { width: 18px !important; height: 18px !important; }
+  .topbar.platform-header .site-nav-indicator { bottom: 8px !important; }
+  .topbar.platform-header .topbar-links { gap: 18px !important; }
+  .topbar.platform-header .hdr-currency { font-size: 12.5px !important; }
+  .topbar.platform-header .hdr-text-link { font-size: 13.5px !important; }
+  .topbar.platform-header .hdr-text-link .hdr-svg { width: 18px !important; height: 18px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger { min-height: 42px !important; height: 42px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger .hdr-avatar { width: 40px !important; height: 40px !important; }
+}
+
+@media (min-width: 1600px) {
+  :root { --hdr-h: 76px; --hdr-pad: 40px; --platform-header-h: 76px; --platform-header-side-pad: 40px; }
+  .topbar.platform-header { height: 76px !important; min-height: 76px !important; }
+  .topbar.platform-header .platform-header-inner { width: calc(100% - 80px) !important; min-height: 76px !important; height: 76px !important; margin: 0 40px !important; }
+  .topbar.platform-header .brand-link { margin-right: 52px !important; font-size: 22px !important; }
+  .topbar.platform-header .site-nav { height: 76px !important; gap: 30px !important; }
+  .topbar.platform-header .site-nav-link { height: 76px !important; font-size: 15px !important; }
+  .topbar.platform-header .site-nav-link .hdr-svg { width: 18px !important; height: 18px !important; }
+  .topbar.platform-header .site-nav-indicator { bottom: 8px !important; }
+  .topbar.platform-header .topbar-links { gap: 20px !important; }
+  .topbar.platform-header .hdr-text-link .hdr-svg { width: 18px !important; height: 18px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger { min-height: 44px !important; height: 44px !important; }
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger .hdr-avatar { width: 40px !important; height: 40px !important; }
 }
