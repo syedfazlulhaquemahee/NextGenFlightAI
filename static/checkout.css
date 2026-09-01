@@ -3093,10 +3093,29 @@ body:not(.seat-page) .seat-map-area .seat-tile.is-unavailable .seat-tile-code{
 .traveler-accordion summary{
   list-style:none;
   display:flex;
+  align-items:center;
   justify-content:space-between;
   gap:16px;
   padding:18px 20px;
   cursor:pointer;
+  transition:background-color .16s ease, color .16s ease;
+}
+.traveler-accordion summary::-webkit-details-marker{ display:none; }
+.traveler-accordion summary::after{
+  content:"";
+  width:8px;
+  height:8px;
+  flex:0 0 8px;
+  margin-right:3px;
+  border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;
+  color:var(--checkout-muted);
+  transform:rotate(45deg) translateY(-2px);
+  transition:transform .18s cubic-bezier(.22,1,.36,1), color .15s ease;
+}
+.traveler-accordion[open] summary::after{ transform:rotate(225deg) translate(-1px, 1px); color:var(--checkout-accent-2); }
+@media (hover:hover) and (pointer:fine){
+  .traveler-accordion summary:hover{ background:rgba(255,255,255,.025); }
 }
 .traveler-summary-title{
   display:inline-flex;
@@ -5521,6 +5540,9 @@ html[data-theme="light"] .payment-card-status.is-error{
 .checkout-details-page .checkout-phone-field.is-open .checkout-phone-country-btn{
   background:rgba(255, 255, 255, 0.06);
 }
+@media (hover:none), (pointer:coarse){
+  .checkout-details-page .checkout-phone-country-btn:hover{ background:transparent; }
+}
 
 .checkout-details-page .checkout-phone-flag{
   display:flex;
@@ -5605,6 +5627,7 @@ html[data-theme="light"] .payment-card-status.is-error{
     0 16px 48px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   backdrop-filter:blur(16px);
+  transition:opacity .16s ease, transform .22s cubic-bezier(.22,1,.36,1);
 }
 
 .checkout-details-page .checkout-phone-dropdown--floating{
@@ -5620,6 +5643,33 @@ html[data-theme="light"] .payment-card-status.is-error{
   box-shadow:
     0 -20px 56px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  opacity:0;
+  transform:translateY(22px);
+  transform-origin:bottom center;
+}
+
+.checkout-details-page .checkout-phone-dropdown--sheet.is-visible{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.checkout-phone-sheet-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:2990;
+  display:block;
+  border:0;
+  background:rgba(2, 6, 18, .54);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease, visibility 0s linear .18s;
+}
+.checkout-phone-sheet-backdrop[hidden]{ display:none; }
+.checkout-phone-sheet-backdrop.is-visible{
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+  transition-delay:0s;
 }
 
 .checkout-details-page .checkout-phone-search{
@@ -5681,6 +5731,9 @@ html[data-theme="light"] .payment-card-status.is-error{
 
 .checkout-details-page .checkout-phone-option:hover{
   background:rgba(255, 255, 255, 0.06);
+}
+@media (hover:none), (pointer:coarse){
+  .checkout-details-page .checkout-phone-option:hover{ background:transparent; }
 }
 
 .checkout-details-page .checkout-phone-option:focus{
@@ -9840,6 +9893,36 @@ html body.results-page.review-page .review-flight-manifest .review-segment-carri
     justify-content:space-between;
     border-right:0;
     border-bottom:1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@media (max-width: 760px){
+  .checkout-details-page .traveler-accordion summary::after{
+    width:10px;
+    height:10px;
+    flex-basis:10px;
+  }
+}
+
+@media (max-width: 560px){
+  .checkout-details-page .checkout-phone-dropdown--sheet:not([hidden]){
+    border-radius:20px 20px 14px 14px;
+    padding:14px 14px max(14px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .checkout-details-page .checkout-phone-search{
+    min-height:44px;
+    margin-bottom:8px;
+    padding:0 12px;
+    border-radius:10px;
+    font-size:16px;
+  }
+
+  .checkout-details-page .checkout-phone-option{
+    min-height:44px;
+    padding:8px 10px;
+    border-radius:8px;
+    font-size:.82rem;
   }
 }
 

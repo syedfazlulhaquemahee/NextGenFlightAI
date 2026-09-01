@@ -303,14 +303,56 @@
 
     document.body.appendChild(dropdown);
     dropdown.classList.add("checkout-phone-dropdown--floating");
+    dropdown.setAttribute("role", "dialog");
+    dropdown.setAttribute("aria-modal", "false");
+    dropdown.setAttribute("aria-label", "Select country code");
     root._nxPhoneDropdown = dropdown;
     dropdown.hidden = true;
     dropdown.setAttribute("hidden", "");
     const composite = root.querySelector(".checkout-phone-row--composite");
 
+    const sheetBackdrop = document.createElement("div");
+    sheetBackdrop.className = "checkout-phone-sheet-backdrop";
+    sheetBackdrop.hidden = true;
+    sheetBackdrop.setAttribute("aria-hidden", "true");
+    document.body.appendChild(sheetBackdrop);
+
     let selected = defaultCountryFromLocale(displayList);
     let keyboardActive = null;
     let viewportListener = null;
+    let closeTimer = null;
+    let backdropHideTimer = null;
+    let sheetLayerOpen = false;
+
+    function prefersReducedMotion() {
+      return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    }
+
+    function showSheetLayer() {
+      if (sheetLayerOpen) return;
+      sheetLayerOpen = true;
+      if (backdropHideTimer) window.clearTimeout(backdropHideTimer);
+      sheetBackdrop.hidden = false;
+      document.documentElement.classList.add("checkout-phone-sheet-open");
+      if (window.SkairovaInteraction?.lockScroll) window.SkairovaInteraction.lockScroll("checkout-phone-sheet");
+      window.requestAnimationFrame(() => sheetBackdrop.classList.add("is-visible"));
+    }
+
+    function hideSheetLayer() {
+      if (!sheetLayerOpen) return;
+      sheetLayerOpen = false;
+      sheetBackdrop.classList.remove("is-visible");
+      document.documentElement.classList.remove("checkout-phone-sheet-open");
+      if (window.SkairovaInteraction?.unlockScroll) window.SkairovaInteraction.unlockScroll("checkout-phone-sheet");
+      if (backdropHideTimer) window.clearTimeout(backdropHideTimer);
+      if (prefersReducedMotion()) {
+        sheetBackdrop.hidden = true;
+      } else {
+        backdropHideTimer = window.setTimeout(() => {
+          if (!sheetLayerOpen) sheetBackdrop.hidden = true;
+        }, 180);
+      }
+    }
 
     function repositionDropdown() {
       if (!root.classList.contains("is-open")) return;
@@ -325,6 +367,8 @@
 
       if (narrow) {
         dropdown.classList.add("checkout-phone-dropdown--sheet");
+        dropdown.setAttribute("aria-modal", "true");
+        showSheetLayer();
         const sheetH = Math.min(268, Math.floor(vh * 0.42));
         const bottomGap = 12;
         dropdown.style.position = "fixed";
@@ -335,7 +379,9 @@
         return;
       }
 
+      hideSheetLayer();
       dropdown.classList.remove("checkout-phone-dropdown--sheet");
+      dropdown.setAttribute("aria-modal", "false");
       const w = Math.min(200, Math.max(156, Math.ceil(rect.width + 24)));
       let left = rect.left;
       left = Math.min(left, vw - w - edge);
@@ -463,6 +509,8 @@
       });
       root.classList.add("is-open");
       btn.setAttribute("aria-expanded", "true");
+      if (closeTimer) { window.clearTimeout(closeTimer); closeTimer = null; }
+      dropdown.classList.remove("is-visible");
       dropdown.hidden = false;
       dropdown.removeAttribute("hidden");
       search.value = "";
@@ -472,6 +520,7 @@
       root._nxPhoneViewportListener = viewportListener;
       window.addEventListener("scroll", viewportListener, true);
       window.addEventListener("resize", viewportListener);
+      window.requestAnimationFrame(() => dropdown.classList.add("is-visible"));
       window.setTimeout(() => {
         search.focus();
         repositionDropdown();
@@ -479,10 +528,21 @@
     }
 
     function closeDropdown() {
+      if (!root.classList.contains("is-open") && dropdown.hidden) return;
       root.classList.remove("is-open");
       btn.setAttribute("aria-expanded", "false");
-      dropdown.hidden = true;
-      dropdown.setAttribute("hidden", "");
+      dropdown.classList.remove("is-visible");
+      hideSheetLayer();
+      if (closeTimer) window.clearTimeout(closeTimer);
+      const finish = () => {
+        if (root.classList.contains("is-open")) return;
+        dropdown.hidden = true;
+        dropdown.setAttribute("hidden", "");
+        dropdown.classList.remove("checkout-phone-dropdown--sheet");
+        dropdown.setAttribute("aria-modal", "false");
+      };
+      if (prefersReducedMotion()) finish();
+      else closeTimer = window.setTimeout(finish, 220);
       search.value = "";
       setKeyboardActive(null);
       if (viewportListener) {
@@ -494,6 +554,10 @@
     }
 
     function closeOther(el) {
+      if (typeof el._nxPhoneClose === "function") {
+        el._nxPhoneClose();
+        return;
+      }
       el.classList.remove("is-open");
       const b = el.querySelector("[data-phone-country-btn]");
       const d = el._nxPhoneDropdown;
@@ -503,6 +567,9 @@
         d.setAttribute("hidden", "");
       }
     }
+
+    root._nxPhoneClose = closeDropdown;
+    sheetBackdrop.addEventListener("click", closeDropdown);
 
     applySelected(selected);
     national.addEventListener("input", syncHidden);
@@ -520,6 +587,11 @@
 
     search.addEventListener("keydown", (e) => {
       if (!root.classList.contains("is-open")) return;
+      if (e.key === "Tab" && sheetLayerOpen) {
+        e.preventDefault();
+        search.focus();
+        return;
+      }
       const opts = visibleOptions();
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -593,6 +665,79 @@
     });
   }
 
+  /* Native <details> preserves accessible disclosure semantics. This small
+   * height animation only takes over when Web Animations is available, so the
+   * checkout remains completely usable on older browsers. */
+  function initTravelerAccordions() {
+    const reduced = () => Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    document.querySelectorAll("details.traveler-accordion").forEach((details) => {
+      if (details.dataset.mobileAccordionInit === "1") return;
+      const summary = details.querySelector("summary");
+      if (!summary || typeof details.animate !== "function") return;
+      details.dataset.mobileAccordionInit = "1";
+      summary.setAttribute("aria-expanded", String(details.open));
+
+      let animation = null;
+      let isClosing = false;
+
+      function reset() {
+        details.style.height = "";
+        details.style.overflow = "";
+        isClosing = false;
+        animation = null;
+        summary.setAttribute("aria-expanded", String(details.open));
+      }
+
+      function close() {
+        const startHeight = `${details.offsetHeight}px`;
+        const endHeight = `${summary.offsetHeight}px`;
+        isClosing = true;
+        if (animation) animation.cancel();
+        if (reduced()) {
+          details.open = false;
+          reset();
+          return;
+        }
+        animation = details.animate(
+          { height: [startHeight, endHeight] },
+          { duration: 190, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+        );
+        animation.onfinish = () => {
+          details.open = false;
+          reset();
+        };
+        animation.oncancel = () => { isClosing = false; };
+      }
+
+      function open() {
+        const startHeight = `${details.offsetHeight}px`;
+        details.open = true;
+        summary.setAttribute("aria-expanded", "true");
+        if (animation) animation.cancel();
+        if (reduced()) {
+          reset();
+          return;
+        }
+        window.requestAnimationFrame(() => {
+          const endHeight = `${details.offsetHeight}px`;
+          animation = details.animate(
+            { height: [startHeight, endHeight] },
+            { duration: 210, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+          );
+          animation.onfinish = reset;
+          animation.oncancel = () => { animation = null; };
+        });
+      }
+
+      summary.addEventListener("click", (event) => {
+        event.preventDefault();
+        details.style.overflow = "hidden";
+        if (isClosing || !details.open) open();
+        else close();
+      });
+    });
+  }
+
   if (form) {
     form.addEventListener(
       "submit",
@@ -612,6 +757,7 @@
     );
   }
 
+  initTravelerAccordions();
   initDobPickers();
 
   fetch(dialCodesUrl, { credentials: "same-origin" })

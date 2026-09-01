@@ -324,3 +324,363 @@ html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-da
 html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.selected,
 html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.startRange,
 html[data-theme="light"] .flatpickr-calendar.checkout-dob-calendar .flatpickr-day.endRange { background: #4f46e5 !important; color: #fff !important; }
+
+/* -------------------------------------------------------------------------
+   Touch interaction layer — shared search/date selectors keep their desktop
+   footprint, while compact viewports use contained, native-feeling sheets.
+   ------------------------------------------------------------------------- */
+.ndp-popover,
+.ndp-btn,
+.ndp-native-display {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ndp-popover {
+  touch-action: manipulation;
+}
+
+.ndp-btn {
+  min-height: 36px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform .12s ease, opacity .14s ease, background-color .16s ease, color .16s ease;
+}
+
+.ndp-btn:active {
+  transform: scale(.97);
+}
+
+.ndp-native-display {
+  touch-action: manipulation;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, opacity .14s ease;
+}
+
+.ndp-body calendar-range::part(button),
+.ndp-body calendar-date::part(button) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform .12s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.ndp-body calendar-range::part(button):active,
+.ndp-body calendar-date::part(button):active {
+  transform: scale(.96);
+}
+
+.ndp-backdrop {
+  display: none;
+}
+
+/* Flexible-month selector is initialized by calendar.js. The extra class
+   prevents these motion rules from changing older static month popovers. */
+.flex-month-popover.nx-month-picker,
+.flex-month-popover.nx-month-picker button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flex-month-popover.nx-month-picker {
+  touch-action: manipulation;
+}
+
+.flex-month-popover.nx-month-picker .flex-month-option,
+.flex-month-popover.nx-month-picker .flex-month-popover__close,
+.flex-month-popover.nx-month-picker .flex-month-clear,
+.flex-month-popover.nx-month-picker .flex-month-apply {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform .12s ease, opacity .14s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.flex-month-popover.nx-month-picker .flex-month-option:active,
+.flex-month-popover.nx-month-picker .flex-month-popover__close:active,
+.flex-month-popover.nx-month-picker .flex-month-clear:active,
+.flex-month-popover.nx-month-picker .flex-month-apply:active {
+  transform: scale(.97);
+}
+
+.flex-month-backdrop {
+  display: none;
+}
+
+/* Home's traveler selector gets its state classes from the small inline
+   controller in index.html. Keeping this scoped avoids changing other
+   traveler controls across checkout or booking flows. */
+body.home-page .gf-pax-panel.nx-pax-popover,
+body.home-page .gf-pax-panel.nx-pax-popover button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.home-page .gf-pax-panel.nx-pax-popover {
+  touch-action: manipulation;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(0, -8px, 0) scale(.985);
+  transform-origin: top center;
+  transition: opacity .16s ease, transform .18s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .18s;
+  will-change: transform, opacity;
+}
+
+body.home-page .gf-pax-panel.nx-pax-popover.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition-delay: 0s;
+}
+
+body.home-page .gf-pax-panel.nx-pax-popover .gf-counter-btn,
+body.home-page .gf-pax-panel.nx-pax-popover .gf-cabin-chip,
+body.home-page .gf-pax-panel.nx-pax-popover .gf-pax-close {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform .12s ease, opacity .14s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+body.home-page .gf-pax-panel.nx-pax-popover .gf-counter-btn:active:not(:disabled),
+body.home-page .gf-pax-panel.nx-pax-popover .gf-cabin-chip:active,
+body.home-page .gf-pax-panel.nx-pax-popover .gf-pax-close:active {
+  transform: scale(.96);
+}
+
+body.home-page .gf-pax-close,
+.gf-pax-backdrop {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  html.ndp-scroll-locked,
+  body.ndp-open,
+  html.month-roller-scroll-locked,
+  body.month-roller-open,
+  html.pax-selector-scroll-locked,
+  body.pax-selector-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .ndp-backdrop,
+  .flex-month-backdrop,
+  .gf-pax-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    background: rgba(15, 23, 42, .34);
+    transition: opacity .18s ease, visibility 0s linear .18s;
+  }
+
+  .ndp-backdrop { z-index: 2599; }
+  .flex-month-backdrop { z-index: 10019; }
+  .gf-pax-backdrop { z-index: 499; }
+
+  .ndp-backdrop.is-open,
+  .flex-month-backdrop.is-open,
+  .gf-pax-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .ndp-backdrop.is-closing,
+  .flex-month-backdrop.is-closing,
+  .gf-pax-backdrop.is-closing {
+    pointer-events: auto;
+  }
+
+  .ndp-popover.ndp-mobile-sheet {
+    position: fixed;
+    z-index: 2600;
+    top: auto !important;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto !important;
+    max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 18px;
+    padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(0, 20px, 0);
+    transition: opacity .16s ease, transform .2s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .2s;
+    will-change: transform, opacity;
+  }
+
+  .ndp-popover.ndp-mobile-sheet.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0);
+    transition-delay: 0s;
+  }
+
+  .ndp-popover.ndp-mobile-sheet .ndp-body {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-range::part(button previous),
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-range::part(button next),
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-date::part(button previous),
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-date::part(button next) {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-range::part(button day),
+  .ndp-popover.ndp-mobile-sheet .ndp-body calendar-date::part(button day) {
+    width: 38px;
+    height: 38px;
+  }
+
+  .flex-month-popover.nx-month-picker {
+    position: fixed !important;
+    z-index: 10020;
+    top: auto !important;
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 18px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(0, 20px, 0);
+    transition: opacity .16s ease, transform .2s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .2s;
+    will-change: transform, opacity;
+  }
+
+  .flex-month-popover.nx-month-picker.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0);
+    transition-delay: 0s;
+  }
+
+  .flex-month-popover.nx-month-picker .flex-month-popover__head {
+    padding: 16px 16px 12px;
+  }
+
+  .flex-month-popover.nx-month-picker .flex-month-popover__close {
+    width: 40px;
+    height: 40px;
+    margin: -6px -6px 0 0;
+  }
+
+  .flex-month-popover.nx-month-picker .flex-month-grid {
+    max-height: min(48dvh, 330px);
+    padding: 12px 16px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .flex-month-popover.nx-month-picker .flex-month-option {
+    min-height: 46px;
+  }
+
+  .flex-month-popover.nx-month-picker .flex-month-clear,
+  .flex-month-popover.nx-month-picker .flex-month-apply {
+    min-height: 42px;
+  }
+
+  body.home-page .gf-pax-panel.nx-pax-popover {
+    position: fixed !important;
+    z-index: 500;
+    top: auto !important;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: 12px !important;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 20px;
+    padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translate3d(0, 20px, 0);
+    transform-origin: bottom center;
+  }
+
+  body.home-page .gf-pax-panel.nx-pax-popover.is-open {
+    transform: translate3d(0, 0, 0);
+  }
+
+  body.home-page .gf-pax-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, .12);
+    color: inherit;
+    cursor: pointer;
+  }
+
+  body.home-page .gf-pax-close svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-counter {
+    gap: 8px;
+  }
+
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-counter-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-cabin-chip {
+    min-height: 42px;
+    padding: 8px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ndp-popover,
+  .ndp-backdrop,
+  .ndp-btn,
+  .ndp-native-display,
+  .ndp-body calendar-range::part(button),
+  .ndp-body calendar-date::part(button),
+  .flex-month-popover.nx-month-picker,
+  .flex-month-backdrop,
+  .flex-month-popover.nx-month-picker .flex-month-option,
+  .flex-month-popover.nx-month-picker .flex-month-popover__close,
+  .flex-month-popover.nx-month-picker .flex-month-clear,
+  .flex-month-popover.nx-month-picker .flex-month-apply,
+  body.home-page .gf-pax-panel.nx-pax-popover,
+  .gf-pax-backdrop,
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-counter-btn,
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-cabin-chip,
+  body.home-page .gf-pax-panel.nx-pax-popover .gf-pax-close {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,144 @@
+/*
+ * Shared interaction foundation
+ * -----------------------------
+ * This layer deliberately focuses on affordance rather than visual design:
+ * the product's existing colours, type, and layouts stay in their component
+ * styles while controls gain one consistent touch response on small/coarse
+ * pointer devices. Classes are applied by interaction-polish.js so dynamic
+ * results, menus, and selectors receive the same treatment.
+ */
+
+:root {
+  --sk-interaction-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sk-press-duration: 150ms;
+  --sk-surface-duration: 180ms;
+  --sk-focus-color: #93a9ff;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* These rules remove browser tap flash without suppressing keyboard focus. */
+:where(
+  a[href],
+  button,
+  summary,
+  select,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  label[for]
+) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+:where(
+  a[href],
+  button,
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  label[for]
+) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/*
+ * The class selector is intentional. Several legacy component sheets mute
+ * outlines while providing their own focus styling; this keeps a visible
+ * fallback for every enhanced control without ever using a global
+ * `outline: none` reset.
+ */
+html#skairova-interaction-root .sk-focusable:focus-visible {
+  outline: 2px solid var(--sk-focus-color) !important;
+  outline-offset: 3px !important;
+}
+
+html#skairova-interaction-root .sk-focusable:focus:not(:focus-visible) {
+  outline-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html#skairova-interaction-root .sk-pressable,
+  html#skairova-interaction-root .sk-icon-pressable,
+  html#skairova-interaction-root .sk-nav-pressable,
+  html#skairova-interaction-root .sk-card-pressable,
+  html#skairova-interaction-root .sk-text-pressable {
+    transition:
+      transform var(--sk-press-duration) var(--sk-interaction-ease),
+      opacity var(--sk-press-duration) ease,
+      background-color var(--sk-surface-duration) ease,
+      border-color var(--sk-surface-duration) ease,
+      box-shadow var(--sk-surface-duration) ease,
+      color var(--sk-surface-duration) ease !important;
+  }
+}
+
+/* Touch feedback is purposefully varied by control type. Rows and text links
+ * dim instead of shrinking; compact controls receive the more tactile scale.
+ */
+@media (hover: none), (pointer: coarse) {
+  html#skairova-interaction-root .sk-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]),
+  html#skairova-interaction-root .sk-icon-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]) {
+    transform: scale(0.978) !important;
+    opacity: 0.9;
+  }
+
+  html#skairova-interaction-root .sk-icon-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]) {
+    transform: scale(0.94) !important;
+  }
+
+  html#skairova-interaction-root .sk-nav-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]),
+  html#skairova-interaction-root .sk-text-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]) {
+    opacity: 0.68;
+  }
+
+  html#skairova-interaction-root .sk-card-pressable:is(:active, .is-pressed):not([disabled]):not([aria-disabled="true"]) {
+    transform: scale(0.995) !important;
+    opacity: 0.96;
+  }
+}
+
+/* Icon-only actions need room for a thumb even when their glyph stays small. */
+@media (max-width: 760px) {
+  html#skairova-interaction-root .sk-icon-pressable {
+    min-inline-size: 44px;
+    min-block-size: 44px;
+  }
+}
+
+/* A shared lock that individual overlays can opt into without fighting each
+ * other. It does not disable zoom or alter the page's saved scroll position. */
+html.sk-scroll-locked,
+html.hdr-menu-open,
+html.ab-modal-open,
+html.sk-feedback-open,
+html.checkout-phone-sheet-open,
+html:has(body.lab-filter-open),
+html:has(body.lab-editor-open) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -988,7 +988,11 @@
     railEl.classList.add("is-open");
     backdrop.classList.add("is-open");
     document.body.classList.add("lab-filter-open");
-    document.body.style.overflow = "hidden";
+    if (window.SkairovaInteraction && window.SkairovaInteraction.lockScroll) {
+      window.SkairovaInteraction.lockScroll("lab-filter");
+    } else {
+      document.body.style.overflow = "hidden";
+    }
     if (section && section !== "more") {
       var target = railEl.querySelector('[data-lab-rail-section="' + section + '"]');
       if (target) target.scrollIntoView({ block: "start" });
@@ -998,7 +1002,11 @@
     railEl.classList.remove("is-open");
     backdrop.classList.remove("is-open");
     document.body.classList.remove("lab-filter-open");
-    document.body.style.overflow = "";
+    if (window.SkairovaInteraction && window.SkairovaInteraction.unlockScroll) {
+      window.SkairovaInteraction.unlockScroll("lab-filter");
+    } else {
+      document.body.style.overflow = "";
+    }
   }
   Array.from(root.querySelectorAll("[data-lab-open-rail]")).forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -1578,6 +1586,7 @@
     var airportAbort = null;
     var airportTimer = null;
     var calendarInitAttempts = 0;
+    var editorCloseTimer = null;
 
     function closeAirportOptions() {
       [originOptions, destinationOptions].forEach(function (box) {
@@ -1589,19 +1598,35 @@
     }
 
     function closeEditor() {
+      if (editorEl.hidden) return;
       if (airportAbort) airportAbort.abort();
       if (airportTimer) window.clearTimeout(airportTimer);
       closeAirportOptions();
-      editorEl.hidden = true;
+      editorEl.classList.remove("is-open");
+      editorEl.classList.add("is-closing");
       document.body.classList.remove("lab-editor-open");
-      if (lastFocused) lastFocused.focus();
+      if (window.SkairovaInteraction && window.SkairovaInteraction.unlockScroll) {
+        window.SkairovaInteraction.unlockScroll("lab-editor");
+      }
+      if (editorCloseTimer) window.clearTimeout(editorCloseTimer);
+      editorCloseTimer = window.setTimeout(function () {
+        editorEl.hidden = true;
+        editorEl.classList.remove("is-closing");
+        if (lastFocused) lastFocused.focus({ preventScroll: true });
+      }, 190);
     }
 
     function openEditor() {
+      if (editorCloseTimer) window.clearTimeout(editorCloseTimer);
       lastFocused = document.activeElement;
       if (editorError) editorError.hidden = true;
       editorEl.hidden = false;
+      editorEl.classList.remove("is-closing");
       document.body.classList.add("lab-editor-open");
+      if (window.SkairovaInteraction && window.SkairovaInteraction.lockScroll) {
+        window.SkairovaInteraction.lockScroll("lab-editor");
+      }
+      window.requestAnimationFrame(function () { editorEl.classList.add("is-open"); });
       ensureLabDateCalendar();
       window.setTimeout(function () { if (originInput) originInput.focus(); }, 0);
     }
@@ -1763,7 +1788,26 @@
       if (!editorEl.hidden && !event.target.closest(".lab-editor-field")) closeAirportOptions();
     });
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && !editorEl.hidden) closeEditor();
+      if (event.key === "Escape" && !editorEl.hidden) {
+        closeEditor();
+        return;
+      }
+      if (event.key === "Escape" && railEl.classList.contains("is-open")) {
+        closeRail();
+        return;
+      }
+      if (event.key !== "Tab" || editorEl.hidden) return;
+      var focusable = Array.from(editorEl.querySelectorAll("a[href], button:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"));
+      if (!focusable.length) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     });
     editorForm.addEventListener("submit", function (event) {
       var origin = originInput.value.trim();

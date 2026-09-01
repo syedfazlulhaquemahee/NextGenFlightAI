@@ -26,7 +26,21 @@
   var ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   var VIEWPORT_PADDING = 12;
   var compactQuery = window.matchMedia("(max-width: 760px)");
+  var reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   var openRebuilders = [];
+  var popoverSequence = 0;
+  var openDatePopovers = new Set();
+  var activeDatePopover = null;
+
+  function pickerTransitionMs() {
+    return reducedMotionQuery.matches ? 0 : 180;
+  }
+
+  function syncDatePopoverPageState() {
+    var hasOpenPopover = openDatePopovers.size > 0;
+    document.body.classList.toggle("ndp-open", hasOpenPopover);
+    document.documentElement.classList.toggle("ndp-scroll-locked", hasOpenPopover && compactQuery.matches);
+  }
 
   // Cally's previous/next month buttons default to literal "Previous"/
   // "Next" text via named slots — replace that with compact chevron icons
@@ -99,8 +113,16 @@
   function createPopover(kind) {
     var root = document.createElement("div");
     root.className = "ndp-popover ndp-" + kind;
+    root.id = "ndp-popover-" + (++popoverSequence);
     root.setAttribute("role", "dialog");
+    root.setAttribute("tabindex", "-1");
+    root.setAttribute("aria-hidden", "true");
     root.hidden = true;
+
+    var backdrop = document.createElement("div");
+    backdrop.className = "ndp-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+    backdrop.hidden = true;
 
     var hint = document.createElement("div");
     hint.className = "ndp-hint";
@@ -124,14 +146,50 @@
     footer.appendChild(doneBtn);
     root.appendChild(footer);
 
+    document.body.appendChild(backdrop);
     document.body.appendChild(root);
 
     var anchor = null;
     var onOutside = null;
     var onKey = null;
+    var closeTimer = null;
+    var stateListeners = [];
+    var api = null;
+
+    function emitState(open) {
+      stateListeners.forEach(function (listener) { listener(!!open); });
+    }
+
+    function removeDocumentListeners() {
+      if (onOutside) document.removeEventListener("pointerdown", onOutside, true);
+      if (onKey) document.removeEventListener("keydown", onKey, true);
+      onOutside = null;
+      onKey = null;
+    }
+
+    function restoreAnchorFocus() {
+      if (!anchor || typeof anchor.focus !== "function") return;
+      try { anchor.focus({ preventScroll: true }); } catch (err) { anchor.focus(); }
+    }
+
+    function isOpen() {
+      return !root.hidden && root.classList.contains("is-open");
+    }
 
     function position() {
       if (root.hidden || !anchor) return;
+
+      if (compactQuery.matches) {
+        root.classList.add("ndp-mobile-sheet");
+        root.classList.remove("ndp-above", "ndp-below");
+        // Clear an old desktop position before the mobile sheet CSS takes over.
+        root.style.left = "";
+        root.style.top = "";
+        root.style.bottom = "";
+        return;
+      }
+
+      root.classList.remove("ndp-mobile-sheet");
       var anchorRect = anchor.getBoundingClientRect();
       var rect = root.getBoundingClientRect();
       var width = rect.width || root.offsetWidth;
@@ -168,25 +226,70 @@
       window.requestAnimationFrame(position);
     }
 
-    function close() {
-      if (root.hidden) return;
+    function finishClose(returnFocus) {
+      closeTimer = null;
       root.hidden = true;
-      document.body.classList.remove("ndp-open");
-      if (onOutside) document.removeEventListener("pointerdown", onOutside, true);
-      if (onKey) document.removeEventListener("keydown", onKey, true);
-      onOutside = null;
-      onKey = null;
+      backdrop.hidden = true;
+      root.classList.remove("is-closing", "ndp-mobile-sheet");
+      backdrop.classList.remove("is-open", "is-closing");
+      openDatePopovers.delete(root);
+      if (activeDatePopover === api) activeDatePopover = null;
+      syncDatePopoverPageState();
+      emitState(false);
+      if (returnFocus) restoreAnchorFocus();
+    }
+
+    function close(options) {
+      options = options || {};
+      if (root.hidden) return;
+      removeDocumentListeners();
+      root.classList.remove("is-open");
+      root.classList.add("is-closing");
+      root.setAttribute("aria-hidden", "true");
+      backdrop.classList.remove("is-open");
+      backdrop.classList.add("is-closing");
+      if (activeDatePopover === api) activeDatePopover = null;
+
+      if (closeTimer) window.clearTimeout(closeTimer);
+      if (!options.immediate && pickerTransitionMs()) {
+        closeTimer = window.setTimeout(function () { finishClose(!!options.returnFocus); }, pickerTransitionMs());
+      } else {
+        finishClose(!!options.returnFocus);
+      }
     }
 
     function open(nextAnchor) {
       anchor = nextAnchor || anchor;
-      if (!root.hidden) {
+      if (activeDatePopover && activeDatePopover !== api && activeDatePopover.isOpen()) {
+        activeDatePopover.close();
+      }
+      if (isOpen()) {
         reposition();
         return;
       }
+
+      if (closeTimer) {
+        window.clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+      var wasHidden = root.hidden;
       root.hidden = false;
-      document.body.classList.add("ndp-open");
+      backdrop.hidden = false;
+      root.classList.remove("is-closing");
+      backdrop.classList.remove("is-closing");
+      root.setAttribute("aria-hidden", "false");
+      if (compactQuery.matches) root.setAttribute("aria-modal", "true");
+      else root.removeAttribute("aria-modal");
+      openDatePopovers.add(root);
+      activeDatePopover = api;
+      syncDatePopoverPageState();
       reposition();
+
+      window.requestAnimationFrame(function () {
+        if (root.hidden || root.classList.contains("is-closing")) return;
+        root.classList.add("is-open");
+        backdrop.classList.add("is-open");
+      });
 
       onOutside = function (e) {
         if (root.contains(e.target)) return;
@@ -195,24 +298,33 @@
       };
       onKey = function (e) {
         if (e.key === "Escape") {
-          close();
-          if (anchor && typeof anchor.focus === "function") {
-            try { anchor.focus({ preventScroll: true }); } catch (err) { anchor.focus(); }
-          }
+          e.preventDefault();
+          close({ returnFocus: true });
         }
       };
       // Defer binding so the click that opened the popover doesn't
       // immediately register as an "outside" click and close it again.
       window.setTimeout(function () {
-        document.addEventListener("pointerdown", onOutside, true);
-        document.addEventListener("keydown", onKey, true);
+        if (onOutside && !root.hidden) document.addEventListener("pointerdown", onOutside, true);
+        if (onKey && !root.hidden) document.addEventListener("keydown", onKey, true);
       }, 0);
+      if (wasHidden || !root.classList.contains("is-open")) emitState(true);
     }
+
+    backdrop.addEventListener("pointerdown", function (event) {
+      event.preventDefault();
+      close({ returnFocus: true });
+    });
 
     window.addEventListener("resize", reposition, { passive: true });
     window.addEventListener("scroll", reposition, { passive: true });
 
-    return {
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", reposition, { passive: true });
+      window.visualViewport.addEventListener("scroll", reposition, { passive: true });
+    }
+
+    api = {
       root: root,
       hint: hint,
       body: body,
@@ -221,8 +333,17 @@
       open: open,
       close: close,
       reposition: reposition,
-      isOpen: function () { return !root.hidden; },
+      isOpen: isOpen,
+      onStateChange: function (listener) {
+        if (typeof listener === "function") stateListeners.push(listener);
+      },
+      destroy: function () {
+        close({ immediate: true });
+        if (backdrop.parentElement) backdrop.parentElement.removeChild(backdrop);
+        if (root.parentElement) root.parentElement.removeChild(root);
+      },
     };
+    return api;
   }
 
   function monthsToShow(mode) {
@@ -280,6 +401,17 @@
     var calendarEl = null;
     var mode = tripTypeInput && tripTypeInput.value === "oneway" ? "single" : "range";
 
+    [departDisplayInput, returnDisplayInput].forEach(function (input) {
+      input.setAttribute("aria-haspopup", "dialog");
+      input.setAttribute("aria-controls", popover.root.id);
+      input.setAttribute("aria-expanded", "false");
+    });
+    popover.onStateChange(function (open) {
+      [departDisplayInput, returnDisplayInput].forEach(function (input) {
+        input.setAttribute("aria-expanded", String(open));
+      });
+    });
+
     function syncFromCalendar() {
       if (!calendarEl) return;
       if (mode === "range") {
@@ -329,7 +461,7 @@
         syncFromCalendar();
         popover.hint.classList.remove("is-active");
         popover.hint.textContent = mode === "range" ? departPrompt : singleSetPrompt;
-        window.setTimeout(function () { popover.close(); }, mode === "range" ? 260 : 160);
+        window.setTimeout(function () { popover.close(); }, reducedMotionQuery.matches ? 0 : (mode === "range" ? 120 : 80));
       });
 
       addNavIcons(el);
@@ -354,6 +486,10 @@
     function openPopoverFor(field) {
       if (!field || field.disabled) return;
       whenCalendarsReady(function () {
+        if (popover.isOpen()) {
+          popover.open(field);
+          return;
+        }
         buildCalendar();
         popover.open(field);
       });
@@ -423,6 +559,13 @@
     var maxIso = ISO_RE.test(options.maxDate || "") ? options.maxDate : "";
     var prompt = options.prompt || "Choose a date";
 
+    input.setAttribute("aria-haspopup", "dialog");
+    input.setAttribute("aria-controls", popover.root.id);
+    input.setAttribute("aria-expanded", "false");
+    popover.onStateChange(function (open) {
+      input.setAttribute("aria-expanded", String(open));
+    });
+
     function buildCalendar() {
       popover.body.innerHTML = "";
       var el = document.createElement("calendar-date");
@@ -437,7 +580,7 @@
         next = ISO_RE.test(next) ? next : "";
         notifyIfChanged(valueInput, next);
         if (valueInput !== input) notifyIfChanged(input, formatDisplay(next));
-        window.setTimeout(function () { popover.close(); }, 160);
+        window.setTimeout(function () { popover.close(); }, reducedMotionQuery.matches ? 0 : 80);
       });
 
       addNavIcons(el);
@@ -456,6 +599,10 @@
     function openPopover() {
       if (input.disabled) return;
       whenCalendarsReady(function () {
+        if (popover.isOpen()) {
+          popover.open(input);
+          return;
+        }
         buildCalendar();
         popover.open(input);
       });
@@ -463,6 +610,9 @@
 
     input.addEventListener("focus", openPopover);
     input.addEventListener("click", openPopover);
+    input.addEventListener("pointerup", function (e) {
+      if (e.pointerType === "touch" || e.pointerType === "pen") openPopover();
+    });
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
         e.preventDefault();
@@ -480,8 +630,7 @@
         if (popover.isOpen()) buildCalendar();
       },
       destroy: function () {
-        popover.close();
-        if (popover.root.parentElement) popover.root.parentElement.removeChild(popover.root);
+        popover.destroy();
         delete input.dataset.calendarBound;
         input._nxDatePicker = null;
       },
@@ -571,6 +720,7 @@
   // so the month count (1 vs 2) stays correct without needing to close first.
   if (typeof compactQuery.addEventListener === "function") {
     compactQuery.addEventListener("change", function () {
+      syncDatePopoverPageState();
       openRebuilders.forEach(function (fn) { fn(); });
     });
   }

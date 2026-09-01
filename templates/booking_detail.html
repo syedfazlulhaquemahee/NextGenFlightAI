@@ -183,20 +183,45 @@
     .bd2-traveler-avatar { width:28px; height:28px; border-radius:50%; background:var(--c-ind-bg); color:var(--c-ind-lnk); display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; flex-shrink:0; }
     .bd2-traveler-name { font-size:.85rem; font-weight:600; color:var(--c-text); }
 
-    /* Cancel modal overlay */
-    .bd2-modal-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.65); align-items:center; justify-content:center; padding:20px; }
-    .bd2-modal-overlay.is-open { display:flex; }
-    .bd2-modal { background:var(--c-card); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:28px 24px; max-width:400px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+    /* Cancel confirmation — a centred dialog on larger screens and a calm
+       bottom sheet on phones. The hidden state is kept in the DOM long
+       enough for the close transition, then removed from the accessibility
+       tree by the script below. */
+    .bd2-modal-overlay { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; padding:max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background:rgba(0,0,0,.65); opacity:0; visibility:hidden; pointer-events:none; overscroll-behavior:contain; transition:opacity .18s ease, visibility 0s linear .18s; }
+    .bd2-modal-overlay[hidden] { display:none; }
+    .bd2-modal-overlay.is-open { opacity:1; visibility:visible; pointer-events:auto; transition:opacity .2s ease, visibility 0s; }
+    .bd2-modal { position:relative; box-sizing:border-box; width:100%; max-width:400px; max-height:calc(100dvh - 40px); overflow-y:auto; -webkit-overflow-scrolling:touch; background:var(--c-card); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:28px 24px; box-shadow:0 20px 60px rgba(0,0,0,.5); opacity:0; transform:translateY(14px) scale(.985); transform-origin:50% 60%; transition:transform .22s cubic-bezier(.22,1,.36,1), opacity .16s ease; }
+    .bd2-modal-overlay.is-open .bd2-modal { opacity:1; transform:translateY(0) scale(1); }
     html[data-theme="light"] .bd2-modal { border-color:rgba(15,23,42,.1); }
+    .bd2-modal-grip { display:none; }
+    .bd2-modal-close { position:absolute; top:12px; right:12px; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:transparent; color:var(--c-muted); cursor:pointer; transition:background .15s ease, color .15s ease, transform .15s cubic-bezier(.22,1,.36,1); }
+    .bd2-modal-close svg { width:18px; height:18px; }
+    .bd2-modal-close:focus-visible, .bd2-modal-btn:focus-visible { outline:2px solid var(--c-ind-lnk); outline-offset:3px; }
     .bd2-modal-icon { width:40px; height:40px; border-radius:50%; background:var(--c-red-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-bottom:12px; }
-    .bd2-modal-title { font-size:1rem; font-weight:700; color:var(--c-text); margin:0 0 8px; }
+    .bd2-modal-title { padding-right:36px; font-size:1rem; font-weight:700; color:var(--c-text); margin:0 0 8px; }
     .bd2-modal-body { font-size:.85rem; color:var(--c-muted); margin:0 0 20px; line-height:1.5; }
     .bd2-modal-actions { display:flex; gap:10px; }
-    .bd2-modal-btn { flex:1; padding:10px 16px; border-radius:10px; font-size:.85rem; font-weight:700; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:background .15s; }
+    .bd2-modal-btn { flex:1; min-height:44px; padding:10px 16px; border-radius:10px; font-size:.85rem; font-weight:700; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:transform .15s cubic-bezier(.22,1,.36,1), opacity .15s ease, background .15s ease, border-color .15s ease; }
     .bd2-modal-btn--danger { background:var(--c-red); color:#fff; }
-    .bd2-modal-btn--danger:hover { background:#dc2626; }
     .bd2-modal-btn--ghost { background:var(--c-sub); color:var(--c-text); border:1px solid var(--c-sub-bd); }
-    .bd2-modal-btn--ghost:hover { background:rgba(255,255,255,.08); }
+    @media (hover:hover) and (pointer:fine) {
+      .bd2-modal-btn--danger:hover { background:#dc2626; }
+      .bd2-modal-btn--ghost:hover, .bd2-modal-close:hover { background:rgba(255,255,255,.08); }
+    }
+    @media (hover:none), (pointer:coarse) {
+      .bd2-modal-btn:active, .bd2-modal-close:active { transform:scale(.98); opacity:.9; }
+    }
+    @media (max-width:600px) {
+      .bd2-modal-overlay { align-items:flex-end; padding:12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+      .bd2-modal { max-width:none; max-height:min(84dvh, 680px); border-radius:20px; padding:12px 20px calc(20px + env(safe-area-inset-bottom)); transform:translateY(24px); }
+      .bd2-modal-grip { display:block; width:36px; height:4px; margin:0 auto 16px; border-radius:999px; background:var(--c-sub-bd); }
+      .bd2-modal-actions { flex-direction:column; gap:8px; }
+      .bd2-modal-actions > form, .bd2-modal-actions > .bd2-modal-btn { width:100%; flex:none !important; }
+      .bd2-modal-btn { min-height:48px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      .bd2-modal-overlay, .bd2-modal, .bd2-modal-btn, .bd2-modal-close { transition:none; }
+    }
   </style>
   {% include "partials/flights_parity_head.html" %}
 </head>
@@ -501,7 +526,7 @@
               </a>
               {% endif %}
               {% if manage_model and manage_model.can_cancel %}
-              <button class="bd2-action-tile bd2-action-tile--danger" type="button" onclick="document.getElementById('bd2CancelModal').classList.add('is-open')">
+              <button id="bd2CancelTrigger" class="bd2-action-tile bd2-action-tile--danger" type="button" aria-haspopup="dialog" aria-controls="bd2CancelModal" aria-expanded="false">
                 <div class="bd2-action-icon bd2-action-icon--danger"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg></div>
                 <div class="bd2-action-title">Cancel booking</div>
                 <div class="bd2-action-desc">Subject to fare rules</div>
@@ -565,21 +590,122 @@
 
   {# Cancel confirmation modal #}
   {% if manage_model and manage_model.can_cancel %}
-  <div id="bd2CancelModal" class="bd2-modal-overlay" onclick="if(event.target===this)this.classList.remove('is-open')">
-    <div class="bd2-modal">
+  <div id="bd2CancelModal" class="bd2-modal-overlay" hidden aria-hidden="true">
+    <div class="bd2-modal" role="dialog" aria-modal="true" aria-labelledby="bd2CancelModalTitle" aria-describedby="bd2CancelModalDescription" tabindex="-1">
+      <div class="bd2-modal-grip" aria-hidden="true"></div>
+      <button class="bd2-modal-close" type="button" data-bd2-cancel-close aria-label="Close cancellation confirmation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
       <div class="bd2-modal-icon">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M15 9 9 15M9 9l6 6"/></svg>
       </div>
-      <h3 class="bd2-modal-title">Cancel this booking?</h3>
-      <p class="bd2-modal-body">This will permanently cancel booking <strong>{{ order_summary.booking_reference }}</strong>. A refund will be processed per the fare rules. This cannot be undone.</p>
+      <h3 id="bd2CancelModalTitle" class="bd2-modal-title">Cancel this booking?</h3>
+      <p id="bd2CancelModalDescription" class="bd2-modal-body">This will permanently cancel booking <strong>{{ order_summary.booking_reference }}</strong>. A refund will be processed per the fare rules. This cannot be undone.</p>
       <div class="bd2-modal-actions">
         <form method="post" action="{{ url_for('manage_booking_cancel', order_id=manage_model.order_id) }}" style="flex:1;">
           <button class="bd2-modal-btn bd2-modal-btn--danger" type="submit" style="width:100%;">Confirm cancellation</button>
         </form>
-        <button class="bd2-modal-btn bd2-modal-btn--ghost" type="button" onclick="document.getElementById('bd2CancelModal').classList.remove('is-open')" style="flex:1;">Keep booking</button>
+        <button class="bd2-modal-btn bd2-modal-btn--ghost" type="button" data-bd2-cancel-close style="flex:1;">Keep booking</button>
       </div>
     </div>
   </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var overlay = document.getElementById("bd2CancelModal");
+      var trigger = document.getElementById("bd2CancelTrigger");
+      if (!overlay || !trigger) return;
+
+      var dialog = overlay.querySelector("[role='dialog']");
+      var keepButton = overlay.querySelector(".bd2-modal-btn--ghost");
+      var cancelForm = overlay.querySelector("form");
+      var lockKey = "booking-cancel-modal";
+      var isOpen = false;
+      var lastFocused = null;
+      var closeTimer = null;
+
+      function setScrollLock(locked) {
+        var interaction = window.SkairovaInteraction;
+        if (!interaction) return;
+        if (locked && typeof interaction.lockScroll === "function") interaction.lockScroll(lockKey);
+        if (!locked && typeof interaction.unlockScroll === "function") interaction.unlockScroll(lockKey);
+      }
+
+      function focusableElements() {
+        return Array.prototype.filter.call(dialog.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"), function (element) {
+          return !element.hidden && element.getAttribute("aria-hidden") !== "true";
+        });
+      }
+
+      function finishClose() {
+        if (isOpen) return;
+        overlay.hidden = true;
+      }
+
+      function openModal() {
+        if (isOpen) return;
+        window.clearTimeout(closeTimer);
+        isOpen = true;
+        lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : trigger;
+        overlay.hidden = false;
+        overlay.setAttribute("aria-hidden", "false");
+        trigger.setAttribute("aria-expanded", "true");
+        setScrollLock(true);
+        window.requestAnimationFrame(function () {
+          if (isOpen) overlay.classList.add("is-open");
+        });
+        window.requestAnimationFrame(function () {
+          (keepButton || dialog).focus({ preventScroll: true });
+        });
+      }
+
+      function closeModal() {
+        if (!isOpen) return;
+        isOpen = false;
+        overlay.classList.remove("is-open");
+        overlay.setAttribute("aria-hidden", "true");
+        trigger.setAttribute("aria-expanded", "false");
+        setScrollLock(false);
+        closeTimer = window.setTimeout(finishClose, 240);
+        if (lastFocused && lastFocused.isConnected) {
+          window.requestAnimationFrame(function () { lastFocused.focus({ preventScroll: true }); });
+        }
+      }
+
+      trigger.addEventListener("click", openModal);
+      overlay.querySelectorAll("[data-bd2-cancel-close]").forEach(function (button) {
+        button.addEventListener("click", closeModal);
+      });
+      overlay.addEventListener("click", function (event) {
+        if (event.target === overlay) closeModal();
+      });
+      document.addEventListener("keydown", function (event) {
+        if (!isOpen) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeModal();
+          return;
+        }
+        if (event.key !== "Tab") return;
+        var focusable = focusableElements();
+        if (!focusable.length) {
+          event.preventDefault();
+          dialog.focus({ preventScroll: true });
+          return;
+        }
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus({ preventScroll: true });
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus({ preventScroll: true });
+        }
+      });
+      if (cancelForm) cancelForm.addEventListener("submit", function () { setScrollLock(false); });
+      window.addEventListener("pagehide", function () { setScrollLock(false); });
+    });
+  </script>
   {% endif %}
 
   {% endif %}

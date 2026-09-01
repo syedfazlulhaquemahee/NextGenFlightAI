@@ -10,19 +10,26 @@
 
   const DEBOUNCE_MS = 180;
   const MIN_CHARS = 3;
+  const PANEL_CLOSE_MS = 180;
+  const compactQuery = window.matchMedia("(max-width: 760px)");
+  const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const isAirportInput = (node) => !!(node && node.classList && node.classList.contains("airport-input"));
 
   const box = document.createElement("div");
   box.className = "airport-suggest";
-  box.style.display = "none";
+  box.id = "airport-suggestions";
   box.setAttribute("role", "listbox");
+  box.setAttribute("aria-hidden", "true");
 
   let activeInput = null;
   let abortCtrl = null;
   let debounceTimer = null;
   let activeIndex = -1;
   let currentItems = [];
+  let renderedFor = null;
+  let closeTimer = null;
+  let pointerDownInBox = false;
 
   // One selected-display overlay per input, created lazily and reused.
   const overlays = new WeakMap();
@@ -62,18 +69,56 @@
     return [item.city, country].filter(Boolean).join(", ");
   }
 
-  function closeBox() {
+  function prepareInput(inp) {
+    if (!inp) return;
+    inp.setAttribute("role", "combobox");
+    inp.setAttribute("aria-autocomplete", "list");
+    inp.setAttribute("aria-haspopup", "listbox");
+    inp.setAttribute("aria-controls", box.id);
+    if (!inp.hasAttribute("aria-expanded")) inp.setAttribute("aria-expanded", "false");
+  }
+
+  function updateInputPopupState(inp, open) {
+    if (!inp) return;
+    prepareInput(inp);
+    inp.setAttribute("aria-expanded", String(!!open));
+    if (!open) inp.removeAttribute("aria-activedescendant");
+  }
+
+  function setBoxOpen(open) {
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+    box.classList.toggle("is-open", !!open);
+    box.setAttribute("aria-hidden", String(!open));
+    updateInputPopupState(activeInput, open);
+  }
+
+  function closeBox(options) {
+    const immediate = !!(options && options.immediate);
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
     }
     try { abortCtrl?.abort(); } catch (e) { /* ignore */ }
     abortCtrl = null;
-    box.style.display = "none";
-    box.innerHTML = "";
+    const closingInput = activeInput;
+    updateInputPopupState(closingInput, false);
+    box.classList.remove("is-open");
+    box.setAttribute("aria-hidden", "true");
     activeInput = null;
     activeIndex = -1;
     currentItems = [];
+    renderedFor = null;
+
+    if (closeTimer) window.clearTimeout(closeTimer);
+    const clear = () => {
+      closeTimer = null;
+      if (!box.classList.contains("is-open")) box.innerHTML = "";
+    };
+    if (immediate || reducedMotionQuery.matches) clear();
+    else closeTimer = window.setTimeout(clear, PANEL_CLOSE_MS);
   }
   document.addEventListener("airportSuggestClose", closeBox);
 
@@ -82,8 +127,10 @@
     const pad = 12;
     const minSuggest = 360;
     const maxSuggest = 600;
-    const vw = document.documentElement.clientWidth;
-    const sx = window.scrollX;
+    const visualViewport = window.visualViewport;
+    const vw = visualViewport?.width || document.documentElement.clientWidth;
+    const vh = visualViewport?.height || window.innerHeight;
+    const sx = window.scrollX || window.pageXOffset || 0;
     const avail = Math.max(200, vw - pad * 2);
 
     let w = Math.max(r.width, minSuggest);
@@ -93,25 +140,53 @@
     const maxLeft = sx + vw - pad - w;
     if (left > maxLeft) left = Math.max(sx + pad, maxLeft);
 
+    if (compactQuery.matches) {
+      const gap = 8;
+      const roomBelow = Math.max(0, vh - r.bottom - gap - pad);
+      const roomAbove = Math.max(0, r.top - gap - pad);
+      const openAbove = roomBelow < 176 && roomAbove > roomBelow;
+      const availableHeight = openAbove ? roomAbove : roomBelow;
+      const maxHeight = Math.min(360, Math.max(120, availableHeight));
+      const top = openAbove
+        ? Math.max(pad, r.top - maxHeight - gap)
+        : Math.min(Math.max(pad, r.bottom + gap), Math.max(pad, vh - maxHeight - pad));
+
+      box.classList.toggle("airport-suggest--above", openAbove);
+      box.style.left = `${Math.round(left - sx)}px`;
+      box.style.top = `${Math.round(top)}px`;
+      box.style.width = `${Math.round(w)}px`;
+      box.style.maxHeight = `${Math.round(maxHeight)}px`;
+      return;
+    }
+
+    box.classList.remove("airport-suggest--above");
     box.style.left = `${Math.round(left)}px`;
-    box.style.top = `${Math.round(window.scrollY + r.bottom + 8)}px`;
+    box.style.top = `${Math.round((window.scrollY || window.pageYOffset || 0) + r.bottom + 8)}px`;
     box.style.width = `${Math.round(w)}px`;
+    box.style.maxHeight = "";
   }
 
   function setActiveIndex(idx) {
     activeIndex = idx;
     Array.from(box.querySelectorAll(".airport-item")).forEach((el, i) => {
-      el.classList.toggle("active", i === activeIndex);
+      const active = i === activeIndex;
+      el.classList.toggle("active", active);
+      el.setAttribute("aria-selected", String(active));
+      if (active) {
+        activeInput?.setAttribute("aria-activedescendant", el.id);
+        try { el.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ }
+      }
     });
+    if (activeIndex < 0) activeInput?.removeAttribute("aria-activedescendant");
   }
 
   function render(items) {
     currentItems = items;
     activeIndex = -1;
-    box.innerHTML = items.map((it) => {
+    box.innerHTML = items.map((it, index) => {
       const isCity = it.subType === "CITY";
       return `
-        <button type="button" class="airport-item${isCity ? " airport-item--city" : ""}" role="option" data-code="${esc(it.code)}">
+        <button type="button" class="airport-item${isCity ? " airport-item--city" : ""}" id="airport-option-${index}" role="option" aria-selected="false" data-code="${esc(it.code)}">
           ${isCity ? `<span class="airport-item-icon">${BUILDING_ICON}</span>` : ""}
           <span class="airport-item-text">
             <span class="airport-item-title">${esc(itemTitle(it))}</span>
@@ -121,7 +196,8 @@
         </button>
       `;
     }).join("");
-    box.style.display = items.length ? "block" : "none";
+    renderedFor = activeInput;
+    setBoxOpen(items.length > 0);
   }
 
   async function fetchSuggestions(q) {
@@ -210,7 +286,9 @@
   document.addEventListener("input", (event) => {
     const inp = event.target;
     if (!isAirportInput(inp)) return;
+    if (activeInput && activeInput !== inp) closeBox({ immediate: true });
     activeInput = inp;
+    prepareInput(inp);
     hideOverlay(inp);
 
     const q = (inp.value || "").trim();
@@ -221,7 +299,7 @@
     debounceTimer = setTimeout(async () => {
       try {
         const items = await fetchSuggestions(q);
-        if (document.activeElement !== inp) return;
+        if (document.activeElement !== inp || activeInput !== inp) return;
         render(items);
         positionBox(inp);
       } catch (e) { /* aborted or failed — leave box as-is */ }
@@ -231,11 +309,13 @@
   document.addEventListener("focusin", (event) => {
     const inp = event.target;
     if (!isAirportInput(inp)) return;
+    if (activeInput && activeInput !== inp) closeBox({ immediate: true });
     activeInput = inp;
+    prepareInput(inp);
     hideOverlay(inp);
-    if (box.innerHTML.trim() && currentItems.length) {
+    if (box.innerHTML.trim() && currentItems.length && renderedFor === inp) {
       positionBox(inp);
-      box.style.display = "block";
+      setBoxOpen(true);
     }
   });
 
@@ -243,7 +323,8 @@
     const inp = event.target;
     if (!isAirportInput(inp)) return;
     setTimeout(() => {
-      if (!box.matches(":hover")) closeBox();
+      if (activeInput !== inp) return;
+      if (!pointerDownInBox && !box.contains(document.activeElement)) closeBox();
       const ov = overlays.get(inp);
       const city = ov?.querySelector(".airport-selected-display__city").textContent;
       if (ov && city) {
@@ -252,6 +333,17 @@
         visibleOverlayInputs.add(inp);
       }
     }, 120);
+  });
+
+  box.addEventListener("pointerdown", () => {
+    pointerDownInBox = true;
+  });
+  ["pointerup", "pointercancel"].forEach((eventName) => {
+    box.addEventListener(eventName, () => {
+      // Keep the list alive through the input's delayed blur handler on
+      // touch devices; an outside tap will still close it immediately.
+      window.setTimeout(() => { pointerDownInBox = false; }, 180);
+    });
   });
 
   box.addEventListener("click", (e) => {
@@ -267,9 +359,9 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeBox(); return; }
+    if (e.key === "Escape" && activeInput) { closeBox(); return; }
     const inp = document.activeElement;
-    if (!isAirportInput(inp) || !currentItems.length || box.style.display === "none") return;
+    if (!isAirportInput(inp) || !currentItems.length || !box.classList.contains("is-open")) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex(Math.min(activeIndex + 1, currentItems.length - 1));
@@ -300,8 +392,31 @@
     visibleOverlayInputs.forEach(positionOverlay);
   });
 
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      if (activeInput) positionBox(activeInput);
+    }, { passive: true });
+    window.visualViewport.addEventListener("scroll", () => {
+      if (activeInput) positionBox(activeInput);
+    }, { passive: true });
+  }
+
+  if (typeof compactQuery.addEventListener === "function") {
+    compactQuery.addEventListener("change", () => {
+      if (activeInput) positionBox(activeInput);
+    });
+  }
+
+  function isSelectedOverlay(target) {
+    for (const inp of visibleOverlayInputs) {
+      const overlay = overlays.get(inp);
+      if (overlay && overlay.contains(target)) return true;
+    }
+    return false;
+  }
+
   document.addEventListener("click", (event) => {
-    if (box.contains(event.target) || isAirportInput(event.target)) return;
+    if (box.contains(event.target) || isAirportInput(event.target) || isSelectedOverlay(event.target)) return;
     closeBox();
   });
 

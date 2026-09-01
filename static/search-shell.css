@@ -135,3 +135,13 @@
   0% { background-position: 180% 0; }
   100% { background-position: -20% 0; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .result-skeleton-mimic .sk-line,
+  .result-skeleton-mimic .sk-circle,
+  .result-skeleton-mimic .sk-pill,
+  .result-skeleton-mimic .sk-chip,
+  .result-skeleton-mimic .sk-button {
+    animation: none;
+  }
+}

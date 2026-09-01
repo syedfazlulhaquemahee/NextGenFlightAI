@@ -2,7 +2,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant.css', v='20260822-chat-composer-focus-1') }}" />
 
 <div id="aiChatBubbleWrap" class="ai-chat-bubble-wrap" aria-label="Skairova AI assistant">
-  <section class="ai-chat-panel" role="dialog" aria-label="Skairova AI" aria-modal="false">
+  <section class="ai-chat-panel" id="aiChatPanel" role="dialog" aria-label="Skairova AI" aria-modal="false">
     <header class="ai-chat-header">
       <div class="ai-chat-header-brand">
         <div class="ai-chat-header-info">
@@ -74,7 +74,7 @@
     </footer>
   </section>
 
-  <button class="ai-chat-trigger" type="button" aria-label="Open Skairova AI" aria-expanded="false">
+  <button class="ai-chat-trigger" type="button" aria-label="Open Skairova AI" aria-controls="aiChatPanel" aria-expanded="false">
     <svg class="ai-chat-trigger-icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>
     <svg class="ai-chat-trigger-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
     <span class="ai-chat-badge" style="display:none;" aria-label="1 new message">1</span>

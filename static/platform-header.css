@@ -661,31 +661,54 @@ body.home-page .topbar.platform-header .topbar-links {
    page's own tabs, so it has to be a real, obviously-tappable menu. */
 
 .topbar.platform-header .hdr-menu-btn {
+  position: relative;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--hdr-ink);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform .14s ease, background-color .16s ease, color .16s ease;
 }
 
 .topbar.platform-header .hdr-menu-btn svg {
   display: block;
+  position: absolute;
   width: 20px;
   height: 20px;
+  transition: opacity .14s ease, transform .18s cubic-bezier(.22, 1, .36, 1);
 }
 
-/* !important needed on all three: `.hdr-menu-btn svg` above ties this
-   rule's class-count (3 apiece) and wins the tiebreak via its extra `svg`
-   type selector, which would otherwise show both icons stacked at once. */
-.topbar.platform-header .hdr-menu-icon-close { display: none !important; }
-.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-bars { display: none !important; }
-.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-close { display: block !important; }
+/* Crossfade the actual icons rather than swapping display values, so opening
+   and closing the full-screen menu has a small, cohesive physical cue. */
+.topbar.platform-header .hdr-menu-icon-bars {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+.topbar.platform-header .hdr-menu-icon-close {
+  opacity: 0;
+  transform: rotate(-45deg) scale(.72);
+}
+
+.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-bars {
+  opacity: 0;
+  transform: rotate(45deg) scale(.72);
+}
+
+.topbar.platform-header .hdr-menu-btn[aria-expanded="true"] .hdr-menu-icon-close {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
 
 /* ============================================================================
    Mobile drawer — a full-screen takeover with its own logo+close header
@@ -704,12 +727,44 @@ body.home-page .topbar.platform-header .topbar-links {
   overflow-x: hidden;
   background: #fff;
   font-family: var(--font-ui, "Inter", sans-serif);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(0, -10px, 0);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  transition: opacity .18s ease, transform .24s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .24s;
+  will-change: opacity, transform;
 }
 
 .hdr-mobile-panel[hidden] { display: none; }
 
+.hdr-mobile-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+  transition: opacity .18s ease, transform .24s cubic-bezier(.22, 1, .36, 1), visibility 0s;
+}
+
+.hdr-mobile-panel.is-closing {
+  pointer-events: none;
+}
+
 /* Lock page scroll behind the full-screen drawer while it's open. */
-html.hdr-menu-open { overflow: hidden; }
+html.hdr-menu-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.hdr-menu-open {
+  position: fixed;
+  top: var(--hdr-menu-scroll-offset, 0px);
+  right: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+}
 
 .hdr-mobile-head {
   display: flex;
@@ -727,6 +782,9 @@ html.hdr-menu-open { overflow: hidden; }
 .hdr-mobile-head .brand-link {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  margin-left: -4px;
+  padding: 0 4px;
   gap: 9px;
   text-decoration: none;
   text-transform: uppercase;
@@ -738,6 +796,11 @@ html.hdr-menu-open { overflow: hidden; }
   transform: scaleX(1.055);
   transform-origin: left center;
   color: var(--hdr-ink) !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: opacity .14s ease;
 }
 
 .hdr-mobile-head .brand-dot {
@@ -752,16 +815,23 @@ html.hdr-menu-open { overflow: hidden; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--hdr-ink);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform .14s ease, background-color .16s ease, color .16s ease;
 }
 
-.hdr-mobile-close:hover { background: rgba(15, 23, 42, .05); }
+@media (hover: hover) and (pointer: fine) {
+  .hdr-mobile-close:hover { background: rgba(15, 23, 42, .05); }
+}
 .hdr-mobile-close svg { width: 17px; height: 17px; }
 
 .hdr-mobile-eyebrow {
@@ -799,6 +869,11 @@ html.hdr-menu-open { overflow: hidden; }
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: opacity .14s ease, background-color .16s ease, color .16s ease;
 }
 
 .hdr-mobile-nav .hdr-mobile-link:last-child { border-bottom: 0; }
@@ -808,10 +883,16 @@ html.hdr-menu-open { overflow: hidden; }
   height: 18px;
   flex: none;
   color: rgba(15, 23, 42, .35);
+  transition: transform .16s ease, color .16s ease;
 }
 
 .hdr-mobile-link:active {
-  opacity: .6;
+  opacity: .72;
+  background: rgba(67, 56, 202, .035);
+}
+
+.hdr-mobile-link:active svg {
+  transform: translate(2px, -2px);
 }
 
 .hdr-mobile-actions {
@@ -839,6 +920,11 @@ html.hdr-menu-open { overflow: hidden; }
   font-weight: 650;
   text-decoration: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform .14s ease, opacity .16s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 
 .hdr-mobile-outline-btn svg,
@@ -956,6 +1042,117 @@ html.hdr-menu-open { overflow: hidden; }
   :root { --hdr-pad: 10px; }
 
   .topbar.platform-header .brand-link { font-size: 0.9rem !important; letter-spacing: 0.07em !important; }
+}
+
+/* ───────────────────────── mobile interaction polish ─────────────────────────
+   Keep the compact visual language, but make every header control feel like a
+   deliberate touch target. These are scoped to the mobile header so desktop
+   hover states and layout stay exactly as designed. */
+@media (max-width: 920px) {
+  .topbar.platform-header .brand-link {
+    min-height: 44px !important;
+    margin-left: -4px !important;
+    padding: 0 4px !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger {
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: transform .14s ease, background-color .16s ease !important;
+  }
+
+  .topbar.platform-header .hdr-menu-btn:focus-visible,
+  .topbar.platform-header .brand-link:focus-visible,
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger:focus-visible,
+  .hdr-mobile-panel .brand-link:focus-visible,
+  .hdr-mobile-close:focus-visible,
+  .hdr-mobile-link:focus-visible,
+  .hdr-mobile-outline-btn:focus-visible,
+  .hdr-mobile-solid-btn:focus-visible {
+    outline: 2px solid var(--hdr-accent);
+    outline-offset: 2px;
+  }
+
+  .hdr-mobile-link:focus-visible {
+    border-radius: 8px;
+    background: rgba(67, 56, 202, .045);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .topbar.platform-header .hdr-menu-btn:hover {
+    background: rgba(15, 23, 42, .05);
+    color: var(--hdr-text-hover);
+  }
+
+  .hdr-mobile-link:hover {
+    color: var(--hdr-accent) !important;
+  }
+
+  .hdr-mobile-link:hover svg {
+    color: var(--hdr-accent);
+    transform: translate(2px, -2px);
+  }
+}
+
+@media (hover: none) {
+  /* Mobile browsers can retain :hover after a tap; reserve the tint for an
+     actually-open account menu instead of leaving the trigger looking stuck. */
+  .topbar.platform-header .portal-menu:not([open]) summary.hdr-account-btn.portal-menu-trigger:hover {
+    background: transparent !important;
+  }
+
+  .topbar.platform-header .portal-menu:not([open]) summary.hdr-account-btn.portal-menu-trigger:hover .hdr-avatar {
+    box-shadow: 0 0 0 0 rgba(67, 56, 202, 0) !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .topbar.platform-header .hdr-menu-btn:active,
+  .hdr-mobile-close:active {
+    transform: scale(.94);
+    background: rgba(15, 23, 42, .07);
+  }
+
+  .topbar.platform-header .brand-link:active,
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger:active,
+  .hdr-mobile-head .brand-link:active {
+    opacity: .72;
+  }
+
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger:active,
+  .hdr-mobile-outline-btn:active,
+  .hdr-mobile-solid-btn:active {
+    transform: scale(.98);
+  }
+
+  .hdr-mobile-outline-btn:active,
+  .hdr-mobile-solid-btn:active {
+    opacity: .92;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hdr-mobile-panel,
+  .hdr-mobile-panel.is-open,
+  .topbar.platform-header .hdr-menu-btn,
+  .topbar.platform-header .hdr-menu-btn svg,
+  .topbar.platform-header summary.hdr-account-btn.portal-menu-trigger,
+  .hdr-mobile-close,
+  .hdr-mobile-link,
+  .hdr-mobile-link svg,
+  .hdr-mobile-outline-btn,
+  .hdr-mobile-solid-btn {
+    transition: none !important;
+  }
 }
 
 /* ============================================================================

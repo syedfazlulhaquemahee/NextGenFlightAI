@@ -219,3 +219,53 @@
 .flatpickr-calendar.standard-calendar-asset.standard-calendar-asset-month{
   width:307.875px !important;
 }
+
+/* Lightweight touch polish for the remaining Flatpickr calendar surface.
+   Cally drives the main flight picker; this bridge still powers a few
+   historical/month selectors, so it follows the same interaction cadence. */
+.flatpickr-calendar.standard-calendar-asset,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-next-month,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-next-month,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform .12s ease, background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month:active,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-next-month:active,
+.flatpickr-calendar.standard-calendar-asset .flatpickr-day:not(.flatpickr-disabled):active {
+  transform: scale(.94);
+}
+
+@media (max-width: 760px) {
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month,
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-next-month {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-day {
+    min-height: 40px !important;
+    line-height: 40px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-prev-month,
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-next-month,
+  .flatpickr-calendar.standard-calendar-asset .flatpickr-day {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}

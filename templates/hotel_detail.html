@@ -7,7 +7,7 @@
   <title>{{ hotel.name }} • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260818-reserve-label-fix') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-lightbox-polish') }}" />
 </head>
 <body class="hotel-detail-page">
   {% include "partials/platform_header.html" %}
@@ -150,12 +150,12 @@
   </main>
 
   {% if hotel.images %}
-    <div class="nu-lb" id="nuLightbox" hidden>
-      <button type="button" class="nu-lb-close" id="nuLbClose" aria-label="Close gallery">×</button>
-      <button type="button" class="nu-lb-nav nu-lb-prev" id="nuLbPrev" aria-label="Previous photo">‹</button>
+    <div class="nu-lb" id="nuLightbox" role="dialog" aria-modal="true" aria-label="Hotel photo gallery" aria-describedby="nuLbCount" aria-hidden="true" data-hotel-name="{{ hotel.name }}" hidden>
+      <button type="button" class="nu-lb-close" id="nuLbClose" data-sk-interaction-skip aria-label="Close gallery">×</button>
+      <button type="button" class="nu-lb-nav nu-lb-prev" id="nuLbPrev" data-sk-interaction-skip aria-label="Previous photo">‹</button>
       <img id="nuLbImg" src="" alt="" />
-      <button type="button" class="nu-lb-nav nu-lb-next" id="nuLbNext" aria-label="Next photo">›</button>
-      <p class="nu-lb-count" id="nuLbCount"></p>
+      <button type="button" class="nu-lb-nav nu-lb-next" id="nuLbNext" data-sk-interaction-skip aria-label="Next photo">›</button>
+      <p class="nu-lb-count" id="nuLbCount" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
   {% endif %}
 
@@ -164,36 +164,133 @@
   {% endif %}
 
   <script>
-    (function () {
+    document.addEventListener("DOMContentLoaded", function () {
       var images = {{ hotel.images|tojson }};
       var lb = document.getElementById("nuLightbox");
       if (!lb || !images.length) return;
       var img = document.getElementById("nuLbImg");
       var count = document.getElementById("nuLbCount");
+      var closeButton = document.getElementById("nuLbClose");
+      var prevButton = document.getElementById("nuLbPrev");
+      var nextButton = document.getElementById("nuLbNext");
+      var hotelName = lb.dataset.hotelName || "Hotel";
+      var lockKey = "hotel-gallery-lightbox";
       var i = 0;
+      var isOpen = false;
+      var lastFocused = null;
+      var closeTimer = null;
+      var imageTimer = null;
 
-      function show(n) {
-        i = (n + images.length) % images.length;
-        img.src = images[i];
-        count.textContent = (i + 1) + " / " + images.length;
+      function setScrollLock(locked) {
+        var interaction = window.SkairovaInteraction;
+        if (!interaction) return;
+        if (locked && typeof interaction.lockScroll === "function") interaction.lockScroll(lockKey);
+        if (!locked && typeof interaction.unlockScroll === "function") interaction.unlockScroll(lockKey);
       }
-      function open(n) { show(n); lb.hidden = false; document.body.style.overflow = "hidden"; }
-      function close() { lb.hidden = true; document.body.style.overflow = ""; }
+
+      function show(n, shouldAnimate) {
+        i = (n + images.length) % images.length;
+        if (shouldAnimate && isOpen) {
+          lb.classList.add("is-changing");
+          window.clearTimeout(imageTimer);
+          imageTimer = window.setTimeout(function () {
+            if (isOpen) lb.classList.remove("is-changing");
+          }, 110);
+        }
+        img.src = images[i];
+        img.alt = hotelName + ", photo " + (i + 1) + " of " + images.length;
+        count.textContent = (i + 1) + " / " + images.length;
+        count.setAttribute("aria-label", "Photo " + (i + 1) + " of " + images.length);
+      }
+
+      function focusableElements() {
+        return Array.prototype.filter.call(lb.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"), function (element) {
+          return !element.hidden && element.getAttribute("aria-hidden") !== "true";
+        });
+      }
+
+      function finishClose() {
+        if (isOpen) return;
+        lb.hidden = true;
+      }
+
+      function open(n, source) {
+        if (isOpen) return;
+        window.clearTimeout(closeTimer);
+        show(n, false);
+        isOpen = true;
+        lastFocused = source || (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+        lb.hidden = false;
+        lb.setAttribute("aria-hidden", "false");
+        setScrollLock(true);
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () {
+            if (isOpen) lb.classList.add("is-open");
+          });
+          closeButton.focus({ preventScroll: true });
+        });
+      }
+
+      function close() {
+        if (!isOpen) return;
+        isOpen = false;
+        window.clearTimeout(imageTimer);
+        lb.classList.remove("is-open", "is-changing");
+        lb.setAttribute("aria-hidden", "true");
+        setScrollLock(false);
+        closeTimer = window.setTimeout(finishClose, 240);
+        if (lastFocused && lastFocused.isConnected) {
+          window.requestAnimationFrame(function () { lastFocused.focus({ preventScroll: true }); });
+        }
+      }
 
       document.querySelectorAll("[data-img]").forEach(function (btn) {
-        btn.addEventListener("click", function () { open(Number(btn.dataset.img)); });
+        btn.addEventListener("click", function () { open(Number(btn.dataset.img), btn); });
       });
-      document.getElementById("nuLbClose").addEventListener("click", close);
-      document.getElementById("nuLbPrev").addEventListener("click", function () { show(i - 1); });
-      document.getElementById("nuLbNext").addEventListener("click", function () { show(i + 1); });
+      closeButton.addEventListener("click", close);
+      prevButton.addEventListener("click", function () { show(i - 1, true); });
+      nextButton.addEventListener("click", function () { show(i + 1, true); });
       lb.addEventListener("click", function (e) { if (e.target === lb) close(); });
       document.addEventListener("keydown", function (e) {
-        if (lb.hidden) return;
-        if (e.key === "Escape") close();
-        if (e.key === "ArrowLeft") show(i - 1);
-        if (e.key === "ArrowRight") show(i + 1);
+        if (!isOpen) return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          close();
+          return;
+        }
+        if (images.length > 1 && e.key === "ArrowLeft") {
+          e.preventDefault();
+          show(i - 1, true);
+          return;
+        }
+        if (images.length > 1 && e.key === "ArrowRight") {
+          e.preventDefault();
+          show(i + 1, true);
+          return;
+        }
+        if (e.key !== "Tab") return;
+        var focusable = focusableElements();
+        if (!focusable.length) {
+          e.preventDefault();
+          lb.focus({ preventScroll: true });
+          return;
+        }
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus({ preventScroll: true });
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus({ preventScroll: true });
+        }
       });
-    })();
+      if (images.length < 2) {
+        prevButton.hidden = true;
+        nextButton.hidden = true;
+      }
+      window.addEventListener("pagehide", function () { setScrollLock(false); });
+    });
   </script>
 </body>
 </html>

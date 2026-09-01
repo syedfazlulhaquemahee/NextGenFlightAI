@@ -231,7 +231,9 @@ html[data-theme="light"] .hotel-detail-page {
 }
 
 .nu-mode-btn svg { width: 16px; height: 16px; flex: none; }
-.nu-mode-btn:hover { color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  .nu-mode-btn:hover { color: #fff; }
+}
 
 /* Active tab borrows the pill's own surface so the switch reads as attached
    to the bar below it in both themes. */
@@ -366,10 +368,12 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background .15s ease;
+  transition: background .15s ease, transform .15s cubic-bezier(.22, 1, .36, 1), opacity .15s ease;
 }
 
-.nu-search-btn:hover { background: var(--nu-primary-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-search-btn:hover { background: var(--nu-primary-hover); }
+}
 .nu-search-btn svg { width: 19px; height: 19px; }
 
 .nu-suggest {
@@ -387,8 +391,16 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   box-shadow: var(--nu-shadow-lg);
   max-height: 330px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-5px) scale(.99);
+  transform-origin: top center;
+  transition: opacity 160ms ease, transform 180ms cubic-bezier(.22, 1, .36, 1);
 }
+.nu-suggest[hidden] { display: none !important; }
+.nu-suggest.is-open { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
 
 .nu-suggest-item {
   display: flex;
@@ -399,8 +411,10 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   cursor: pointer;
 }
 
-.nu-suggest-item:hover,
 .nu-suggest-item.is-active { background: var(--nu-surface-2); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-suggest-item:hover { background: var(--nu-surface-2); }
+}
 .nu-suggest-name { font-size: 14.5px; font-weight: 600; color: var(--nu-text); }
 .nu-suggest-addr { font-size: 12.5px; color: var(--nu-muted); }
 
@@ -434,7 +448,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 .nu-ai-mic svg { display: block; width: 19px; height: 19px; }
-.nu-ai-mic:hover { background: #eef2ff; border-color: var(--nu-primary); color: var(--nu-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-ai-mic:hover { background: #eef2ff; border-color: var(--nu-primary); color: var(--nu-primary); }
+}
 .nu-ai-mic:focus-visible { outline: 2px solid var(--nu-primary); outline-offset: 2px; }
 .nu-ai-mic.voice-active {
   background: var(--nu-primary-soft);
@@ -698,7 +714,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.nu-recent-item:hover { border-color: var(--nu-primary); box-shadow: var(--nu-shadow); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-recent-item:hover { border-color: var(--nu-primary); box-shadow: var(--nu-shadow); }
+}
 .nu-recent-city { font-size: 15px; font-weight: 700; white-space: nowrap; }
 .nu-recent-meta { font-size: 12.5px; color: var(--nu-muted); white-space: nowrap; }
 
@@ -730,7 +748,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   transition: box-shadow .16s ease, transform .16s ease;
 }
 
-.nu-card:hover { box-shadow: var(--nu-shadow-lg); transform: translateY(-2px); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-card:hover { box-shadow: var(--nu-shadow-lg); transform: translateY(-2px); }
+}
 
 .nu-card-img { aspect-ratio: 16 / 10; background: var(--nu-surface-2); overflow: hidden; }
 .nu-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1070,20 +1090,62 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
 .nu-poi li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--nu-text-2); }
 .nu-poi em { color: var(--nu-muted); font-style: normal; flex: none; }
 
-/* lightbox */
-.nu-lb { position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, .93); display: flex; align-items: center; justify-content: center; }
-.nu-lb[hidden] { display: none; }
-.nu-lb img { max-width: 92vw; max-height: 86vh; object-fit: contain; border-radius: var(--nu-radius-sm); }
-.nu-lb-close, .nu-lb-nav {
-  position: absolute; border: 0; background: rgba(255, 255, 255, .15); color: #fff;
-  cursor: pointer; font-family: inherit;
+/* lightbox — this keeps desktop's simple photo viewer, while mobile gets a
+   softer entry/exit state and thumb-friendly controls. */
+.nu-lb {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, .93);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  isolation: isolate; overscroll-behavior: contain;
+  transition: opacity 180ms ease, visibility 0s linear 180ms;
 }
-.nu-lb-close { top: 20px; right: 24px; width: 42px; height: 42px; border-radius: 50%; font-size: 24px; line-height: 1; }
-.nu-lb-nav { top: 50%; transform: translateY(-50%); width: 48px; height: 64px; border-radius: var(--nu-radius-sm); font-size: 30px; line-height: 1; }
-.nu-lb-prev { left: 20px; }
-.nu-lb-next { right: 20px; }
-.nu-lb-close:hover, .nu-lb-nav:hover { background: rgba(255, 255, 255, .28); }
-.nu-lb-count { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); color: rgba(255, 255, 255, .82); font-size: 13px; }
+.nu-lb[hidden] { display: none; }
+.nu-lb.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 200ms ease, visibility 0s; }
+.nu-lb img {
+  position: relative; z-index: 1;
+  max-width: min(92vw, 1180px); max-height: min(86dvh, 920px);
+  object-fit: contain; border-radius: var(--nu-radius-sm);
+  opacity: 0; transform: translateY(12px) scale(.985);
+  transition: opacity 170ms ease, transform 220ms cubic-bezier(.22, 1, .36, 1);
+}
+.nu-lb.is-open img { opacity: 1; transform: translateY(0) scale(1); }
+.nu-lb.is-changing img { opacity: 0; transform: translateY(4px) scale(.985); }
+.nu-lb-close, .nu-lb-nav {
+  position: absolute; z-index: 2;
+  display: grid; place-items: center;
+  border: 0; background: rgba(255, 255, 255, .15); color: #fff;
+  cursor: pointer; font-family: inherit; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 150ms cubic-bezier(.22, 1, .36, 1), opacity 150ms ease, background 150ms ease;
+}
+.nu-lb-close { top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 50%; font-size: 24px; line-height: 1; }
+.nu-lb-nav { top: 50%; transform: translateY(-50%); width: 52px; height: 64px; border-radius: var(--nu-radius-sm); font-size: 30px; line-height: 1; }
+.nu-lb-prev { left: max(16px, env(safe-area-inset-left)); }
+.nu-lb-next { right: max(16px, env(safe-area-inset-right)); }
+.nu-lb-close:focus-visible, .nu-lb-nav:focus-visible, .nu-gal-hero:focus-visible, .nu-gal-thumb:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+  .nu-lb-close:hover, .nu-lb-nav:hover { background: rgba(255, 255, 255, .28); }
+}
+@media (hover: none), (pointer: coarse) {
+  .nu-lb-close:active, .nu-lb-nav:active { transform: scale(.95); opacity: .88; }
+  .nu-lb-nav:active { transform: translateY(-50%) scale(.95); }
+}
+.nu-lb-count { position: absolute; z-index: 2; bottom: max(22px, env(safe-area-inset-bottom)); left: 50%; margin: 0; transform: translateX(-50%); color: rgba(255, 255, 255, .82); font-size: 13px; }
+
+@media (max-width: 620px) {
+  .nu-lb img { max-width: calc(100vw - 32px); max-height: calc(100dvh - 172px); }
+  .nu-lb-nav { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); width: 48px; height: 48px; border-radius: 50%; transform: none; }
+  .nu-lb-prev { left: calc(50% - 60px); }
+  .nu-lb-next { right: calc(50% - 60px); }
+  .nu-lb-count { bottom: max(78px, calc(62px + env(safe-area-inset-bottom))); }
+  .nu-lb-nav:active { transform: scale(.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nu-lb, .nu-lb img, .nu-lb-close, .nu-lb-nav { transition: none; }
+}
 
 /* ===================== responsive ===================== */
 @media (max-width: 1080px) {
@@ -1121,6 +1183,8 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   .nu-seg-dates select { flex: 1 1 auto; width: auto; min-width: 84px; }
   .nu-search-btn { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; }
   .nu-mode-btn { padding: 8px 15px; font-size: 13.5px; }
+  .nu-mode-btn { min-height: 44px; }
+  .nu-suggest { max-height: min(42dvh, 330px); -webkit-overflow-scrolling: touch; }
   .nu-features { grid-template-columns: 1fr; }
   .nu-feature + .nu-feature { border-top: 1px solid var(--nu-border); }
   .nu-section-head h2 { font-size: 22px; }
@@ -1210,7 +1274,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   transition: background .15s ease, color .15s ease, opacity .15s ease;
 }
 
-.nu-hotel-ai-icon:hover { background: rgba(99, 102, 241, .09); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-hotel-ai-icon:hover { background: rgba(99, 102, 241, .09); }
+}
 .nu-hotel-ai-icon:focus-visible { outline: 2px solid var(--nu-primary); outline-offset: 2px; }
 .nu-hotel-ai-icon svg { display: block; width: 18px; height: 18px; }
 
@@ -1218,7 +1284,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   border-radius: 50%;
   color: #53637a;
 }
-.nu-ai-mic:hover { border-color: transparent; color: var(--nu-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-ai-mic:hover { border-color: transparent; color: var(--nu-primary); }
+}
 .nu-ai-mic.voice-active { background: var(--nu-primary-soft); border-color: transparent; color: var(--nu-primary); }
 
 .nu-hotel-ai-input {
@@ -1288,7 +1356,9 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   box-shadow: none;
 }
 
-.nu-search--ai .nu-hotel-ai-submit:hover { background: var(--nu-primary-hover); }
+@media (hover: hover) and (pointer: fine) {
+  .nu-search--ai .nu-hotel-ai-submit:hover { background: var(--nu-primary-hover); }
+}
 .nu-search--ai .nu-hotel-ai-submit svg { width: 21px; height: 21px; }
 
 /* VoiceOverlay mounts its live transcription view inside this ring. */
@@ -1315,6 +1385,19 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   .nu-hotel-ai-input { grid-column: 2; grid-row: 1; }
   .nu-hotel-ai-placeholder-overlay { left: 60px; right: 62px; }
   .nu-search--ai .nu-hotel-ai-submit { grid-column: 3; grid-row: 1; width: 42px; height: 42px; min-width: 42px; }
+}
+
+/* Each mode preserves the same composition; only the incoming form moves.
+ * Keeping this an entry transition avoids a layout-height animation while the
+ * keyboard is open on a phone. */
+@media (prefers-reduced-motion: no-preference) {
+  .nu-search.is-mode-entering {
+    animation: nu-mode-enter 210ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes nu-mode-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
 
 /* Keep the hotel purchase CTAs self-contained. Global button/link styles can

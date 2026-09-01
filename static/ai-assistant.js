@@ -634,6 +634,7 @@
     let selectedModel = "Skairova";
     let responseStyle = "Balanced";
     let _qrPopulated = false;
+    let previousFocus = null;
 
     /* Wire module-level callbacks */
     _updateFocusUI = function(flight, mode) {
@@ -756,24 +757,32 @@
 
     /* Open / close */
     function open() {
+      previousFocus = document.activeElement;
       isOpen = true;
       wrap.classList.add("ai-chat-is-open");
       panel.classList.remove("is-closing");
       panel.classList.add("is-open");
       trigger.setAttribute("aria-expanded", "true");
+      trigger.setAttribute("aria-label", "Close Skairova AI");
       if (badge) badge.remove();
       populateQuickReplies();
       setTimeout(() => input.focus(), 200);
     }
 
     function close() {
+      if (!isOpen) return;
       isOpen = false;
       closeModelMenu();
       wrap.classList.remove("ai-chat-is-open");
       panel.classList.remove("is-open");
       panel.classList.add("is-closing");
       trigger.setAttribute("aria-expanded", "false");
-      panel.addEventListener("animationend", () => panel.classList.remove("is-closing"), { once: true });
+      trigger.setAttribute("aria-label", "Open Skairova AI");
+      panel.addEventListener("animationend", () => {
+        panel.classList.remove("is-closing");
+        const focusTarget = trigger.isConnected ? trigger : previousFocus;
+        focusTarget?.focus?.({ preventScroll: true });
+      }, { once: true });
     }
 
     trigger.addEventListener("click", () => isOpen ? close() : open());
@@ -784,6 +793,17 @@
       modelMenu.hidden = true;
       modelTrigger?.setAttribute("aria-expanded", "false");
     }
+
+    document.addEventListener("keydown", (event) => {
+      if (!isOpen || event.key !== "Escape") return;
+      if (modelMenu && !modelMenu.hidden) {
+        closeModelMenu();
+        modelTrigger?.focus?.({ preventScroll: true });
+        return;
+      }
+      event.preventDefault();
+      close();
+    });
 
     function toggleModelMenu() {
       if (!modelMenu) return;

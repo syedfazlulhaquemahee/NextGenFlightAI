@@ -21,15 +21,15 @@
 
     <nav class="site-nav" aria-label="Main navigation" id="siteNav">
       <span class="site-nav-indicator" id="siteNavIndicator" aria-hidden="true"></span>
-      <a class="site-nav-link {{ 'site-nav-active' if flights_active else '' }}" href="{{ url_for('index') }}">
+      <a class="site-nav-link {{ 'site-nav-active' if flights_active else '' }}" href="{{ url_for('index') }}"{% if flights_active %} aria-current="page"{% endif %}>
         {{ header_icon('plane') }}
         Flights
       </a>
-      <a class="site-nav-link {{ 'site-nav-active' if hotels_active else '' }}" href="{{ url_for('hotels') }}">
+      <a class="site-nav-link {{ 'site-nav-active' if hotels_active else '' }}" href="{{ url_for('hotels') }}"{% if hotels_active %} aria-current="page"{% endif %}>
         {{ header_icon('building-2') }}
         Hotels
       </a>
-      <a class="site-nav-link {{ 'site-nav-active' if deals_active else '' }}" href="{{ url_for('deals') }}">
+      <a class="site-nav-link {{ 'site-nav-active' if deals_active else '' }}" href="{{ url_for('deals') }}"{% if deals_active %} aria-current="page"{% endif %}>
         {{ header_icon('tag') }}
         Deals
       </a>
@@ -54,7 +54,7 @@
         {# Below 920px the nav and desktop actions above hide — this is the
            only way back to Hotels/Deals from anywhere but the home page's
            own tabs, so it needs to be a real, discoverable menu. #}
-        <button type="button" class="hdr-menu-btn" id="hdrMenuBtn" aria-expanded="false" aria-controls="hdrMobilePanel" aria-label="Open menu">
+        <button type="button" class="hdr-menu-btn" id="hdrMenuBtn" aria-expanded="false" aria-controls="hdrMobilePanel" aria-haspopup="dialog" aria-label="Open menu">
           <svg class="hdr-menu-icon-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           <svg class="hdr-menu-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -65,7 +65,7 @@
 {# The panel is a full-screen takeover (its own logo+close header row,
    like the reference), not a dropdown over a dimmed backdrop — so it's a
    sibling of <header>, not a child, and needs no backdrop element. #}
-<div class="hdr-mobile-panel" id="hdrMobilePanel" role="menu" hidden>
+<div class="hdr-mobile-panel" id="hdrMobilePanel" role="dialog" aria-modal="true" aria-label="Site menu" aria-hidden="true" tabindex="-1" hidden inert>
   <div class="hdr-mobile-head">
     <a class="brand-link" href="{{ url_for('index') }}">
       SKAIROVA
@@ -77,15 +77,15 @@
 
   <p class="hdr-mobile-eyebrow">Menu</p>
   <nav class="hdr-mobile-nav" aria-label="Main navigation">
-    <a class="hdr-mobile-link" href="{{ url_for('index') }}">
+    <a class="hdr-mobile-link" href="{{ url_for('index') }}"{% if flights_active %} aria-current="page"{% endif %}>
       <span>Flights</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
-    <a class="hdr-mobile-link" href="{{ url_for('hotels') }}">
+    <a class="hdr-mobile-link" href="{{ url_for('hotels') }}"{% if hotels_active %} aria-current="page"{% endif %}>
       <span>Hotels</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
-    <a class="hdr-mobile-link" href="{{ url_for('deals') }}">
+    <a class="hdr-mobile-link" href="{{ url_for('deals') }}"{% if deals_active %} aria-current="page"{% endif %}>
       <span>Deals</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
     </a>
@@ -166,5 +166,5 @@
 {% if not portal_signed_in and not hide_auth_modal %}
   {% include "partials/auth_modal.html" %}
 {% endif %}
-<script src="{{ url_for('static', filename='header-menu.js', v='20260823-icons-1') }}" defer></script>
+<script src="{{ url_for('static', filename='header-menu.js', v='20260901-mobile-polish-2') }}" defer></script>
 {% include "partials/ai_chatbot.html" %}

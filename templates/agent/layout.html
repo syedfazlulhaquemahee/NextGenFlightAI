@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='agent-portal.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='agent-admin.css') }}">
     {% block extra_head %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='mobile-interactions.css', v='20260901-mobile-polish-1') }}">
+    <script src="{{ url_for('static', filename='interaction-polish.js', v='20260901-mobile-polish-1') }}" defer></script>
   </head>
   <body class="agent-body {% block page_class %}{% endblock %}">
 
@@ -277,20 +279,39 @@
       var sidebar = document.getElementById('agentSidebar');
       var overlay = document.getElementById('sidebarOverlay');
       if (toggle && sidebar && overlay) {
+        var sidebarPreviousFocus = null;
         function openSidebar() {
+          sidebarPreviousFocus = document.activeElement;
           sidebar.classList.add('open');
           overlay.classList.add('visible');
           toggle.setAttribute('aria-expanded', 'true');
+          if (window.SkairovaInteraction && window.SkairovaInteraction.lockScroll) {
+            window.SkairovaInteraction.lockScroll('agent-sidebar');
+          }
+          var firstSidebarControl = sidebar.querySelector('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])');
+          if (firstSidebarControl) setTimeout(function() { firstSidebarControl.focus({ preventScroll: true }); }, 0);
         }
         function closeSidebar() {
           sidebar.classList.remove('open');
           overlay.classList.remove('visible');
           toggle.setAttribute('aria-expanded', 'false');
+          if (window.SkairovaInteraction && window.SkairovaInteraction.unlockScroll) {
+            window.SkairovaInteraction.unlockScroll('agent-sidebar');
+          }
+          if (document.activeElement && sidebar.contains(document.activeElement)) {
+            toggle.focus({ preventScroll: true });
+          }
         }
         toggle.addEventListener('click', function() {
           sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
         });
         overlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', function(event) {
+          if (event.key === 'Escape' && sidebar.classList.contains('open')) {
+            event.preventDefault();
+            closeSidebar();
+          }
+        });
       }
 
       var notifBell = document.getElementById('notifBell');

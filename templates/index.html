@@ -1901,10 +1901,43 @@ function syncManualVisibility() {
         } catch (e) {}
       }
 
-      /* Move panel to body so fixed positioning works without clipping */
+      /* Move panel to body so it can act as a compact popover on desktop and
+         a properly contained sheet on phones without being clipped by the
+         hero/search surface. */
+      const paxCompactQuery = window.matchMedia("(max-width: 760px)");
+      const paxReducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const PAX_CLOSE_MS = 180;
+      let paxCloseTimer = null;
+      const paxBackdrop = document.createElement("div");
+      paxBackdrop.className = "gf-pax-backdrop";
+      paxBackdrop.hidden = true;
+      paxBackdrop.setAttribute("aria-hidden", "true");
+      const paxCloseButton = document.createElement("button");
+      paxCloseButton.type = "button";
+      paxCloseButton.className = "gf-pax-close";
+      paxCloseButton.setAttribute("aria-label", "Close traveler selector");
+      paxCloseButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+      paxPanel.classList.add("nx-pax-popover");
+      paxPanel.setAttribute("role", "dialog");
+      paxPanel.setAttribute("aria-label", "Travelers and cabin class");
+      paxPanel.setAttribute("aria-hidden", "true");
+      paxPanel.prepend(paxCloseButton);
+      document.body.appendChild(paxBackdrop);
       document.body.appendChild(paxPanel);
+      paxBtn?.setAttribute("aria-controls", paxPanel.id);
+
+      function isPaxOpen() {
+        return !paxPanel.hidden && paxPanel.classList.contains("is-open");
+      }
+
+      function syncPaxPageState() {
+        const open = !paxPanel.hidden;
+        document.body.classList.toggle("pax-selector-open", open);
+        document.documentElement.classList.toggle("pax-selector-scroll-locked", open && paxCompactQuery.matches);
+      }
 
       function positionPaxPanel() {
+        if (paxPanel.hidden || paxCompactQuery.matches) return;
         const rect = paxBtn.getBoundingClientRect();
         const gutter = 12;
         const panelW = Math.min(360, window.innerWidth - (gutter * 2));
@@ -1912,27 +1945,102 @@ function syncManualVisibility() {
         if (left + panelW > window.innerWidth - gutter) left = window.innerWidth - panelW - gutter;
         const preferredTop = rect.bottom + 10;
         const maxTop = Math.max(gutter, window.innerHeight - paxPanel.offsetHeight - gutter);
-        paxPanel.style.top  = Math.min(preferredTop, maxTop) + "px";
+        paxPanel.style.top = Math.min(preferredTop, maxTop) + "px";
         paxPanel.style.left = Math.max(gutter, left) + "px";
+      }
+
+      function finishPaxClose(returnFocus) {
+        paxCloseTimer = null;
+        paxPanel.hidden = true;
+        paxBackdrop.hidden = true;
+        paxPanel.classList.remove("is-closing");
+        paxBackdrop.classList.remove("is-closing");
+        paxBtn?.setAttribute("aria-expanded", "false");
+        syncPaxPageState();
+        if (returnFocus) {
+          try { paxBtn?.focus({ preventScroll: true }); } catch (e) { paxBtn?.focus(); }
+        }
+      }
+
+      function openPaxPanel(options = {}) {
+        if (isPaxOpen()) {
+          positionPaxPanel();
+          return;
+        }
+        if (paxCloseTimer) {
+          clearTimeout(paxCloseTimer);
+          paxCloseTimer = null;
+        }
+        closeDateCalendar();
+        try { flexMonthPicker?._closeMonthRoller?.(); } catch (e) {}
+        paxPanel.hidden = false;
+        paxBackdrop.hidden = false;
+        paxPanel.classList.remove("is-closing");
+        paxBackdrop.classList.remove("is-closing");
+        paxPanel.setAttribute("aria-hidden", "false");
+        if (paxCompactQuery.matches) paxPanel.setAttribute("aria-modal", "true");
+        else paxPanel.removeAttribute("aria-modal");
+        paxBtn?.setAttribute("aria-expanded", "true");
+        syncPaxPageState();
+        positionPaxPanel();
+        requestAnimationFrame(() => {
+          if (paxPanel.hidden || paxPanel.classList.contains("is-closing")) return;
+          paxPanel.classList.add("is-open");
+          paxBackdrop.classList.add("is-open");
+          if (options.focusFirst) {
+            try { paxCloseButton.focus({ preventScroll: true }); } catch (e) { paxCloseButton.focus(); }
+          }
+        });
+      }
+
+      function closePaxPanel(options = {}) {
+        if (paxPanel.hidden) return;
+        paxPanel.classList.remove("is-open");
+        paxPanel.classList.add("is-closing");
+        paxPanel.setAttribute("aria-hidden", "true");
+        paxBackdrop.classList.remove("is-open");
+        paxBackdrop.classList.add("is-closing");
+        if (paxCloseTimer) clearTimeout(paxCloseTimer);
+        if (!options.immediate && !paxReducedMotionQuery.matches) {
+          paxCloseTimer = setTimeout(() => finishPaxClose(!!options.returnFocus), PAX_CLOSE_MS);
+        } else {
+          finishPaxClose(!!options.returnFocus);
+        }
       }
 
       /* Travelers panel toggle */
       if (paxBtn && paxPanel){
         paxBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const open = !paxPanel.hidden;
-          paxPanel.hidden = open;
-          paxBtn.setAttribute("aria-expanded", String(!open));
-          if (!open) positionPaxPanel();
+          if (isPaxOpen()) closePaxPanel();
+          else openPaxPanel({ focusFirst: e.detail === 0 });
+        });
+        paxCloseButton.addEventListener("click", () => closePaxPanel({ returnFocus: true }));
+        paxBackdrop.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          closePaxPanel({ returnFocus: true });
         });
         document.addEventListener("click", (e) => {
-          if (!paxPanel.hidden && !paxPanel.contains(e.target) && e.target !== paxBtn){
-            paxPanel.hidden = true;
-            paxBtn.setAttribute("aria-expanded", "false");
+          if (isPaxOpen() && !paxPanel.contains(e.target) && !paxBtn.contains(e.target)) closePaxPanel();
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && isPaxOpen()) {
+            e.preventDefault();
+            closePaxPanel({ returnFocus: true });
           }
         });
         window.addEventListener("scroll", () => { if (!paxPanel.hidden) positionPaxPanel(); }, { passive: true });
-        window.addEventListener("resize", () => { if (!paxPanel.hidden) positionPaxPanel(); });
+        window.addEventListener("resize", () => { if (!paxPanel.hidden) positionPaxPanel(); }, { passive: true });
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", () => { if (!paxPanel.hidden) positionPaxPanel(); }, { passive: true });
+          window.visualViewport.addEventListener("scroll", () => { if (!paxPanel.hidden) positionPaxPanel(); }, { passive: true });
+        }
+        if (typeof paxCompactQuery.addEventListener === "function") {
+          paxCompactQuery.addEventListener("change", () => {
+            syncPaxPageState();
+            if (!paxPanel.hidden) positionPaxPanel();
+          });
+        }
 
         /* Counter buttons */
         paxPanel.querySelectorAll(".gf-counter-btn").forEach(btn => {

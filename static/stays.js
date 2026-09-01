@@ -50,9 +50,22 @@ window.StaysSearch = (function () {
       });
     }
 
-    function hide() {
-      list.hidden = true; list.innerHTML = "";
+    var suggestCloseTimer = null;
+    function reducedMotion() {
+      return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    }
+
+    function hide(immediate) {
+      if (suggestCloseTimer) { window.clearTimeout(suggestCloseTimer); suggestCloseTimer = null; }
       input.setAttribute("aria-expanded", "false"); active = -1;
+      list.classList.remove("is-open");
+      var finish = function () {
+        if (list.classList.contains("is-open")) return;
+        list.hidden = true;
+        list.innerHTML = "";
+      };
+      if (immediate || list.hidden || reducedMotion()) finish();
+      else suggestCloseTimer = window.setTimeout(finish, 160);
     }
 
     function cancelLookup() {
@@ -102,6 +115,7 @@ window.StaysSearch = (function () {
     }
 
     function render(rows) {
+      if (suggestCloseTimer) { window.clearTimeout(suggestCloseTimer); suggestCloseTimer = null; }
       items = rows; list.innerHTML = "";
       if (!rows.length) return hide();
       rows.forEach(function (it, i) {
@@ -116,6 +130,7 @@ window.StaysSearch = (function () {
         list.appendChild(li);
       });
       list.hidden = false;
+      window.requestAnimationFrame(function () { list.classList.add("is-open"); });
       input.setAttribute("aria-expanded", "true");
     }
 
@@ -233,6 +248,7 @@ window.StaysSearch = (function () {
     var checkin = byId(opts.checkin);
     var checkout = byId(opts.checkout);
     var tabs = (opts.tabs || "").split(",").map(function (id) { return byId(id.trim()); }).filter(Boolean);
+    var modeEnterTimer = null;
 
     // Mirrors the flight prompt's autoResize() on the home page: once the
     // request actually needs more than one line, it gets its own row above
@@ -287,8 +303,19 @@ window.StaysSearch = (function () {
 
     function apply(mode, focus) {
       var ai = mode === "ai";
-      manualForm.hidden = ai;
-      aiForm.hidden = !ai;
+      var nextForm = ai ? aiForm : manualForm;
+      var previousForm = ai ? manualForm : aiForm;
+      var switching = Boolean(focus) && previousForm.hidden === false && nextForm.hidden === true;
+      previousForm.hidden = true;
+      nextForm.hidden = false;
+      if (switching && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+        if (modeEnterTimer) window.clearTimeout(modeEnterTimer);
+        nextForm.classList.remove("is-mode-entering");
+        window.requestAnimationFrame(function () {
+          nextForm.classList.add("is-mode-entering");
+          modeEnterTimer = window.setTimeout(function () { nextForm.classList.remove("is-mode-entering"); }, 230);
+        });
+      }
       if (chips) chips.hidden = !ai;
       if (hint) hint.classList.remove("is-error");
       if (status) status.hidden = true;
