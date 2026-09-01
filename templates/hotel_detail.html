@@ -7,7 +7,7 @@
   <title>{{ hotel.name }} • Skairova</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260527-ios-input-zoom') }}" />
   {% include "partials/theme_head.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-lightbox-polish') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hotels.css', v='20260901-room-images-1') }}" />
 </head>
 <body class="hotel-detail-page">
   {% include "partials/platform_header.html" %}
@@ -77,8 +77,13 @@
           {% else %}
             <ul class="nu-rooms">
               {% for room in rooms %}
-                <li class="nu-room">
-                  <div>
+                <li class="nu-room{{ '' if room.image else ' nu-room--no-image' }}">
+                  {% if room.image %}
+                    <div class="nu-room-media">
+                      <img src="{{ room.image }}" alt="{{ room.name }}" loading="lazy" decoding="async" />
+                    </div>
+                  {% endif %}
+                  <div class="nu-room-info">
                     <h3>{{ room.name }}</h3>
                     <p class="nu-room-board">{{ room.board_name }}</p>
                     <ul class="nu-room-tags">

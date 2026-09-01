@@ -480,6 +480,7 @@ class LiteAPIClient:
         rooms: int = 1,
         currency: str = LITE_DEFAULT_CURRENCY,
         nationality: str = LITE_DEFAULT_NATIONALITY,
+        room_mapping: bool = False,
     ) -> list[dict[str, Any]]:
         """Price a set of hotels. Batched at 50 IDs and fanned out in parallel."""
         # Preserve a deterministic list while dropping duplicate IDs. The
@@ -499,6 +500,11 @@ class LiteAPIClient:
             "guestNationality": (nationality or LITE_DEFAULT_NATIONALITY).upper(),
             "occupancies": [dict(occupancy) for _ in range(max(1, int(rooms)))],
         }
+        if room_mapping:
+            # `mappedRoomId` joins a live rate to the static room catalog,
+            # whose room photos are the only safe source for a room-specific
+            # image. Avoid guessing from the property's gallery.
+            payload["roomMapping"] = True
         # Do not sort `ids`: Lite may return offers in supplier order, while
         # the ordered tuple is still stable for all content-backed calls.
         cache_key = (
@@ -511,6 +517,7 @@ class LiteAPIClient:
             int(rooms),
             str(currency or LITE_DEFAULT_CURRENCY).upper(),
             str(nationality or LITE_DEFAULT_NATIONALITY).upper(),
+            bool(room_mapping),
         )
 
         def load() -> list[dict[str, Any]]:
@@ -778,10 +785,12 @@ def build_rooms_view(
     rate_row: Mapping[str, Any],
     *,
     nights: int,
+    room_images: Mapping[str, str] | None = None,
     limit: int = 40,
 ) -> list[dict[str, Any]]:
     """Every bookable rate for one hotel, cheapest first, deduped by room+board."""
     rows: list[dict[str, Any]] = []
+    room_images = room_images or {}
     seen: set[tuple[str, str, bool]] = set()
 
     for room_type in rate_row.get("roomTypes") or []:
@@ -817,6 +826,7 @@ def build_rooms_view(
                 "currency": currency or LITE_DEFAULT_CURRENCY,
                 "excluded_taxes": round(taxes, 2) if taxes else None,
                 "remarks": str(rate.get("remarks") or "").strip(),
+                "image": room_images.get(str(rate.get("mappedRoomId") or room_type.get("mappedRoomId") or "").strip(), ""),
             })
 
     rows.sort(key=lambda row: row["total_amount"])
@@ -833,6 +843,23 @@ def build_detail_view(content: Mapping[str, Any]) -> dict[str, Any]:
     hero = _clean_text(content.get("main_photo"))
     if hero and hero not in images:
         images.insert(0, hero)
+
+    # Static room photos are keyed by the provider room ID. Rates can include
+    # `mappedRoomId` when requested with roomMapping=true, so this is a
+    # precise join rather than a best-effort caption or name match.
+    room_images: dict[str, str] = {}
+    for room in content.get("rooms") or []:
+        if not isinstance(room, Mapping):
+            continue
+        room_id = _clean_text(room.get("id") or room.get("roomId"))
+        if not room_id:
+            continue
+        candidates = room.get("photos") or room.get("images") or []
+        for photo in candidates:
+            url = _clean_text(photo.get("url") if isinstance(photo, Mapping) else photo)
+            if url:
+                room_images[room_id] = url
+                break
 
     facilities = [_clean_text(f) for f in content.get("hotelFacilities") or []]
     facilities = [f for f in facilities if f]
@@ -859,6 +886,7 @@ def build_detail_view(content: Mapping[str, Any]) -> dict[str, Any]:
         "hotel_type": _clean_text(content.get("hotelType")),
         "images": images[:24],
         "hero": images[0] if images else "",
+        "room_images": room_images,
         "stars": int(stars) if stars else 0,
         "rating": round(rating, 1) if rating else None,
         "review_label": review_label(rating),

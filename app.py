@@ -13780,18 +13780,22 @@ def hotel_detail(hotel_id: str):
             checkout=checkout,
             adults=adults,
             rooms=rooms,
+            room_mapping=True,
         )
     except LiteAPIError as exc:
         print("HOTEL DETAIL ERROR:", exc)
         _set_global_notice(str(exc))
         return redirect(url_for("hotels"))
 
-    rooms_view = build_rooms_view(rate_rows[0], nights=nights) if rate_rows else []
+    hotel_view = build_detail_view(content)
+    rooms_view = build_rooms_view(
+        rate_rows[0], nights=nights, room_images=hotel_view.get("room_images"),
+    ) if rate_rows else []
     cheapest = min((r["total_amount"] for r in rooms_view), default=None)
 
     return render_template(
         "hotel_detail.html",
-        hotel=build_detail_view(content),
+        hotel=hotel_view,
         hotel_description=sanitize_description(content.get("hotelDescription")),
         rooms=rooms_view,
         cheapest_total=cheapest,

@@ -948,6 +948,32 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   font-weight: 600;
 }
 
+/* Results controls stay intentionally quiet after a choice. The old purple
+   border/highlight read as a persistent selection ring, especially on touch. */
+.hotel-results-page .nu-check input,
+.hotel-results-page .nu-range { accent-color: #64748b; }
+html[data-theme="light"] .hotel-results-page .nu-check input,
+html[data-theme="light"] .hotel-results-page .nu-range { accent-color: #475569; }
+.hotel-results-page .nu-star-btn input:checked + span {
+  border-color: var(--nu-border);
+  background: var(--nu-surface-2);
+  color: var(--nu-text);
+}
+.hotel-results-page .nu-star-btn input:checked + span::before { content: "✓ "; color: var(--nu-muted); }
+.hotel-results-page .nu-search .nu-seg:focus-within,
+.hotel-results-page .nu-search .nu-seg input:focus,
+.hotel-results-page .nu-search .nu-seg input:focus-visible,
+.hotel-results-page .nu-search .nu-seg select:focus,
+.hotel-results-page .nu-search .nu-seg select:focus-visible,
+.hotel-results-page .nu-sort select:focus,
+.hotel-results-page .nu-sort select:focus-visible,
+.hotel-results-page .nu-filters input:focus,
+.hotel-results-page .nu-filters input:focus-visible {
+  outline: none !important;
+  border-color: var(--nu-border) !important;
+  box-shadow: none !important;
+}
+
 .nu-filters-toggle {
   display: none;
   min-height: 40px;
@@ -1135,10 +1161,14 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
 
 .nu-rooms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .nu-room {
-  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  display: grid; grid-template-columns: 146px minmax(0, 1fr) auto; align-items: center; gap: 20px;
   padding: 18px; background: var(--nu-surface);
   border: 1px solid var(--nu-border); border-radius: var(--nu-radius);
 }
+.nu-room--no-image { grid-template-columns: minmax(0, 1fr) auto; }
+.nu-room-media { width: 146px; height: 112px; overflow: hidden; border-radius: var(--nu-radius-sm); background: var(--nu-surface-2); }
+.nu-room-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.nu-room-info { min-width: 0; }
 .nu-room h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
 .nu-room-board { margin: 0 0 9px; font-size: 14px; color: var(--nu-muted); }
 .nu-room-tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1375,7 +1405,10 @@ html[data-theme="light"] .nu-search { border-color: transparent; }
   .nu-hero-title { font-size: 32px; }
   .nu-rail { grid-auto-columns: 86%; }
   .nu-list-head { flex-direction: column; align-items: flex-start; }
-  .nu-room { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .nu-room { grid-template-columns: 96px minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px; }
+  .nu-room--no-image { grid-template-columns: 1fr; }
+  .nu-room-media { width: 96px; height: 92px; }
+  .nu-room-buy { grid-column: 1 / -1; }
   .nu-room-buy { align-items: flex-start; width: 100%; }
   .nu-room-buy .nu-room-reserve { width: 100%; }
 }
